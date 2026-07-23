@@ -83,3 +83,66 @@ SIGNAL_FILL <- c("0" = "#E9DCDC", "1" = "#D8BBBB", "2" = "#C89A9A", "3" = "#B379
 # loudly rather than silently changing which columns are folded.
 AF_POP_COLS <- c("gvs_afr_af", "gvs_amr_af", "gvs_eas_af", "gvs_eur_af",
                  "gvs_mid_af", "gvs_sas_af", "gvs_oth_af")
+
+# =============================================================================
+# FastENLOC output readers
+# -----------------------------------------------------------------------------
+# The .sig.out and .snp.out files are whitespace-aligned and their header line
+# does not line up with the data columns, so they are parsed positionally: drop
+# the header, split each row on runs of whitespace, and apply known names.
+# (.gene.out is a normal TSV and is read with fread.)
+# =============================================================================
+ENLOC_CS_COLS      <- c("Signal", "Num_SNP", "CPIP_qtl", "CPIP_gwas_marginal",
+                        "CPIP_gwas_qtl_prior", "RCP", "LCP")
+ENLOC_VARIANT_COLS <- c("Signal", "SNP", "PIP_qtl", "PIP_gwas_marginal",
+                        "PIP_gwas_qtl_prior", "SCP")
+
+LoadEnlocTable <- function(path, cols) {
+  x <- readLines(path)
+  x <- x[-1]                                   # drop the header line
+  x <- x[nzchar(trimws(x))]                    # drop blank lines
+  mat <- do.call(rbind, strsplit(trimws(x), "\\s+"))
+  if (ncol(mat) != length(cols))
+    stop("Expected ", length(cols), " columns in ", path, ", found ", ncol(mat))
+  out <- as.data.frame(mat, stringsAsFactors = FALSE)
+  names(out) <- cols
+  # strsplit() yields character; convert here so downstream code needs no
+  # scattered as.numeric() / across(contains('PIP'), as.numeric) calls.
+  tibble::as_tibble(type.convert(out, as.is = TRUE))
+}
+
+# Label rows as colocalized by controlling the Bayesian FDR at `control_level`:
+# sort local FDRs (1 - posterior) ascending, take the largest prefix whose
+# running mean stays at or below the target, and threshold at its posterior.
+#
+# `prob_col` and `label_col` are plain COLUMN-NAME STRINGS. The original used
+# rlang::ensym() here, but every call is internal and passes a name held in a
+# variable, which is exactly the case non-standard evaluation cannot handle.
+#
+# The original stashed the threshold in attr(out, "threshold"), which the
+# following dplyr verbs silently dropped; it is reported via message() instead.
+add_fdr_threshold_label <- function(df, prob_col, control_level = 0.05,
+                                    label_col = "Coloc", quiet = FALSE) {
+  stopifnot(is.character(prob_col), length(prob_col) == 1L)
+  if (!prob_col %in% names(df))
+    stop("Column '", prob_col, "' not found; have: ", paste(names(df), collapse = ", "))
+
+  probs <- as.numeric(df[[prob_col]])
+
+  lfdr  <- sort(1 - probs, na.last = NA)
+  FDR   <- cumsum(lfdr) / seq_along(lfdr)
+  # Tolerance guards an exact-boundary case (e.g. probs = 0.95, control_level =
+  # 0.05) where `1 - 0.95` rounds to a double a hair above 0.05, which would
+  # otherwise make a should-pass row fail `FDR <= control_level`.
+  valid <- which(FDR <= control_level + 1e-8)
+
+  thresh <- if (length(valid) == 0) Inf else 1 - lfdr[max(valid)]
+
+  if (!quiet)
+    message(sprintf("    %s >= %.4g at FDR %.0f%%  (%d / %d rows labelled)",
+                    prob_col, thresh, 100 * control_level,
+                    sum(probs >= thresh, na.rm = TRUE), length(probs)))
+
+  df[[label_col]] <- probs >= thresh
+  df
+}
