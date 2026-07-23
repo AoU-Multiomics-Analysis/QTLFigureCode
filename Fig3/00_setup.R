@@ -309,8 +309,27 @@ coloc_gene_level <- function(refresh = FALSE)
 
 coloc_cs_level <- function(refresh = FALSE)
   build_or_cache("coloc_cs_level", refresh = refresh, {
-    load_input("enloc_cs", reader = LoadEnlocTable, cols = ENLOC_CS_COLS) %>%
-      .label_by_pair("RCP", "signal level") %>%
+    d <- load_input("enloc_cs", reader = LoadEnlocTable, cols = ENLOC_CS_COLS) %>%
+      .label_by_pair("RCP", "signal level")
+
+    # The documented FastENLOC Signal format is exactly two sides,
+    # "gene:cs1(@)gene:cs2". A second side listing MULTIPLE credible sets
+    # separates them with "_", not another "(@)" (a later task handles that
+    # case), so more than one "(@)" here really does mean a malformed row
+    # rather than a legitimate shape. Validate explicitly and stop loudly --
+    # a warning is not enough because build_or_cache would cache the bad
+    # result -- rather than let extra = "merge" silently fold any surplus
+    # parts into cs_2.
+    n_at <- str_count(d$Signal, fixed("(@)"))
+    bad  <- which(n_at != 1L)
+    if (length(bad))
+      stop(length(bad), " row(s) of Signal do not contain exactly one '(@)' ",
+           "separator (found ", paste(unique(n_at[bad]), collapse = "/"),
+           "); first offending value: '", d$Signal[bad[1]], "'")
+
+    # Exactly one "(@)" per row is now guaranteed, so the split below can
+    # safely assume two parts.
+    d %>%
       separate(Signal, into = c("cs_1", "cs_2"), sep = "\\(@\\)",
                remove = FALSE, fill = "right", extra = "merge") %>%
       mutate(cs_1 = str_remove(cs_1, "^ENSG[0-9]+:"),
@@ -319,11 +338,26 @@ coloc_cs_level <- function(refresh = FALSE)
 
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
-    annotations <- fread(input_path("annotations")) %>%
+    ann_path <- input_path("annotations")
+    annotations <- fread(ann_path) %>%
       mutate(SNP = paste(chrom, pos, ref, alt, sep = "_"))
 
-    load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
+    variants <- load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
       .label_by_pair("SCP", "variant level") %>%
-      mutate(Gene = str_remove(Signal, ":.*")) %>%
-      left_join(annotations, by = "SNP")
+      mutate(Gene = str_remove(Signal, ":.*"))
+
+    # relationship = "many-to-one" asserts SNP is unique in `annotations` --
+    # the largest external input in the repo, which nothing upstream
+    # validates. Without this, a duplicated key would silently multiply rows
+    # (dplyr's default only warns) and build_or_cache would cache the
+    # inflated result on this very run. Wrap the bare dplyr error so it names
+    # the annotation file as the culprit.
+    tryCatch(
+      left_join(variants, annotations, by = "SNP", relationship = "many-to-one"),
+      error = function(e) {
+        stop("Annotation table '", ann_path, "' has duplicate SNP keys, ",
+             "violating the expected many-to-one variant-level join: ",
+             conditionMessage(e), call. = FALSE)
+      }
+    )
   })
