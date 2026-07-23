@@ -131,4 +131,23 @@ sp <- mi[["sQTL-pQTL"]]
 ok("rare variants are flagged",
    nrow(sp) == 0L || all(sp$max_af[sp$rare] < 0.01))
 
+# The above passes vacuously if `rare` is always FALSE (all() of an empty
+# vector is TRUE). Pin the boundary from both sides: some rows must actually
+# be flagged, the flagged ones must be below the threshold, AND the
+# unflagged ones must be at or above it.
+ok("some variants are actually flagged rare", any(sp$rare))
+ok("unflagged variants are at or above the rare threshold",
+   all(sp$max_af[!sp$rare] >= 0.01))
+
+# --- posterior joins must not fan out row count ----------------------------
+# The "adds both joined posterior columns" check above only tests that the
+# column names exist, which would not have caught a fan-out join silently
+# duplicating rows. Assert the join preserves row count against the
+# pre-join, colocalized frame it was built from.
+pre_join_rows <- coloc_variant_level() %>%
+  dplyr::filter(type == "eQTL-pQTL", Coloc == TRUE) %>%
+  nrow()
+ok("eQTL-pQTL posterior joins preserve row count",
+   nrow(ep) == pre_join_rows)
+
 cat("test_fig3_builders.R: all assertions passed\n")

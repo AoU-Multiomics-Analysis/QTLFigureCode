@@ -447,18 +447,43 @@ coloc_model_input <- function(refresh = FALSE)
     posteriors <- function(d)
       d %>% select(variant, molecular_trait_id, posterior_mean, posterior_sd)
 
-    pair_input <- function(pair, left, right) {
+    # relationship = "many-to-one" asserts (variant, gene) is unique on the
+    # fine-mapping side -- nothing upstream guarantees this, and a variant
+    # sitting in two credible sets for the same gene (a real SuSiE outcome) is
+    # exactly the case that would otherwise fan the join out and silently
+    # inflate the regression's sample size, double-counting that variant.
+    # Wrap the bare dplyr error so it names which fine-mapping table (eQTL,
+    # sQTL or pQTL) holds the duplicate and shows an offending (variant, gene)
+    # pair, mirroring the annotation join above in coloc_variant_level().
+    join_posteriors <- function(d, fm_table, table_name) {
+      p <- posteriors(fm_table)
+      tryCatch(
+        left_join(d, p, by = c("SNP" = "variant", "Gene" = "molecular_trait_id"),
+                  relationship = "many-to-one"),
+        error = function(e) {
+          key <- p[c("variant", "molecular_trait_id")]
+          dup <- p[duplicated(key) | duplicated(key, fromLast = TRUE), , drop = FALSE]
+          offender <- if (nrow(dup))
+            sprintf("(variant = '%s', gene = '%s')", dup$variant[1], dup$molecular_trait_id[1])
+          else
+            "<offending pair not found>"
+          stop(table_name, " fine-mapping table has duplicate (variant, gene) keys, ",
+               "violating the expected many-to-one posterior join -- e.g. ", offender,
+               ": ", conditionMessage(e), call. = FALSE)
+        }
+      )
+    }
+
+    pair_input <- function(pair, left, left_name, right, right_name) {
       cleaned %>%
         filter(type == pair) %>%
-        left_join(posteriors(left),
-                  by = c("SNP" = "variant", "Gene" = "molecular_trait_id")) %>%
-        left_join(posteriors(right),
-                  by = c("SNP" = "variant", "Gene" = "molecular_trait_id"))
+        join_posteriors(left, left_name) %>%
+        join_posteriors(right, right_name)
     }
 
     list(
-      `eQTL-sQTL` = pair_input("eQTL-sQTL", fm$eQTL, fm$sQTL),
-      `eQTL-pQTL` = pair_input("eQTL-pQTL", fm$eQTL, fm$pQTL),
-      `sQTL-pQTL` = pair_input("sQTL-pQTL", fm$sQTL, fm$pQTL)
+      `eQTL-sQTL` = pair_input("eQTL-sQTL", fm$eQTL, "eQTL", fm$sQTL, "sQTL"),
+      `eQTL-pQTL` = pair_input("eQTL-pQTL", fm$eQTL, "eQTL", fm$pQTL, "pQTL"),
+      `sQTL-pQTL` = pair_input("sQTL-pQTL", fm$sQTL, "sQTL", fm$pQTL, "pQTL")
     )
   })
