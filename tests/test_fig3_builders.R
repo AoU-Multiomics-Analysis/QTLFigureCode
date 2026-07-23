@@ -150,4 +150,87 @@ pre_join_rows <- coloc_variant_level() %>%
 ok("eQTL-pQTL posterior joins preserve row count",
    nrow(ep) == pre_join_rows)
 
+# --- coloc_model_input: duplicate-key attribution must name the CORRECT table
+# pair_input() chains two guarded joins (join_posteriors). If they were
+# chained through %>%, the outer join's `d` argument would be a lazy promise
+# wrapping the inner join_posteriors() call; forcing it inside the outer
+# tryCatch's monitored left_join() would let the outer handler catch the
+# inner join's error and mis-attribute it to the OTHER table's name. For each
+# of the three fine-mapping tables in turn, inject a duplicate (variant,
+# gene) row and confirm the error names THAT table -- and only that table.
+dup_finemap_row <- function(rel_path) {
+  fx_dup <- make_fig3_fixture(file.path(tempdir(), paste0("fig3_fixture_dup_", basename(rel_path))))
+  p <- file.path(fx_dup$root, rel_path)
+  d <- read.delim(p)
+  d <- rbind(d, d[1, ])   # duplicate row 1's (variant, gene) key
+  write.table(d, p, sep = "\t", row.names = FALSE, quote = FALSE)
+  use_fig3_fixture(fx_dup)
+  source("fig3/00_setup.R")
+  tryCatch({ coloc_model_input(refresh = TRUE); NULL },
+           error = conditionMessage)
+}
+
+msg_eqtl <- dup_finemap_row("finemapping/coloc/eQTL_susie.COMB.annotated.cleaned.tsv.gz")
+ok("eQTL duplicate is reported as an eQTL problem",
+   grepl("^eQTL fine-mapping table has duplicate", msg_eqtl))
+ok("eQTL duplicate is NOT blamed on sQTL or pQTL",
+   !grepl("sQTL fine-mapping table", msg_eqtl) && !grepl("pQTL fine-mapping table", msg_eqtl))
+ok("eQTL duplicate error shows an offending (variant, gene) pair",
+   grepl("variant = '.*', gene = '.*'", msg_eqtl))
+ok("a failed coloc_model_input build (eQTL) leaves no cache file behind",
+   !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
+
+msg_sqtl <- dup_finemap_row("finemapping/coloc/sQTL_susie.COMB.annotated.cleaned.tsv.gz")
+ok("sQTL duplicate is reported as an sQTL problem",
+   grepl("^sQTL fine-mapping table has duplicate", msg_sqtl))
+ok("sQTL duplicate is NOT blamed on eQTL or pQTL",
+   !grepl("eQTL fine-mapping table", msg_sqtl) && !grepl("pQTL fine-mapping table", msg_sqtl))
+ok("a failed coloc_model_input build (sQTL) leaves no cache file behind",
+   !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
+
+msg_pqtl <- dup_finemap_row("finemapping/coloc/pQTL_susie.COMB.annotated.cleaned.tsv.gz")
+ok("pQTL duplicate is reported as a pQTL problem",
+   grepl("^pQTL fine-mapping table has duplicate", msg_pqtl))
+ok("pQTL duplicate is NOT blamed on eQTL or sQTL",
+   !grepl("eQTL fine-mapping table", msg_pqtl) && !grepl("sQTL fine-mapping table", msg_pqtl))
+ok("a failed coloc_model_input build (pQTL) leaves no cache file behind",
+   !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
+
+# Restore the original fixture so anything below (or a re-run) sees the
+# well-formed inputs, not the corrupted ones above.
+use_fig3_fixture(fx)
+source("fig3/00_setup.R")
+
+# --- legitimate data that LOOKS like it could collide must NOT error ------
+# Same variant, different genes, and same gene, different variants, are both
+# real outcomes (a variant can be fine-mapped for two genes; a gene's
+# credible set spans several variants) and must not trip the many-to-one
+# guard, which keys on the (variant, gene) PAIR, not either column alone.
+fx_legit <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_legit"))
+eqtl_path <- file.path(fx_legit$root, "finemapping/coloc/eQTL_susie.COMB.annotated.cleaned.tsv.gz")
+eqtl_legit <- read.delim(eqtl_path)
+# Row 1 is (chr1_100_A_G, ENSG001); add the SAME variant for a DIFFERENT gene.
+extra <- eqtl_legit[1, ]
+extra$molecular_trait_id <- "ENSG002.1"
+eqtl_legit <- rbind(eqtl_legit, extra)
+write.table(eqtl_legit, eqtl_path, sep = "\t", row.names = FALSE, quote = FALSE)
+use_fig3_fixture(fx_legit)
+source("fig3/00_setup.R")
+mi_legit <- tryCatch(coloc_model_input(refresh = TRUE), error = function(e) e)
+ok("same variant, different genes does not error the join",
+   !inherits(mi_legit, "error"))
+
+# The base fixture (used for every `mi <- coloc_model_input()` assertion
+# above) already has ENSG001 fine-mapped at several distinct eQTL variants --
+# that build succeeding is itself proof the same-gene/different-variant case
+# does not error; pin it explicitly here too.
+ok("same gene, different variants recur in the base fixture",
+   length(unique(fm$eQTL$variant[fm$eQTL$molecular_trait_id == "ENSG001"])) > 1)
+ok("...and coloc_model_input() built successfully over that fixture",
+   is.list(mi) && setequal(names(mi), c("eQTL-sQTL", "eQTL-pQTL", "sQTL-pQTL")))
+
+# Restore the original fixture once more for anything after this.
+use_fig3_fixture(fx)
+source("fig3/00_setup.R")
+
 cat("test_fig3_builders.R: all assertions passed\n")

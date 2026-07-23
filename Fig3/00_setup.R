@@ -475,10 +475,16 @@ coloc_model_input <- function(refresh = FALSE)
     }
 
     pair_input <- function(pair, left, left_name, right, right_name) {
-      cleaned %>%
-        filter(type == pair) %>%
-        join_posteriors(left, left_name) %>%
-        join_posteriors(right, right_name)
+      # Each join_posteriors() call must be forced to a concrete data frame
+      # (via an explicit <- binding) before the next one starts. Chaining the
+      # two calls through %>% instead would make the outer call's `d` argument
+      # a lazy promise wrapping the inner join_posteriors() call; forcing it
+      # inside the outer tryCatch's monitored left_join() would let the outer
+      # handler catch and mis-attribute the inner join's error to the
+      # right-hand table's name.
+      d0 <- cleaned %>% filter(type == pair)
+      d1 <- join_posteriors(d0, left, left_name)
+      join_posteriors(d1, right, right_name)
     }
 
     list(
