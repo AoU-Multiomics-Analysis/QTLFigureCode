@@ -284,3 +284,46 @@ susie_finemapping <- function(refresh = FALSE)
     list(eQTL = eQTL, sQTL = sQTL, pQTL = pQTL, cs_list = cs_list,
          gene_map = gene_map, genes_all_three_assays = genes_all_three_assays)
   })
+
+# =============================================================================
+# FastENLOC colocalization
+# -----------------------------------------------------------------------------
+# The FDR threshold is computed PER ASSAY PAIR, matching the original (which
+# labelled each file before binding). `type` arrives attached from the manifest,
+# so the original's per-frame mutate(type = '...') calls are gone.
+# =============================================================================
+.label_by_pair <- function(d, prob_col, level_label) {
+  d %>%
+    split(.$type) %>%
+    purrr::imap_dfr(function(x, ty) {
+      message("  ", ty, " (", level_label, "):")
+      add_fdr_threshold_label(x, prob_col)
+    })
+}
+
+coloc_gene_level <- function(refresh = FALSE)
+  build_or_cache("coloc_gene_level", refresh = refresh, {
+    load_input("enloc_gene") %>%
+      .label_by_pair("GLCP", "gene level")
+  })
+
+coloc_cs_level <- function(refresh = FALSE)
+  build_or_cache("coloc_cs_level", refresh = refresh, {
+    load_input("enloc_cs", reader = LoadEnlocTable, cols = ENLOC_CS_COLS) %>%
+      .label_by_pair("RCP", "signal level") %>%
+      separate(Signal, into = c("cs_1", "cs_2"), sep = "\\(@\\)",
+               remove = FALSE, fill = "right", extra = "merge") %>%
+      mutate(cs_1 = str_remove(cs_1, "^ENSG[0-9]+:"),
+             cs_2 = str_remove(cs_2, "^ENSG[0-9]+:"))
+  })
+
+coloc_variant_level <- function(refresh = FALSE)
+  build_or_cache("coloc_variant_level", refresh = refresh, {
+    annotations <- fread(input_path("annotations")) %>%
+      mutate(SNP = paste(chrom, pos, ref, alt, sep = "_"))
+
+    load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
+      .label_by_pair("SCP", "variant level") %>%
+      mutate(Gene = str_remove(Signal, ":.*")) %>%
+      left_join(annotations, by = "SNP")
+  })
