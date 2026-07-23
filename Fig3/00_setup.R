@@ -202,3 +202,85 @@ add_fdr_threshold_label <- function(df, prob_col, control_level = 0.05,
   df[[label_col]] <- label
   df
 }
+
+# =============================================================================
+# Derived-data cache
+# -----------------------------------------------------------------------------
+# Fig3's panels share a heavy upstream: the AoU annotation table (the largest
+# input in the repo) and three SuSiE tables. Under strict per-panel loading the
+# annotation join would run three times per build. Each builder below memoizes
+# its result to DATA_DIR/<name>.rds, so a panel still calls only the builders it
+# needs while the expensive work happens once.
+#
+# `expr` is a lazily-evaluated promise: on a cache hit it is never evaluated, so
+# a cached panel never reads its inputs at all.
+#
+# THE CACHE IS KEYED BY NAME ONLY, not by input content. Clear DATA_DIR (or pass
+# refresh = TRUE) after changing an input file or a builder.
+# =============================================================================
+build_or_cache <- function(name, expr, refresh = FALSE) {
+  f <- file.path(DATA_DIR, paste0(name, ".rds"))
+  if (!refresh && file.exists(f)) return(readRDS(f))
+  message("building ", name, " ...")
+  val <- force(expr)
+  saveRDS(val, f)
+  val
+}
+
+# =============================================================================
+# SuSiE fine-mapping (COMB)
+# =============================================================================
+.add_cs_stats <- function(d) {
+  d %>%
+    group_by(molecular_trait_id, cs_index) %>%
+    mutate(cpip = sum(pip), number_variants = dplyr::n()) %>%
+    ungroup()
+}
+
+susie_finemapping <- function(refresh = FALSE)
+  build_or_cache("susie_finemapping", refresh = refresh, {
+    eQTL <- fread(input_path("susie_eqtl")) %>%
+      select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
+             posterior_sd, gene_name) %>%
+      mutate(molecular_trait_id = str_remove(molecular_trait_id, "\\..*"),
+             variant = str_replace(variant, "chrchr", "chr")) %>%
+      .add_cs_stats()
+
+    sQTL <- fread(input_path("susie_sqtl")) %>%
+      mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
+      select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
+             posterior_sd) %>%
+      .add_cs_stats()
+
+    pQTL <- fread(input_path("susie_pqtl")) %>%
+      filter(group == "COMB") %>%
+      mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
+      select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
+             posterior_sd) %>%
+      .add_cs_stats()
+
+    cs_list <- bind_rows(
+      eQTL %>% distinct(molecular_trait_id, cs_id) %>% mutate(type = "eQTL"),
+      pQTL %>% distinct(molecular_trait_id, cs_id) %>% mutate(type = "pQTL"),
+      sQTL %>% distinct(molecular_trait_id, cs_id) %>% mutate(type = "sQTL")
+    )
+
+    # NOTE: this is the INTERSECTION of the three assays. The original called it
+    # QTL_union_gene_list, which was a misnomer.
+    genes_all_three_assays <- eQTL %>%
+      filter(molecular_trait_id %in% pQTL$molecular_trait_id,
+             molecular_trait_id %in% sQTL$molecular_trait_id) %>%
+      distinct(molecular_trait_id) %>%
+      pull(molecular_trait_id)
+
+    protein_map <- pQTL %>%
+      mutate(UniProt = str_remove(cs_id, "_.*")) %>%
+      distinct(UniProt, molecular_trait_id)
+
+    gene_map <- eQTL %>%
+      distinct(molecular_trait_id, gene_name) %>%
+      left_join(protein_map, by = "molecular_trait_id")
+
+    list(eQTL = eQTL, sQTL = sQTL, pQTL = pQTL, cs_list = cs_list,
+         gene_map = gene_map, genes_all_three_assays = genes_all_three_assays)
+  })
