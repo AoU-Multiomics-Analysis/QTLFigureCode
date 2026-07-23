@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Controlled-access QTL inputs staged into the working dir (never commit).
+# Figure scripts gsutil-cache inputs under the cwd in these subdirs, or set
+# FIG*_INPUT to relocate them.
+/permutations/
+/finemapping/
+/annotated/
+/external/
+/reference/
+/input_data/
+
+# Figure outputs
+/Figure1.pdf
+/Figure1.png
+/xGeneMetasoftSummary.pdf
+/Fig2.pdf
+/Fig2.png
+/FigS_*.pdf
+/FigS_*.png
+
+# MetaSoft intermediates
+/*_wide_metasoft_input.tsv
+/*.metasoft.tsv

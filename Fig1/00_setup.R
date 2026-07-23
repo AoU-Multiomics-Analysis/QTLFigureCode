@@ -26,7 +26,10 @@ suppressPackageStartupMessages({
 })
 
 # --- Paths (override via env vars if needed) --------------------------------
-INPUT    <- Sys.getenv("FIG1_INPUT",    "input_data")   # raw inputs (local cache)
+# INPUT is the staging root; it defaults to the current working directory, so
+# gsutil-staged files land under the cwd (in their manifest subpaths, e.g.
+# permutations/eqtl/…). Set FIG1_INPUT to keep inputs in a separate folder.
+INPUT    <- Sys.getenv("FIG1_INPUT",    ".")            # staging root (cwd)
 OBJ_DIR  <- Sys.getenv("FIG1_OBJ",      "fig1/objects") # per-panel ggplot objects
 OUTDIR   <- Sys.getenv("FIG1_OUTDIR",   ".")            # final Figure1.pdf/png
 MANIFEST <- Sys.getenv("FIG1_MANIFEST", "fig1/inputs.tsv")

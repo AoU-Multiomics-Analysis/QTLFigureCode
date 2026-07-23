@@ -52,14 +52,15 @@ Standalone; requires the MetaSoft Java tool.
 │   ├── supp_metasoft.R          #   supplemental MetaSoft figure (standalone)
 │   ├── NOTES.md                 #   deferred analyses (novel pGene) + notes
 │   └── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
-├── input_data/                  # raw inputs / local gsutil cache (controlled access, NOT committed)
+├── permutations/ finemapping/ … # inputs staged here under the cwd (controlled access, NOT committed)
 └── Figure1.pdf / Figure1.png    # main figure outputs
 ```
 
 **Inputs are manifest-driven.** `fig1/inputs.tsv` maps each logical input (a
-`key`) to one or more files — a local path under `input_data/` and, where
-applicable, a `gs://` origin. Each panel declares and loads **only the inputs it
-needs** via helpers in `00_setup.R`:
+`key`) to one or more files — a `local_subpath` (relative to the staging root,
+which defaults to the current working directory) and, where applicable, a
+`gs://` origin. Each panel declares and loads **only the inputs it needs** via
+helpers in `00_setup.R`:
 
 - `input_path(key)` → local path for a single-file key (staged if missing)
 - `load_input(key)` → reads + row-binds every file for a key, attaching
@@ -67,10 +68,13 @@ needs** via helpers in `00_setup.R`:
 - `input_files(key)` → the manifest rows plus resolved local `path`s
 
 When a file is absent locally and the manifest has a `gs://` URI, the loader
-copies it down with `gsutil` **once** (the local copy then acts as the cache);
-pre-staged files skip the copy entirely. The per-panel **ggplot objects** are
-cached in `objects/`, so `assemble.R` never rebuilds them — rebuild a single
-panel and re-assemble without touching the others.
+copies it down with `gsutil` **once**, into `<cwd>/<local_subpath>` (the local
+copy then acts as the cache); pre-staged files skip the copy entirely. Staged
+inputs therefore appear under the working directory in `permutations/`,
+`finemapping/`, etc. — keeping their subpaths (rather than a flat dump) so the
+eQTL and sQTL permutation files, which share basenames, don't collide. The
+per-panel **ggplot objects** are cached in `objects/`, so `assemble.R` never
+rebuilds them — rebuild a single panel and re-assemble without touching the others.
 
 The analysis/plot functions were folded in from `QTLAnalysisUtils/QTLGeneAnalysis`
 so this figure is self-contained.
@@ -134,8 +138,10 @@ External tool (supplemental only): **MetaSoft**
 
 Every input is declared in **`fig1/inputs.tsv`** (the manifest), which is also the
 single record of each file's `gs://` origin. Columns: `key`, `group`, `assay`,
-`local_subpath` (relative to `input_data/`), `gs_uri` (`-` = local-only). Files
-are staged into `input_data/` on demand; pre-stage them there to skip `gsutil`.
+`local_subpath` (relative to the staging root — the cwd by default, overridable
+via `FIG1_INPUT`), `gs_uri` (`-` = local-only). Missing files with a `gs_uri`
+are staged under the cwd on demand; pre-stage them at `<cwd>/<local_subpath>`
+(or point `FIG1_INPUT` at an existing folder) to skip `gsutil`.
 
 | Manifest key | Files | Used by |
 |--------------|-------|---------|
