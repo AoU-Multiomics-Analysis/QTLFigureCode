@@ -415,3 +415,50 @@ coloc_cs_components <- function(refresh = FALSE)
       left_join(components_df, by = "cs_id") %>%
       mutate(has_coloc = !is.na(coloc_component))
   })
+
+# =============================================================================
+# Variant-level model input
+# -----------------------------------------------------------------------------
+# Annotation allele frequencies are reported against the ALT allele, so they are
+# folded to minor-allele frequency before the per-variant maximum across
+# ancestry groups is taken. log_maf is standardised across ALL pairs pooled (as
+# in the original) and the per-pair models are fit on that common scale.
+# =============================================================================
+coloc_model_input <- function(refresh = FALSE)
+  build_or_cache("coloc_model_input", refresh = refresh, {
+    v  <- coloc_variant_level()
+    fm <- susie_finemapping()
+
+    missing_af <- setdiff(AF_POP_COLS, names(v))
+    if (length(missing_af))
+      stop("Annotation table is missing allele-frequency columns: ",
+           paste(missing_af, collapse = ", "))
+
+    folded <- v %>%
+      select(all_of(AF_POP_COLS)) %>%
+      mutate(across(everything(), ~ ifelse(. > .5, 1 - ., .)))
+
+    cleaned <- v %>%
+      mutate(max_af  = do.call(pmax, c(as.list(folded), na.rm = TRUE)),
+             rare    = max_af < .01,
+             log_maf = as.numeric(scale(-log10(max_af)))) %>%
+      filter(Coloc == TRUE)
+
+    posteriors <- function(d)
+      d %>% select(variant, molecular_trait_id, posterior_mean, posterior_sd)
+
+    pair_input <- function(pair, left, right) {
+      cleaned %>%
+        filter(type == pair) %>%
+        left_join(posteriors(left),
+                  by = c("SNP" = "variant", "Gene" = "molecular_trait_id")) %>%
+        left_join(posteriors(right),
+                  by = c("SNP" = "variant", "Gene" = "molecular_trait_id"))
+    }
+
+    list(
+      `eQTL-sQTL` = pair_input("eQTL-sQTL", fm$eQTL, fm$sQTL),
+      `eQTL-pQTL` = pair_input("eQTL-pQTL", fm$eQTL, fm$pQTL),
+      `sQTL-pQTL` = pair_input("sQTL-pQTL", fm$sQTL, fm$pQTL)
+    )
+  })

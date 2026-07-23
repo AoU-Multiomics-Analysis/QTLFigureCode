@@ -107,4 +107,28 @@ expect_error("a Signal with two '(@)' separators errors the cs-level split",
 use_fig3_fixture(fx)
 source("fig3/00_setup.R")
 
+# --- coloc_model_input ----------------------------------------------------
+mi <- coloc_model_input()
+
+ok("returns one element per assay pair",
+   setequal(names(mi), c("eQTL-sQTL", "eQTL-pQTL", "sQTL-pQTL")))
+
+ep <- mi[["eQTL-pQTL"]]
+ok("adds max_af / rare / log_maf",
+   all(c("max_af", "rare", "log_maf") %in% names(ep)))
+ok("adds both joined posterior columns",
+   all(c("posterior_mean.x", "posterior_mean.y") %in% names(ep)))
+ok("keeps only colocalized rows",     all(ep$Coloc))
+ok("log_maf is a plain numeric vector, not a matrix", is.null(dim(ep$log_maf)))
+
+# chr1_100 has gvs_eur_af = 0.90, which must fold to a MAF of 0.10 before the
+# per-variant maximum is taken.
+chr1 <- ep[ep$SNP == "chr1_100_A_G", ]
+ok("allele frequencies fold to MAF before pmax", abs(chr1$max_af[1] - 0.30) < 1e-9)
+ok("common variants are not flagged rare",       isFALSE(chr1$rare[1]))
+
+sp <- mi[["sQTL-pQTL"]]
+ok("rare variants are flagged",
+   nrow(sp) == 0L || all(sp$max_af[sp$rare] < 0.01))
+
 cat("test_fig3_builders.R: all assertions passed\n")
