@@ -5,7 +5,7 @@ source("fig1/00_setup.R")
 # One enrichment computation per annotated table, labelled by its assay/type.
 annot <- input_files("annot")
 QTLFinemappingEnrichments <- purrr::pmap_dfr(
-  list(annot$path, annot$assay),
+  list(annot$path, annot$Assay),
   function(p, ty) fread(p) %>% ComputeFinemappingAnnotationEnrichment() %>% mutate(type = ty)
 )
 
