@@ -44,24 +44,33 @@ Standalone; requires the MetaSoft Java tool.
 ```
 .
 ├── fig1/                        # modular pipeline (split by panel)
-│   ├── 00_setup.R               #   libraries, font, theme, sizes, palette, folded-in functions
-│   ├── 01_prep_data.R           #   reads raw inputs ONCE -> fig1/data/<B-H>.rds
-│   ├── panels/panelA.R … panelH.R  #   each builds one panel -> fig1/objects/<X>.rds
+│   ├── 00_setup.R               #   libraries, font, theme, palette, manifest loaders, folded-in functions
+│   ├── inputs.tsv               #   input manifest: key, group, assay, local_subpath, gs_uri
+│   ├── panels/panelA.R … panelH.R  #   each STAGES + LOADS only its own inputs -> fig1/objects/<X>.rds
 │   ├── assemble.R               #   composes panels -> Figure1.pdf / Figure1.png
-│   ├── run_all.R                #   prep -> panels -> assemble (end-to-end)
+│   ├── run_all.R                #   panels -> assemble (end-to-end)
 │   ├── supp_metasoft.R          #   supplemental MetaSoft figure (standalone)
-│   ├── download_inputs.sh       #   provenance record of gs:// inputs (not executed)
 │   ├── NOTES.md                 #   deferred analyses (novel pGene) + notes
-│   ├── data/                    #   per-panel data frames (.rds)   [git-ignored]
 │   └── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
-├── input_data/                  # raw inputs (controlled access, NOT committed)
+├── input_data/                  # raw inputs / local gsutil cache (controlled access, NOT committed)
 └── Figure1.pdf / Figure1.png    # main figure outputs
 ```
 
-The pipeline is cached at each boundary: `01_prep_data.R` reads the (large) raw
-inputs **once**; each panel is built and cached independently; then `assemble.R`
-composes them. Iterate on a single panel without re-reading the raw data. Both
-per-panel **data** and per-panel **ggplot objects** are saved.
+**Inputs are manifest-driven.** `fig1/inputs.tsv` maps each logical input (a
+`key`) to one or more files — a local path under `input_data/` and, where
+applicable, a `gs://` origin. Each panel declares and loads **only the inputs it
+needs** via helpers in `00_setup.R`:
+
+- `input_path(key)` → local path for a single-file key (staged if missing)
+- `load_input(key)` → reads + row-binds every file for a key, attaching
+  `group` / `Assay` from the manifest
+- `input_files(key)` → the manifest rows plus resolved local `path`s
+
+When a file is absent locally and the manifest has a `gs://` URI, the loader
+copies it down with `gsutil` **once** (the local copy then acts as the cache);
+pre-staged files skip the copy entirely. The per-panel **ggplot objects** are
+cached in `objects/`, so `assemble.R` never rebuilds them — rebuild a single
+panel and re-assemble without touching the others.
 
 The analysis/plot functions were folded in from `QTLAnalysisUtils/QTLGeneAnalysis`
 so this figure is self-contained.
@@ -73,18 +82,18 @@ so this figure is self-contained.
 Run everything from the **project root** (the folder containing `input_data/`).
 
 ```bash
-# Modular pipeline (recommended): data prep -> panels -> assembly
+# Full pipeline: build every panel (staging inputs as needed) -> assemble
 Rscript fig1/run_all.R
 
 # Supplemental MetaSoft figure (requires METASOFT_JAR)
 METASOFT_JAR=/path/to/Metasoft.jar Rscript fig1/supp_metasoft.R
 ```
 
-Rebuild a single panel after editing it (no need to re-read the raw data):
+Rebuild a single panel after editing it (it re-stages/reads only its own inputs):
 
 ```bash
-Rscript fig1/panels/panelF.R   # rebuild panel F from its cached data
-Rscript fig1/assemble.R        # recompose the figure
+Rscript fig1/panels/panelF.R   # rebuild panel F (loads just the pQTL fine-mapping)
+Rscript fig1/assemble.R        # recompose the figure from cached objects
 ```
 
 ### Outputs
@@ -123,31 +132,31 @@ External tool (supplemental only): **MetaSoft**
 
 ## Data & inputs
 
-Expected under `input_data/` (not distributed here). See
-[`download_inputs.sh`](download_inputs.sh) for the `gs://` provenance of each file.
+Every input is declared in **`fig1/inputs.tsv`** (the manifest), which is also the
+single record of each file's `gs://` origin. Columns: `key`, `group`, `assay`,
+`local_subpath` (relative to `input_data/`), `gs_uri` (`-` = local-only). Files
+are staged into `input_data/` on demand; pre-stage them there to skip `gsutil`.
 
-| File / group | Used by |
-|--------------|---------|
-| `reference/gencode.v48.annotation.gtf.gz` | D (gene types) |
-| `reference/echo_v4_r2.ancestry_preds.tsv` | B, C |
-| `reference/COMB_eQTL_9k_sample_list.tsv` | B |
-| `permutations/{eqtl,sqtl,pqtl}/*.cis_qtl.txt.gz` (7 ancestries each) | C, D |
-| `finemapping/eqtl/AoU_*_9k_eQTL_SusieMerged.tsv.gz` | E, G |
-| `finemapping/sqtl/AoU_*_9k_sQTL_SusieMerged.annotated.tsv` | G |
-| `finemapping/pqtl/pQTL_fm_data_10k.tsv` | F, G |
-| `annotated/AoU_COMB_9k_eQTL_SusieMerged.annotated.tsv` | H |
-| `annotated/AoU_COMB_9k_sQTL_SusieMerged.annotated.tsv` | H |
-| `annotated/pQTL_susie_annotated.tsv` | H |
-| `external/Whole_Blood.v10.eGenes.txt.gz` (GTEx) | D |
-| `external/Whole_Blood.v10.sGenes.txt.gz` (GTEx) | D |
-| `external/INTERVAL_eQTL_summary.xlsx` | D |
-| `external/INTERVAL_cis_sQTL_summary.xlsx` | D |
-| `external/Whole_blood.maf0001.100.permutations.txt` (TOPMed) | D |
-| *UKBB pQTL reference* | D (novel pGene — **deferred**, see NOTES.md) |
+| Manifest key | Files | Used by |
+|--------------|-------|---------|
+| `gene_gtf` | `reference/gencode.v48.annotation.gtf.gz` | D (gene types) |
+| `ancestry_preds` | `reference/echo_v4_r2.ancestry_preds.tsv` | B, C |
+| `comb_sample_list` | `reference/COMB_eQTL_9k_sample_list.tsv` | B |
+| `perm` | `permutations/{eqtl,sqtl,pqtl}/*.cis_qtl.txt.gz` (7 ancestries × 3 assays) | C, D |
+| `finemap_eqtl` | `finemapping/eqtl/AoU_*_9k_eQTL_SusieMerged.tsv.gz` (7) | E, G |
+| `finemap_sqtl` | `finemapping/sqtl/AoU_*_9k_sQTL_SusieMerged.annotated.tsv` (7) | G |
+| `finemap_pqtl` | `finemapping/pqtl/pQTL_fm_data_10k.tsv` | F, G |
+| `annot` | `annotated/AoU_COMB_9k_{e,s}QTL_SusieMerged.annotated.tsv`, `annotated/pQTL_susie_annotated.tsv` | H |
+| `gtex_egenes` / `gtex_sgenes` | `external/Whole_Blood.v10.{e,s}Genes.txt.gz` (GTEx) | D |
+| `interval_eqtl` / `interval_sqtl` | `external/INTERVAL_{eQTL,cis_sQTL}_summary.xlsx` | D |
+| `topmed_eqtl` | `external/Whole_blood.maf0001.100.permutations.txt` (TOPMed) | D |
+| *(deferred)* | UKBB pQTL reference | D (novel pGene — see NOTES.md) |
 
 > **Note.** eQTL and sQTL permutation files share basenames
-> (`AFR.cis_qtl.txt.gz`, …); keep them in the separate `permutations/eqtl/` and
-> `permutations/sqtl/` subdirectories so they don't collide.
+> (`AFR.cis_qtl.txt.gz`, …); the manifest keeps them in separate
+> `permutations/eqtl/` and `permutations/sqtl/` subdirectories so they don't collide.
+
+To add or re-point an input, edit `fig1/inputs.tsv` — no script changes needed.
 
 Access to the underlying *All of Us* data is via the *All of Us* Researcher
 Workbench under its Data Use Agreement; it is not shared through this repository.

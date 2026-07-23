@@ -10,11 +10,14 @@ than a deliberate omission).
 
 **To re-enable it** once the reference is available:
 
-1. Stage the UKBB pQTL supplementary table into `input_data/external/`
-   (e.g. `input_data/external/UKBB_pQTL_supplementary.xlsx`).
-2. In `fig1/01_prep_data.R`, load it and compute `novel_pQTLs`:
+1. Add a row to `fig1/inputs.tsv` for the UKBB pQTL table, e.g.:
+   ```
+   ukbb_pqtl	-	-	external/UKBB_pQTL_supplementary.xlsx	gs://.../UKBB_pQTL_supplementary.xlsx
+   ```
+   (use `-` for `gs_uri` if you only stage it locally).
+2. In `fig1/panels/panelD.R`, load it and compute `novel_pQTLs`:
    ```r
-   UKBB_pQTLs <- LoadUKBBpQTL(in_path("external", "UKBB_pQTL_supplementary.xlsx"))
+   UKBB_pQTLs <- LoadUKBBpQTL(input_path("ukbb_pqtl"))
    novel_pQTLs <- QTL_data %>%
      filter(group == "COMB" & Assay == "Protein") %>%
      filter(qval < .05) %>%
@@ -28,7 +31,7 @@ than a deliberate omission).
    `type` factor levels in `novel_qtl_count`.
 
 `LoadUKBBpQTL()` is already folded into `fig1/00_setup.R` (bug-fixed), so only the
-input file and the prep block above are needed.
+manifest row and the panelD block above are needed.
 
 ## MetaSoft supplemental
 

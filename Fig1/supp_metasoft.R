@@ -63,23 +63,15 @@ PlotMetaSoftMvalueByPop <- function(merged_metasoft) {
     facet_wrap(~type, nrow = 1)
 }
 
-# --- Read per-ancestry permutations (same layout as 01_prep_data.R) ---------
-read_permutations <- function(subdir, assay) {
-  files <- list.files(in_path("permutations", subdir),
-                      pattern = "\\.cis_qtl\\.txt\\.gz$", full.names = TRUE)
-  purrr::map_dfr(files, function(f) {
-    group <- basename(f) %>%
-      str_remove("\\.cis_qtl\\.txt\\.gz$") %>%
-      str_remove_all("AoU_10750_|_pQTL")
-    fread(f) %>% mutate(group = group, Assay = assay)
-  })
-}
-
-assays <- list(eQTL = "eqtl", pQTL = "pqtl", sQTL = "sqtl")
+# --- Read per-ancestry permutations via the manifest ------------------------
+# The "perm" key covers all three assays; Assay is attached from the manifest.
+assay_labels <- c(eQTL = "Expression", pQTL = "Protein", sQTL = "Splicing")
+QTL_perm <- load_input("perm")
 
 message("Preparing MetaSoft inputs ...")
-for (a in names(assays)) {
-  read_permutations(assays[[a]], a) %>%
+for (a in names(assay_labels)) {
+  QTL_perm %>%
+    filter(Assay == assay_labels[[a]]) %>%
     FormatMetaSoft() %>%
     write_tsv(file.path(OUTDIR, paste0(a, "_wide_metasoft_input.tsv")), col_names = FALSE)
 }
@@ -95,10 +87,10 @@ run_metasoft <- function(a) {
                file.path(OUTDIR, paste0(a, "_wide_metasoft_input.tsv")),
                "-output", out))
 }
-invisible(lapply(names(assays), run_metasoft))
+invisible(lapply(names(assay_labels), run_metasoft))
 
 # --- Summarise and plot -----------------------------------------------------
-metasoft_all <- purrr::map_dfr(names(assays), function(a)
+metasoft_all <- purrr::map_dfr(names(assay_labels), function(a)
   fread(file.path(OUTDIR, paste0(a, ".metasoft.tsv"))) %>% mutate(type = a))
 
 metasoft_plot_prop <- PlotMetaSoftMvaluesProps(metasoft_all)
