@@ -49,4 +49,47 @@ ok("label_col is honoured",              "Sig" %in% names(lab2))
 
 expect_error("an unknown column errors", add_fdr_threshold_label(d, "NOPE", quiet = TRUE))
 
+# --- Finding 1: exact threshold round-trip, boundary < 0.5 -------------------
+# Four rows with posteriors 0.9, 0.3, 0.3, 0.05. Sorted descending, local FDRs
+# are 0.10, 0.70, 0.70, 0.95; cumulative means are 0.10, 0.40, 0.50, 0.6125.
+# At a 50% control level, the first three rows qualify (0.50 <= 0.5), so the
+# boundary is the tied pair of 0.3 rows: cutoff = 0.3. In IEEE-754,
+# `1 - (1 - 0.3)` is 0.30000000000000004, NOT bitwise-equal to 0.3, so the old
+# `thresh <- 1 - lfdr[k]` reconstruction makes `probs >= thresh` wrongly
+# exclude BOTH 0.3 rows (0.3 >= 0.30000000000000004 is FALSE). The fix reads
+# the cutoff back from `probs` itself, so the boundary rows are included.
+boundary_df <- tibble::tibble(p = c(0.9, 0.3, 0.3, 0.05))
+boundary_lab <- add_fdr_threshold_label(boundary_df, "p", control_level = 0.5, quiet = TRUE)
+ok("high posterior above the boundary is labelled TRUE", isTRUE(boundary_lab$Coloc[1]))
+ok("boundary probability below 0.5 is labelled TRUE (row 2)", isTRUE(boundary_lab$Coloc[2]))
+ok("boundary probability below 0.5 is labelled TRUE (row 3)", isTRUE(boundary_lab$Coloc[3]))
+ok("tie at the cutoff: both tied rows labelled the same",
+   boundary_lab$Coloc[2] == boundary_lab$Coloc[3])
+ok("row below the cutoff is labelled FALSE (row 4)", isFALSE(boundary_lab$Coloc[4]))
+
+# --- Finding 1: NA probability is labelled FALSE, not NA ---------------------
+na_df <- tibble::tibble(p = c(0.99, NA, 0.01))
+na_lab <- add_fdr_threshold_label(na_df, "p", control_level = 0.05, quiet = TRUE)
+ok("NA probability is labelled FALSE (not NA)", isFALSE(na_lab$Coloc[2]))
+ok("Coloc column has no NAs", !anyNA(na_lab$Coloc))
+
+# --- Finding 2: a ragged row (wrong token count) errors, not silently corrupts
+ragged <- file.path(tmp, "pair.enloc.ragged.out")
+writeLines(c(
+  "Signal  Num_SNP  CPIP_qtl  CPIP_gwas_marginal  CPIP_gwas_qtl_prior  RCP  LCP",
+  "ENSG001:chr1_100(@)ENSG001:chr1_200   5  0.90  0.10  0.80  0.95  0.90",
+  "ENSG002:chr2_100(@)ENSG002:chr2_200   3  0.50  0.20  0.40  0.10"   # missing a column
+), ragged)
+expect_error("a ragged row errors instead of silently recycling",
+             LoadEnlocTable(ragged, ENLOC_CS_COLS))
+
+# --- Finding 3: a header-only file returns 0 rows with the right column names
+header_only <- file.path(tmp, "pair.enloc.empty.out")
+writeLines(c(
+  "Signal  Num_SNP  CPIP_qtl  CPIP_gwas_marginal  CPIP_gwas_qtl_prior  RCP  LCP"
+), header_only)
+empty <- LoadEnlocTable(header_only, ENLOC_CS_COLS)
+ok("header-only file returns 0 rows",           nrow(empty) == 0L)
+ok("header-only file has the right col names",  identical(names(empty), ENLOC_CS_COLS))
+
 cat("test_fig3_readers.R: all assertions passed\n")

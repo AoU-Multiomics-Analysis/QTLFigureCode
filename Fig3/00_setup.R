@@ -99,11 +99,37 @@ ENLOC_VARIANT_COLS <- c("Signal", "SNP", "PIP_qtl", "PIP_gwas_marginal",
 
 LoadEnlocTable <- function(path, cols) {
   x <- readLines(path)
+  # Line numbers in error messages below are 1-based into this original file,
+  # so track them before dropping the header line.
+  line_no <- seq_along(x)[-1]
   x <- x[-1]                                   # drop the header line
-  x <- x[nzchar(trimws(x))]                    # drop blank lines
-  mat <- do.call(rbind, strsplit(trimws(x), "\\s+"))
-  if (ncol(mat) != length(cols))
-    stop("Expected ", length(cols), " columns in ", path, ", found ", ncol(mat))
+  keep <- nzchar(trimws(x))                    # drop blank lines
+  x <- x[keep]
+  line_no <- line_no[keep]
+
+  if (length(x) == 0L) {
+    # Header-only file: a gene pair with no signals is a legitimate FastENLOC
+    # output, not an error. Return a 0-row tibble with the right columns so
+    # downstream bind_rows()/split() code keeps working.
+    out <- as.data.frame(matrix(character(0), nrow = 0, ncol = length(cols)),
+                          stringsAsFactors = FALSE)
+    names(out) <- cols
+    return(tibble::as_tibble(out))
+  }
+
+  rows <- strsplit(trimws(x), "\\s+")
+  # do.call(rbind, ...) SILENTLY RECYCLES when row lengths differ, so a ragged
+  # row (wrong token count) would land its values in the wrong columns without
+  # ever tripping the ncol() guard below. Check lengths before rbind instead.
+  n <- lengths(rows)
+  bad <- which(n != length(cols))
+  if (length(bad))
+    stop("Expected ", length(cols), " columns in ", path, ", found ",
+         paste(unique(n[bad]), collapse = "/"), " on line(s) ",
+         paste(head(line_no[bad], 5), collapse = ", "),
+         if (length(bad) > 5) ", ..." else "")
+
+  mat <- do.call(rbind, rows)
   out <- as.data.frame(mat, stringsAsFactors = FALSE)
   names(out) <- cols
   # strsplit() yields character; convert here so downstream code needs no
@@ -129,20 +155,37 @@ add_fdr_threshold_label <- function(df, prob_col, control_level = 0.05,
 
   probs <- as.numeric(df[[prob_col]])
 
-  lfdr  <- sort(1 - probs, na.last = NA)
-  FDR   <- cumsum(lfdr) / seq_along(lfdr)
+  # Rank by probability (best first) and take the local FDR from that order,
+  # rather than sorting lfdr directly. This lets the eventual cutoff be read
+  # back as an actual element of `probs` (see below) instead of reconstructed
+  # via `1 - lfdr`.
+  ord  <- order(probs, decreasing = TRUE, na.last = NA)  # NA probs excluded
+  lfdr <- 1 - probs[ord]
+  FDR  <- cumsum(lfdr) / seq_along(lfdr)
   # Tolerance guards an exact-boundary case (e.g. probs = 0.95, control_level =
   # 0.05) where `1 - 0.95` rounds to a double a hair above 0.05, which would
-  # otherwise make a should-pass row fail `FDR <= control_level`.
+  # otherwise make a should-pass row fail `FDR <= control_level`. Double-
+  # precision error is ~1e-16, so 1e-8 is generous without risking false passes.
   valid <- which(FDR <= control_level + 1e-8)
+  k <- if (length(valid)) max(valid) else 0L
 
-  thresh <- if (length(valid) == 0) Inf else 1 - lfdr[max(valid)]
+  # cutoff must be an observed value from `probs` itself (never `1 - lfdr`):
+  # that round-trip is inexact for p < 0.5 in IEEE-754, which could silently
+  # exclude the very row that defined the boundary from `probs >= cutoff`.
+  # Using an actual element also guarantees every row tied with the boundary
+  # is included, so significance never depends on arbitrary sort order.
+  cutoff <- if (k > 0L) probs[ord[k]] else Inf
+
+  # A row with no posterior is not a colocalization; label it FALSE rather
+  # than letting NA propagate into the label column and poison downstream
+  # sum()/mean() calls that count colocalizations.
+  label <- !is.na(probs) & probs >= cutoff
 
   if (!quiet)
     message(sprintf("    %s >= %.4g at FDR %.0f%%  (%d / %d rows labelled)",
-                    prob_col, thresh, 100 * control_level,
-                    sum(probs >= thresh, na.rm = TRUE), length(probs)))
+                    prob_col, cutoff, 100 * control_level,
+                    sum(label), length(probs)))
 
-  df[[label_col]] <- probs >= thresh
+  df[[label_col]] <- label
   df
 }
