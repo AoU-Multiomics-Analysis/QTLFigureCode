@@ -1,13 +1,16 @@
-# Regression tests for the two data-corrupting defects in Fig3.R.
+# Regression tests for the two defects in Fig3.R that broke the credible-set graph
+# behind panel B.
 #
 #   Fig3.R:462  str_extract(sig_1, "^EN[<43;65;42MSG[0-9]+") - a pasted terminal
-#               escape sequence inside the regex. gene_1 was NA for every
-#               eQTL-pQTL row, so filter(gene_1 == gene_2) dropped all of them.
+#               escape sequence inside the regex. Under stringr/ICU this pattern
+#               does not compile at all: ICU reads the inner [0-9] as a nested
+#               character class, leaving the outer [ unclosed, so str_extract
+#               raises U_REGEX_MISSING_CLOSE_BRACKET and the script halts there.
+#               ([<43;65;42M is an SGR mouse-click report, so it was most likely
+#               pasted in by a stray terminal event after the analysis last ran.)
 #   Fig3.R:477  bind_rows() listed cleaned_eqtl_pqtl twice and never bound
-#               cleaned_eqtl_sqtl.
-#
-# Together those meant the credible-set graph behind panel B was built from
-# sQTL-pQTL edges only.
+#               cleaned_eqtl_sqtl, so eQTL-sQTL edges were silently absent. Of the
+#               two, this is the one that could have reached published output.
 #
 # coloc_cs_edges() is a pure function, so no manifest or fixture is needed.
 # Run from the project root:  Rscript tests/test_fig3_edges.R

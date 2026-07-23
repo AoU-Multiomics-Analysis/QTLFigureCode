@@ -186,11 +186,21 @@ undecided, and occupies the bottom row at `widths = c(1.3, 1)`.
 ### 7.1 Data-correctness — these change figure output
 
 1. **Line 462** — `str_extract(sig_1, "^EN[<43;65;42MSG[0-9]+")` contains a pasted
-   terminal escape sequence inside the regex. `gene_1` evaluates to `NA` for every
-   eQTL–pQTL row, so the following `filter(gene_1 == gene_2)` drops all of them and
-   `cleaned_eqtl_pqtl` is empty. Fix: `"^ENSG[0-9]+"`.
+   terminal escape sequence inside the regex. Under `stringr`/ICU — the engine this
+   code uses — the pattern does not compile: ICU reads the inner `[0-9]` as a nested
+   character class, leaving the outer `[` unclosed, and `str_extract` raises
+   `U_REGEX_MISSING_CLOSE_BRACKET`. **The line therefore cannot execute; the original
+   script halts there.** (Under base R's engine the same pattern would instead match
+   `ENSG001` by accident, which is likely why the corruption looked survivable.)
+   Fix: `"^ENSG[0-9]+"`.
+
+   `[<43;65;42M` is an SGR mouse-click report, so this was almost certainly injected
+   into the file by a stray terminal paste **after** the analysis was last run —
+   making it file corruption rather than a defect the published figure passed through.
 2. **Lines 477–481** — `bind_rows()` lists `cleaned_eqtl_pqtl` twice and never binds
-   `cleaned_eqtl_sqtl`. Fix: bind each of the three once.
+   `cleaned_eqtl_sqtl`. Fix: bind each of the three once. **Of the two, this is the
+   defect that could actually have reached published output**, since defect 1 would
+   have stopped the script outright.
 3. **Line 552** — the annotation `"86.2% shared across ≥1 molecular layer"` is a
    hardcoded string, while the value is computed 130 lines earlier at lines 422–424.
    Fix: compute it from `all_proportions` at plot time.
