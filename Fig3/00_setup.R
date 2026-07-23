@@ -361,3 +361,57 @@ coloc_variant_level <- function(refresh = FALSE)
       }
     )
   })
+
+# =============================================================================
+# Collapsing colocalized credible sets into components
+# -----------------------------------------------------------------------------
+# For each assay pair, keep colocalized signals whose two sides belong to the
+# SAME gene, and treat each as an undirected edge between two credible sets.
+# Connected components are then signals shared across molecular layers.
+#
+# A Signal's second side can list several credible sets joined by "_", so it is
+# split before matching. eQTL-sQTL sQTL ids embed a chromosome, hence its
+# different split pattern.
+# =============================================================================
+.clean_pair_edges <- function(cs_colocs, pair, split_pattern) {
+  cs_colocs %>%
+    filter(Coloc == TRUE, type == pair) %>%
+    separate(Signal, into = c("sig_1", "sig_2"), sep = "\\(@\\)",
+             fill = "right", extra = "merge") %>%
+    mutate(sig_2_list = str_split(sig_2, split_pattern)) %>%
+    unnest(sig_2_list) %>%
+    mutate(gene_1 = str_extract(sig_1,      "^ENSG[0-9]+"),
+           gene_2 = str_extract(sig_2_list, "^ENSG[0-9]+")) %>%
+    filter(gene_1 == gene_2) %>%
+    select(cs_1, sig_2_list, RCP, LCP, type, gene_1)
+}
+
+# Pure function of its argument so it can be tested without a manifest.
+coloc_cs_edges <- function(cs_colocs) {
+  bind_rows(
+    .clean_pair_edges(cs_colocs, "eQTL-sQTL", "_(?=ENSG[0-9]+:chr)"),
+    .clean_pair_edges(cs_colocs, "eQTL-pQTL", "_(?=ENSG[0-9]+:)"),
+    .clean_pair_edges(cs_colocs, "sQTL-pQTL", "_(?=ENSG[0-9]+:)")
+  ) %>%
+    mutate(cs_2 = str_remove(sig_2_list, "^ENSG.*:")) %>%
+    select(gene = gene_1, RCP, LCP, type, cs_1, cs_2)
+}
+
+coloc_cs_components <- function(refresh = FALSE)
+  build_or_cache("coloc_cs_components", refresh = refresh, {
+    edge_list <- coloc_cs_edges(coloc_cs_level()) %>%
+      transmute(from = cs_1, to = cs_2) %>%
+      filter(!is.na(from), !is.na(to)) %>%
+      distinct(from, to)
+
+    g    <- igraph::graph_from_data_frame(edge_list, directed = FALSE)
+    memb <- igraph::components(g)$membership
+
+    components_df <- tibble(cs_id           = names(memb),
+                            coloc_component = as.integer(memb))
+
+    susie_finemapping()$cs_list %>%
+      dplyr::rename(Gene = molecular_trait_id) %>%
+      left_join(components_df, by = "cs_id") %>%
+      mutate(has_coloc = !is.na(coloc_component))
+  })
