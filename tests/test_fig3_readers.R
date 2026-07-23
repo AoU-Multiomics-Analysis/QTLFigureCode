@@ -22,6 +22,16 @@ ok("integer columns are converted",       is.numeric(d$Num_SNP))
 ok("Signal stays character",              is.character(d$Signal))
 ok("values are parsed positionally",      d$RCP[1] == 0.95)
 
+# Declared type policy for the CS-level reader: Signal is the only identifier
+# column; everything else (Num_SNP, the CPIP_* columns, RCP, LCP) is numeric.
+ok("normal path: Signal is character",    is.character(d$Signal))
+ok("normal path: Num_SNP is numeric",     is.numeric(d$Num_SNP))
+ok("normal path: CPIP_qtl is numeric",    is.numeric(d$CPIP_qtl))
+ok("normal path: CPIP_gwas_marginal is numeric", is.numeric(d$CPIP_gwas_marginal))
+ok("normal path: CPIP_gwas_qtl_prior is numeric", is.numeric(d$CPIP_gwas_qtl_prior))
+ok("normal path: RCP is numeric",         is.numeric(d$RCP))
+ok("normal path: LCP is numeric",         is.numeric(d$LCP))
+
 # A .snp.out has six columns, not seven.
 snp <- file.path(tmp, "pair.enloc.snp.out")
 writeLines(c(
@@ -91,5 +101,44 @@ writeLines(c(
 empty <- LoadEnlocTable(header_only, ENLOC_CS_COLS)
 ok("header-only file returns 0 rows",           nrow(empty) == 0L)
 ok("header-only file has the right col names",  identical(names(empty), ENLOC_CS_COLS))
+
+# The blind spot that let the original bug through: names/row count alone
+# don't catch a header-only result coming back all-character. Assert the
+# actual column types match the same identifier/measurement policy as the
+# normal (non-empty) path above.
+ok("header-only file: Signal is character",      is.character(empty$Signal))
+ok("header-only file: Num_SNP is numeric",       is.numeric(empty$Num_SNP))
+ok("header-only file: CPIP_qtl is numeric",      is.numeric(empty$CPIP_qtl))
+ok("header-only file: CPIP_gwas_marginal is numeric", is.numeric(empty$CPIP_gwas_marginal))
+ok("header-only file: CPIP_gwas_qtl_prior is numeric", is.numeric(empty$CPIP_gwas_qtl_prior))
+ok("header-only file: RCP is numeric",           is.numeric(empty$RCP))
+ok("header-only file: LCP is numeric",           is.numeric(empty$LCP))
+
+# The actual consequence described in the finding: load_input() row-binds
+# every file for a manifest key with purrr::map_dfr(), so a header-only
+# FastENLOC file and a populated one for the same key must bind_rows()
+# cleanly, with the empty file contributing zero rows and no type conflict.
+combined <- dplyr::bind_rows(empty, d)
+ok("bind_rows(header-only, normal) succeeds and has the normal row count",
+   nrow(combined) == nrow(d))
+ok("bind_rows result: Signal is character",  is.character(combined$Signal))
+ok("bind_rows result: Num_SNP is numeric",    is.numeric(combined$Num_SNP))
+ok("bind_rows result: RCP is numeric",        is.numeric(combined$RCP))
+ok("bind_rows result: LCP is numeric",        is.numeric(combined$LCP))
+
+# Also verify the variant-level (.snp.out) column policy on the header-only
+# path: Signal and SNP are identifiers (character), the rest are numeric.
+snp_header_only <- file.path(tmp, "pair.enloc.snp.empty.out")
+writeLines(c(
+  "Signal  SNP  PIP_qtl  PIP_gwas_marginal  PIP_gwas_qtl_prior  SCP"
+), snp_header_only)
+empty_v <- LoadEnlocTable(snp_header_only, ENLOC_VARIANT_COLS)
+ok("variant header-only: Signal is character", is.character(empty_v$Signal))
+ok("variant header-only: SNP is character",    is.character(empty_v$SNP))
+ok("variant header-only: PIP_qtl is numeric",  is.numeric(empty_v$PIP_qtl))
+ok("variant header-only: SCP is numeric",      is.numeric(empty_v$SCP))
+combined_v <- dplyr::bind_rows(empty_v, v)
+ok("bind_rows(variant header-only, normal) succeeds",
+   nrow(combined_v) == nrow(v))
 
 cat("test_fig3_readers.R: all assertions passed\n")

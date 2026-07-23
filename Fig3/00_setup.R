@@ -107,12 +107,21 @@ LoadEnlocTable <- function(path, cols) {
   x <- x[keep]
   line_no <- line_no[keep]
 
+  # Column type policy, declared once and applied identically on both the
+  # empty and non-empty paths below: "Signal"/"SNP" are identifiers and stay
+  # character; every other FastENLOC column (SNP counts, posterior/prior
+  # probabilities) is a numeric measurement. This makes the two paths
+  # structurally identical by construction rather than by coincidence of what
+  # type.convert() infers from a particular file's values -- previously the
+  # empty-file path returned all-character columns, which broke bind_rows()
+  # against a populated file's integer/numeric columns.
+  is_id <- cols %in% c("Signal", "SNP")
+
   if (length(x) == 0L) {
     # Header-only file: a gene pair with no signals is a legitimate FastENLOC
-    # output, not an error. Return a 0-row tibble with the right columns so
-    # downstream bind_rows()/split() code keeps working.
-    out <- as.data.frame(matrix(character(0), nrow = 0, ncol = length(cols)),
-                          stringsAsFactors = FALSE)
+    # output, not an error. Return a 0-row tibble with the right columns and
+    # types so downstream bind_rows()/split() code keeps working.
+    out <- lapply(is_id, function(id) if (id) character(0) else numeric(0))
     names(out) <- cols
     return(tibble::as_tibble(out))
   }
@@ -132,9 +141,13 @@ LoadEnlocTable <- function(path, cols) {
   mat <- do.call(rbind, rows)
   out <- as.data.frame(mat, stringsAsFactors = FALSE)
   names(out) <- cols
-  # strsplit() yields character; convert here so downstream code needs no
-  # scattered as.numeric() / across(contains('PIP'), as.numeric) calls.
-  tibble::as_tibble(type.convert(out, as.is = TRUE))
+  # strsplit() yields character; apply the same identifier/measurement policy
+  # declared above instead of inferring types via type.convert(). A
+  # measurement column that holds something non-numeric surfaces as NA (with
+  # R's standard "NAs introduced by coercion" warning) rather than silently
+  # staying character and breaking a later numeric comparison.
+  out[!is_id] <- lapply(out[!is_id], as.numeric)
+  tibble::as_tibble(out)
 }
 
 # Label rows as colocalized by controlling the Bayesian FDR at `control_level`:
