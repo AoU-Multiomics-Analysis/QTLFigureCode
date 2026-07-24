@@ -203,3 +203,13 @@ format_go_plot_data <- function(go_df, top_n = 10) {
     mutate(Term = str_remove(Term, "\\(GO.*"),
            neglog10_p = -log10(Adjusted.P.value))
 }
+
+# TF genes present in the TF list and detected (TPM > 1) in either cohort. TPMs
+# are returned RAW; the plot / lm / t-test each apply log2(x+1) exactly once. The
+# original pre-logged here and then logged again downstream (see NOTES.md).
+tf_expression_table <- function(merged, tf_symbols) {
+  merged %>%
+    filter(gene_type == "protein_coding") %>%
+    filter(Description %in% tf_symbols) %>%
+    filter(mean_TPM_GTEx > 1 | mean_TPM_AoU > 1)
+}

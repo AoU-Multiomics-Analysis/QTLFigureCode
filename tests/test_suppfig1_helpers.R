@@ -88,4 +88,17 @@ gp3 <- format_go_plot_data(nosuffix_mock, top_n = 2)
 ok("a Term without a (GO:...) suffix passes through unstripped",
    "Plain term with no GO id" %in% gp3$Term)
 
+
+# --- tf_expression_table does NOT pre-log the TPMs (the double-log fix) -----
+tf_mock <- tibble::tibble(
+  Description = c("TF1", "TF2", "OTHER"),
+  gene_type = "protein_coding",
+  mean_TPM_AoU  = c(8, 16, 10),
+  mean_TPM_GTEx = c(4,  4,  4))
+tf_tab <- tf_expression_table(tf_mock, c("TF1", "TF2"))
+ok("tf_expression_table keeps only TF-list genes above threshold",
+   setequal(tf_tab$Description, c("TF1", "TF2")))
+ok("TPMs are raw, not pre-logged (TF2 AoU stays 16, not log2(16+1))",
+   tf_tab$mean_TPM_AoU[tf_tab$Description == "TF2"] == 16)
+
 cat("test_suppfig1_helpers.R (Task 3): all assertions passed\n")
