@@ -191,3 +191,15 @@ go_enrichment <- function(refresh = FALSE)
     gtex <- enrichR::enrichr(cohort_specific_genes(merged, "GTEx"), GO_DBS) %>% bind_rows()
     bind_rows(aou %>% mutate(type = "AoU"), gtex %>% mutate(type = "GTEx"))
   })
+
+# Panel B prep: keep the top_n GO terms (by adjusted p) per cohort, strip the
+# "(GO:...)" id from the term, and add neglog10_p.
+format_go_plot_data <- function(go_df, top_n = 10) {
+  go_df %>%
+    group_by(type) %>%
+    arrange(Adjusted.P.value, .by_group = TRUE) %>%
+    slice_head(n = top_n) %>%
+    ungroup() %>%
+    mutate(Term = str_remove(Term, "\\(GO.*"),
+           neglog10_p = -log10(Adjusted.P.value))
+}

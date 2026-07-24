@@ -51,4 +51,17 @@ ok("AoU-specific = coding, AoU>1 & GTEx<1",
 ok("GTEx-specific = coding, AoU<1 & GTEx>1",
    identical(cohort_specific_genes(spec_mock, "GTEx"), "B"))
 
+
+# --- format_go_plot_data (Panel B prep, pure) ------------------------------
+go_mock <- tibble::tibble(
+  Term = c(paste0("T", 1:12, " (GO:000", 1:12, ")")),
+  Adjusted.P.value = c(1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08),
+  type = rep(c("AoU", "GTEx"), 6))
+gp <- format_go_plot_data(go_mock, top_n = 3)
+ok("format_go_plot_data keeps <= top_n per cohort",
+   all(gp %>% count(type) %>% pull(n) <= 3))
+ok("the GO id suffix is stripped from Term", !any(grepl("\\(GO", gp$Term)))
+ok("neglog10_p is -log10(adjusted p)",
+   abs(gp$neglog10_p[1] - -log10(gp$Adjusted.P.value[1])) < 1e-9)
+
 cat("test_suppfig1_helpers.R (Task 3): all assertions passed\n")
