@@ -50,4 +50,18 @@ expect_error("unknown key errors",                  input_files("nope"))
 expect_error("multi-file key errors in input_path", input_path("multi"))
 expect_error("missing file with no gs_uri errors",  input_files("nofile"))
 
+# --- https/file staging branch (via a local file:// URI, no network) --------
+src <- file.path(tmp, "sub", "remote_src.tsv")
+wtsv(data.frame(v = 42), src)
+writeLines(c(
+  "key\ttype\tlocal_subpath\tgs_uri",
+  paste0("remote\t-\tsub/fetched.tsv\tfile://", src)
+), file.path(tmp, "inputs.tsv"))
+.manifest_env$m <- NULL                     # force a re-read of the rewritten manifest
+f <- input_files("remote")
+ok("file:// URI stages a missing local input",
+   file.exists(file.path(tmp, "sub/fetched.tsv")))
+ok("staged file has the source contents",
+   identical(readLines(f$path)[1], "v"))
+
 cat("test_manifest.R: all assertions passed\n")
