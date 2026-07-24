@@ -3,7 +3,9 @@
 source("suppfig1/00_setup.R")
 
 AoU_GTEx_enrichment_plot <- go_enrichment() %>%
-  format_go_plot_data(top_n = 10) %>%
+  # Original: arrange(Adjusted.P.value) %>% filter(row_number() < 10) keeps
+  # rows 1-9, i.e. the top 9 terms per cohort (not 10).
+  format_go_plot_data(top_n = 9) %>%
   ggplot(aes(x = neglog10_p, y = reorder(Term, neglog10_p))) +
   geom_col() +
   facet_wrap(~type, scales = "free_y") +

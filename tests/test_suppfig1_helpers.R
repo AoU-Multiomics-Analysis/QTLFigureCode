@@ -64,4 +64,28 @@ ok("the GO id suffix is stripped from Term", !any(grepl("\\(GO", gp$Term)))
 ok("neglog10_p is -log10(adjusted p)",
    abs(gp$neglog10_p[1] - -log10(gp$Adjusted.P.value[1])) < 1e-9)
 
+# Discriminating check: the kept rows must be the LOWEST-adjusted-p terms, not
+# just any top_n rows. Terms are named "LOW"/"HIGH" so a regression to
+# slice_tail() (keeps worst p-values) or arrange(desc(...)) would be caught
+# even though the count and neglog10_p-formula assertions above would still
+# pass.
+discr_mock <- tibble::tibble(
+  Term = c("LOW1 (GO:0001)", "LOW2 (GO:0002)", "LOW3 (GO:0003)",
+           "HIGH1 (GO:0004)", "HIGH2 (GO:0005)"),
+  Adjusted.P.value = c(1e-6, 1e-5, 1e-4, 0.5, 0.6),
+  type = "AoU")
+gp2 <- format_go_plot_data(discr_mock, top_n = 3)
+ok("format_go_plot_data keeps the lowest-p terms, not the highest-p ones",
+   setequal(trimws(gp2$Term), c("LOW1", "LOW2", "LOW3")) &&
+   !any(grepl("HIGH", gp2$Term)))
+
+# Edge case: a Term with no "(GO:...)" suffix must pass through unstripped.
+nosuffix_mock <- tibble::tibble(
+  Term = c("Plain term with no GO id", "T2 (GO:0009)"),
+  Adjusted.P.value = c(1e-8, 1e-2),
+  type = "AoU")
+gp3 <- format_go_plot_data(nosuffix_mock, top_n = 2)
+ok("a Term without a (GO:...) suffix passes through unstripped",
+   "Plain term with no GO id" %in% gp3$Term)
+
 cat("test_suppfig1_helpers.R (Task 3): all assertions passed\n")
