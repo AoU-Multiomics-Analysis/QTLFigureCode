@@ -144,3 +144,45 @@ use_fig3_fixture <- function(fx) {
              FIG3_OBJ      = file.path(fx$root, "objects"),
              FIG3_OUTDIR   = fx$root)
 }
+
+# --- Fig4 mock project -------------------------------------------------------
+# Small TSV stand-ins for Fig4's tabular inputs, enough to exercise the pure
+# transforms. The ClinGen parquet and gene-set derivation are tested from an
+# in-memory frame (see tests/test_fig4_helpers.R). Task 8 extends this fixture
+# with the r2_twas / conditional_twas / drug / ClinGen inputs for the full run.
+make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
+  unlink(root, recursive = TRUE)
+  for (d in c("high_level_coloc_outputs/harmonized",
+              "high_level_coloc_outputs/final_summaries", "reference"))
+    dir.create(file.path(root, d), recursive = TRUE, showWarnings = FALSE)
+  wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
+
+  # coloc gene table: gene / trait / trait_category / any_coloc
+  genes <- expand.grid(g = 1:8, trait = c("eosinophil", "LDL"),
+                       stringsAsFactors = FALSE)
+  gene_tbl <- data.frame(
+    gene = paste0("ENSG", sprintf("%08d", genes$g)),
+    trait = genes$trait,
+    trait_category = ifelse(genes$trait == "eosinophil", "hematological", "lipid"),
+    any_coloc = TRUE)
+  # fwrite gzips by the .gz extension, so read_any()'s `gzip -dc` path works.
+  data.table::fwrite(
+    gene_tbl,
+    file.path(root, "high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz"),
+    sep = "\t")
+
+  # coloc rate: one union row per trait
+  rate_tbl <- data.frame(
+    trait = c("eosinophil", "LDL"), layer = "union",
+    pct_stringent_union = c(30, 20), pct_lenient_union = c(45, 33))
+  wtsv(rate_tbl, file.path(root, "high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv"))
+
+  list(root = root)
+}
+
+use_fig4_fixture <- function(fx) {
+  Sys.setenv(FIG4_INPUT    = fx$root,
+             FIG4_DATA     = file.path(fx$root, "data"),
+             FIG4_OBJ      = file.path(fx$root, "objects"),
+             FIG4_OUTDIR   = fx$root)
+}

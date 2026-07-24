@@ -102,3 +102,177 @@ build_or_cache <- function(name, expr, refresh = FALSE) {
   saveRDS(val, f)
   val
 }
+
+# =============================================================================
+# Panel A helpers — coloc-by-trait-category plot
+# =============================================================================
+read_any <- function(path, ...) {
+  args <- list(showProgress = FALSE, ...)
+  if (grepl("\\.gz$", path)) args$cmd <- paste("gzip -dc", shQuote(path))
+  else                         args$input <- path
+  as_tibble(do.call(data.table::fread, args))
+}
+
+require_columns <- function(tbl, cols, label) {
+  missing <- setdiff(cols, names(tbl))
+  if (length(missing) > 0)
+    stop(label, " is missing required column(s): ",
+         paste(missing, collapse = ", "), call. = FALSE)
+}
+
+as_logical_flag <- function(x) {
+  if (is.logical(x)) return(replace_na(x, FALSE))
+  if (is.numeric(x)) return(replace_na(x != 0, FALSE))
+  tolower(trimws(as.character(x))) %in% c("true", "t", "1", "yes", "y")
+}
+
+complete_category_colors <- function(categories) {
+  categories <- sort(unique(as.character(categories)))
+  missing <- setdiff(categories, names(GROUP_COLORS))
+  fallback <- if (length(missing) > 0)
+    setNames(scales::hue_pal(l = 55, c = 90)(length(missing)), missing) else character()
+  c(GROUP_COLORS, fallback)
+}
+
+blend_with_white <- function(hex, amount = 0.65) {
+  x <- grDevices::col2rgb(hex) / 255
+  y <- x * (1 - amount) + amount
+  grDevices::rgb(y[1, ], y[2, ], y[3, ])
+}
+
+make_fill <- function(category, intensity, colors) {
+  base  <- unname(colors[as.character(category)])
+  light <- blend_with_white(base, 0.72)
+  vapply(seq_along(base), function(i) {
+    palette <- grDevices::colorRampPalette(c(light[[i]], base[[i]]))(100)
+    palette[pmax(1, pmin(100, round(intensity[[i]] * 99) + 1))]
+  }, character(1))
+}
+
+reorder_within <- function(x, by, within, fun = mean, sep = "___")
+  stats::reorder(paste(x, within, sep = sep), by, FUN = fun)
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  scale_y_discrete(..., labels = function(x) gsub(reg, "", x))
+}
+
+# Build the per-trait count + union-coloc-rate table. `rate_type` selects which
+# union rate column drives pct_coloc_union. Error messages name the argument
+# plainly (the original used optparse-style "--gene" labels).
+build_plot_data <- function(gene, coloc_rate, min_coloc_genes = 1L,
+                            rate_type = "stringent") {
+  rate_type <- tolower(trimws(rate_type))
+  if (length(rate_type) != 1 || is.na(rate_type) || !rate_type %in% names(RATE_COLUMNS))
+    stop("rate_type must be one of: ", paste(names(RATE_COLUMNS), collapse = ", "),
+         call. = FALSE)
+  rate_column <- unname(RATE_COLUMNS[[rate_type]])
+  require_columns(gene, c("gene", "trait", "trait_category", "any_coloc"), "gene table")
+  require_columns(coloc_rate, c("trait", "layer", unname(RATE_COLUMNS)), "coloc_rate table")
+  if (length(min_coloc_genes) != 1 || is.na(min_coloc_genes) ||
+      min_coloc_genes < 1 || min_coloc_genes != as.integer(min_coloc_genes))
+    stop("min_coloc_genes must be a positive integer.", call. = FALSE)
+
+  gene$any_coloc <- as_logical_flag(gene$any_coloc)
+  coloc_counts <- gene %>%
+    filter(any_coloc, !is.na(gene), gene != "", !is.na(trait_category), trait_category != "") %>%
+    distinct(gene, trait, trait_category) %>%
+    count(trait, trait_category, name = "count")
+
+  pct_coloc <- coloc_rate %>%
+    filter(layer == "union") %>%
+    transmute(trait, pct_stringent_union, pct_lenient_union,
+              pct_coloc_union = .data[[rate_column]])
+  dup <- pct_coloc %>% count(trait) %>% filter(n > 1) %>% pull(trait)
+  if (length(dup) > 0)
+    stop("coloc_rate has multiple union rows for trait(s): ",
+         paste(dup, collapse = ", "), call. = FALSE)
+
+  combined <- coloc_counts %>% left_join(pct_coloc, by = "trait")
+  missing_rate <- combined %>% filter(is.na(pct_coloc_union)) %>% pull(trait)
+  if (length(missing_rate) > 0)
+    message("Dropped (no union ", rate_type, " coloc rate): ",
+            paste(unique(missing_rate), collapse = ", "))
+  combined <- combined %>%
+    filter(!is.na(pct_coloc_union)) %>% mutate(rate_type = .env$rate_type)
+  trimmed <- combined %>% filter(count < min_coloc_genes) %>% pull(trait)
+  if (length(trimmed) > 0)
+    message("Trimmed ", length(trimmed), " trait(s) with fewer than ",
+            min_coloc_genes, " colocalizing genes.")
+  combined %>% filter(count >= min_coloc_genes)
+}
+
+build_empty_plot <- function() {
+  ggplot() +
+    annotate("text", x = 0, y = 0,
+             label = "No traits have both colocalizing genes and the selected union coloc rate",
+             color = "grey35", size = 4) +
+    xlim(-1, 1) + ylim(-1, 1) + theme_void()
+}
+
+build_plot <- function(combined) {
+  colors <- complete_category_colors(combined$trait_category)
+  plotdat <- combined %>%
+    group_by(trait_category) %>%
+    mutate(
+      intensity = if (max(count) == min(count)) rep(0.75, n())
+                  else (count - min(count)) / (max(count) - min(count)),
+      intensity = 0.25 + 0.75 * intensity,
+      fill_col  = make_fill(trait_category, intensity, colors)) %>%
+    ungroup() %>%
+    mutate(
+      trait_category = forcats::fct_drop(forcats::fct_reorder(trait_category, count, .fun = sum)),
+      trait          = reorder_within(trait, count, trait_category),
+      base_col       = unname(colors[as.character(trait_category)]))
+
+  long <- bind_rows(
+    plotdat %>% transmute(trait_category, trait, base_col, fill_col, metric = "a_count", value = count),
+    plotdat %>% transmute(trait_category, trait, base_col, fill_col, metric = "b_rate",  value = pct_coloc_union))
+  xline <- -max(plotdat$count) * 0.03
+  seg  <- plotdat %>% count(trait_category, name = "nbar") %>% mutate(metric = "a_count")
+  vref <- tibble(metric = "b_rate", xi = median(plotdat$pct_coloc_union, na.rm = TRUE))
+  metric_labels <- c(a_count = "Colocalizing Genes", b_rate = "CS coloc rate ")
+  category_labeller <- c(GROUP_LABELS, setNames(
+    setdiff(as.character(unique(plotdat$trait_category)), names(GROUP_LABELS)),
+    setdiff(as.character(unique(plotdat$trait_category)), names(GROUP_LABELS))))
+
+  ggplot(long, aes(y = trait)) +
+    geom_col(data = ~ subset(.x, metric == "a_count"),
+             aes(x = value, fill = fill_col), width = 0.85, show.legend = FALSE) +
+    geom_segment(data = seg, inherit.aes = FALSE,
+                 aes(y = 0.5, yend = nbar + 0.5, x = xline, xend = xline),
+                 color = "grey60", linewidth = 0.5) +
+    geom_vline(data = vref, aes(xintercept = xi),
+               linetype = "dashed", color = "grey70", linewidth = 0.4) +
+    geom_segment(data = ~ subset(.x, metric == "b_rate"),
+                 aes(x = 0, xend = value, yend = trait, color = base_col), linewidth = 0.4) +
+    geom_point(data = ~ subset(.x, metric == "b_rate"),
+               aes(x = value, color = base_col), size = 1.6) +
+    scale_fill_identity() + scale_color_identity() + scale_y_reordered() +
+    facet_grid(trait_category ~ metric, scales = "free", space = "free_y", switch = "y",
+               labeller = labeller(
+                 trait_category = as_labeller(category_labeller, default = label_value),
+                 metric = as_labeller(metric_labels))) +
+    ggh4x::facetted_pos_scales(x = list(
+      scale_x_continuous(),
+      scale_x_continuous(labels = function(x) paste0(x, "%"),
+                         expand = expansion(mult = c(0, 0.08))))) +
+    ggh4x::force_panelsizes(cols = c(3, 1.3)) +
+    coord_cartesian(clip = "off") +
+    labs(x = NULL, y = NULL) +
+    theme_classic() +
+    theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+          axis.line.y = element_blank(),
+          panel.spacing.x = grid::unit(8, "pt"), panel.spacing.y = grid::unit(2, "pt"),
+          strip.placement = "outside", strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, hjust = 1, size = 12),
+          strip.text.x = element_text(size = 12))
+}
+
+# Builder: the per-trait coloc table (lenient union rate, matching the figure).
+coloc_by_trait <- function(refresh = FALSE)
+  build_or_cache("coloc_by_trait", refresh = refresh, {
+    build_plot_data(read_any(input_path("coloc_gene")),
+                    read_any(input_path("coloc_rate")),
+                    min_coloc_genes = 1, rate_type = "lenient")
+  })
