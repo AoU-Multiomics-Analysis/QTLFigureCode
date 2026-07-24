@@ -26,3 +26,7 @@
 # MetaSoft intermediates
 /*_wide_metasoft_input.tsv
 /*.metasoft.tsv
+
+# Ad-hoc local SuSiE analysis data (controlled-access, never commit)
+/data/
+/susie_local/
