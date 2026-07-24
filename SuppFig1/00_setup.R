@@ -164,3 +164,30 @@ merged_tpms <- function(refresh = FALSE)
     gtex <- as_tibble(data.table::fread(input_path("gtex_tpms"), skip = 2)) %>% compute_mean_TPM(ann)
     join_mean_tpms(aou, gtex)
   })
+
+tf_list <- function(refresh = FALSE)
+  build_or_cache("tf_list", refresh = refresh, {
+    data.table::fread(input_path("tf_list"), header = FALSE)$V1
+  })
+
+GO_DBS <- c("GO_Molecular_Function_2025", "GO_Cellular_Component_2025",
+            "GO_Biological_Process_2025")
+
+# Protein-coding genes detected (mean TPM > 1) in exactly one cohort.
+cohort_specific_genes <- function(merged, cohort) {
+  d <- merged %>% filter(gene_type == "protein_coding")
+  if (cohort == "AoU")
+    d %>% filter(mean_TPM_AoU > 1,  mean_TPM_GTEx < 1) %>% pull(Description)
+  else
+    d %>% filter(mean_TPM_AoU < 1,  mean_TPM_GTEx > 1) %>% pull(Description)
+}
+
+# enrichR GO enrichment for AoU- vs GTEx-specific genes, row-bound with a `type`
+# label. Cached so the enrichR HTTP call runs once.
+go_enrichment <- function(refresh = FALSE)
+  build_or_cache("go_enrichment", refresh = refresh, {
+    merged <- merged_tpms()
+    aou  <- enrichR::enrichr(cohort_specific_genes(merged, "AoU"),  GO_DBS) %>% bind_rows()
+    gtex <- enrichR::enrichr(cohort_specific_genes(merged, "GTEx"), GO_DBS) %>% bind_rows()
+    bind_rows(aou %>% mutate(type = "AoU"), gtex %>% mutate(type = "GTEx"))
+  })

@@ -40,4 +40,15 @@ p <- plot_gene_comparison(merged, gene_type = "coding", hex = FALSE)
 ok("plot_gene_comparison returns a 2-plot patchwork",
    inherits(p, "patchwork") && length(p$patches$plots) >= 1)
 
+# --- cohort_specific_genes (pure) ------------------------------------------
+spec_mock <- tibble::tibble(
+  Description = c("A", "B", "C", "D"),
+  gene_type = "protein_coding",
+  mean_TPM_AoU  = c(5,   0.2, 5,   0.2),
+  mean_TPM_GTEx = c(0.2, 5,   5,   0.2))
+ok("AoU-specific = coding, AoU>1 & GTEx<1",
+   identical(cohort_specific_genes(spec_mock, "AoU"), "A"))
+ok("GTEx-specific = coding, AoU<1 & GTEx>1",
+   identical(cohort_specific_genes(spec_mock, "GTEx"), "B"))
+
 cat("test_suppfig1_helpers.R (Task 3): all assertions passed\n")
