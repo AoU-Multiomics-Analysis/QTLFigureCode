@@ -108,6 +108,9 @@ plot_gene_comparison <- function(TPM_df, point_size = 3, detection_threshold = 1
     annotate("text", x = 1.8, y = 19, label = plot_text, size = 7)
   if (!hex) {
     cor_plot <- cor_plot +
+      # point_size is honored here; the original hardcoded size = 3 and
+      # silently ignored its own point_size argument. All call sites pass the
+      # default (3), so this is a behavioral no-op in practice.
       geom_point(shape = 21, size = point_size, fill = "black", alpha = 0.7) +
       geom_abline(slope = 1, color = "red")
   } else {
