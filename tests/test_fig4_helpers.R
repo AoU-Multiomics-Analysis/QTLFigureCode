@@ -103,4 +103,20 @@ if (requireNamespace("MatchIt", quietly = TRUE)) {
   cat("  (skipped match_colocalized_pairs: MatchIt not installed)\n")
 }
 
+# --- fit_enrich ------------------------------------------------------------
+# 40 rows with predictors uncorrelated with the outcome, so the glm is not
+# perfectly separated and broom's confint profiling converges.
+set.seed(42)
+enr_mock <- tibble::tibble(
+  MendelianGene = rep(c(TRUE, FALSE), 20),
+  max_rare   = rnorm(40, 2, 1),
+  max_common = rnorm(40, 1, 1),
+  log_shet   = rnorm(40),
+  TPM        = runif(40, 1, 50))
+res <- fit_enrich("MendelianGene", c("max_rare", "max_common", "log_shet", "log2(TPM)"),
+                  data = enr_mock)
+ok("fit_enrich returns a tidy OR table with a max_rare term",
+   "max_rare" %in% res$term && all(c("estimate", "conf.low", "conf.high") %in% names(res)))
+ok("estimates are exponentiated (odds ratios, > 0)", all(res$estimate > 0))
+
 cat("test_fig4_helpers.R (Task 2): all assertions passed\n")

@@ -404,3 +404,64 @@ qq_match_source <- function(refresh = FALSE)
   build_or_cache("qq_match_source", refresh = refresh, {
     match_colocalized_pairs(prepare_qq_match_source(read_conditional_twas()))$data
   })
+
+# =============================================================================
+# Panel D upstream — colocalized conditional-TWAS enrichment
+# -----------------------------------------------------------------------------
+# NOTE: the original computed ColocAdjustedConditionalTWAS TWICE. The first copy
+# referenced an undefined `fdr_rare_sig` and fed GeneTWASData; the second copy
+# recomputed it cleanly (BH adjustment) but went unused. We keep ONLY the clean
+# version and build GeneTWASData from it (see NOTES.md).
+# =============================================================================
+gene_twas_data <- function(refresh = FALSE)
+  build_or_cache("gene_twas_data", refresh = refresh, {
+    gs  <- gene_sets()
+    adj <- read_conditional_twas() %>%
+      distinct(gene, coloc_trait, molecular_trait_id, .keep_all = TRUE) %>%
+      mutate(inflation = abs(z_rare_cond) / pmax(abs(rare_zscore), 0.5),
+             artifact_primary = coalesce(inflation > 3 & abs(Vcor) > 0.3, FALSE)) %>%
+      filter(!artifact_primary, any_coloc == TRUE) %>%
+      group_by(TWAS_path) %>%
+      mutate(fdr_rare_cond   = p.adjust(p_rare_cond,   method = "BH"),
+             fdr_common      = p.adjust(common_pvalue, method = "BH"),
+             rare_zscore_fdr = p.adjust(rare_pvalue,   method = "BH"),
+             fdr_full        = p.adjust(full_pvalue,   method = "BH")) %>%
+      ungroup() %>%
+      mutate(genuine_rare = p_rare_cond < 0.05 & rare_pvalue < 0.05,
+             t_fdrcond    = fdr_rare_cond < 0.10 & rare_pvalue < 0.05,
+             t_fdrboth    = fdr_rare_cond < 0.10 & rare_zscore_fdr < 0.10,
+             gene = factor(gene), coloc_trait = factor(coloc_trait),
+             druggable = toupper(as.character(Description)) %in% gs$druggable,
+             approved  = toupper(as.character(Description)) %in% gs$approved)
+
+    # Guard: the artifact rule must have removed all offending rows.
+    stopifnot(nrow(filter(adj, abs(Vcor) > 0.3, inflation > 3)) == 0)
+
+    adj %>%
+      group_by(gene, Description) %>%
+      summarise(max_rare    = max(abs(z_rare_cond),   na.rm = TRUE),
+                max_common  = max(abs(common_zscore), na.rm = TRUE),
+                TPM         = mean(mean_TPM, na.rm = TRUE),
+                druggable   = first(druggable), approved = first(approved),
+                ever_common = any(fdr_common < 0.1, na.rm = TRUE),
+                ever_rare   = any(t_fdrcond),
+                shet        = first(shet), .groups = "drop") %>%
+      mutate(log_shet = log10(shet), log_tpm = log10(TPM + 1),
+             MendelianGene  = as.character(gene) %in% gs$clingen_cleaned$targetId,
+             HemeImmuneGene = as.character(gene) %in% gs$heme_immune) %>%
+      filter(!is.na(log_shet))
+  })
+
+fit_enrich <- function(outcome, predictors, data)
+  glm(reformulate(predictors, response = outcome), data = data, family = binomial()) %>%
+    broom::tidy(conf.int = TRUE, exponentiate = TRUE)
+
+ENRICH_OUTCOMES <- c(
+  approved       = "Approved Drug Target",
+  druggable      = "Druggable gene",
+  MendelianGene  = "Mendelian Gene\n(Any)",
+  HemeImmuneGene = "Mendelian Gene\n(Immune/Hematological)")
+
+ENRICH_PREDICTORS <- list(
+  continuous = c("max_rare", "max_common", "log_shet", "log2(TPM)"),
+  binary     = c("ever_rare", "ever_common", "log_shet", "log2(TPM)"))
