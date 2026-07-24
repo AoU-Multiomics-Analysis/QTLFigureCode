@@ -4,8 +4,11 @@ source("suppfig1/00_setup.R")
 
 small_rnas_list <- c("misc_RNA", "sRNA", "vault_RNA", "scaRNA", "rRNA", "ribozyme")
 
-# AoU per-gene means (one side of merged_tpms) with the gene type.
-aou_means <- merged_tpms() %>% transmute(Description, gene_type, mean_TPM = mean_TPM_AoU)
+# AoU per-gene means over ALL AoU-quantified genes (matches the original
+# AoU_mean_TPMs_v45). Deliberately NOT merged_tpms(), which inner-joins AoU to
+# GTEx and would narrow the gene universe to the AoU-GTEx intersection.
+aou_means <- as_tibble(data.table::fread(input_path("aou_tpms"), skip = 2)) %>%
+  compute_mean_TPM(gene_annotations())
 
 gene_detection_summary <- aou_means %>%
   filter(mean_TPM > 0.1) %>%
