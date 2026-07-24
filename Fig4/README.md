@@ -34,6 +34,14 @@ The panels share upstream work through memoized builders in `00_setup.R`
 `gene_twas_data`), cached to `fig4/data/` **by name** — clear that directory
 after changing an input.
 
+### Notebook
+
+`Fig4/Fig4.ipynb` is an annotated R-kernel notebook that reproduces this figure
+step by step, with markdown explaining each analysis. It is generated from the
+pipeline scripts (so it stays faithful) and regenerated with:
+
+    python3 tools/build_notebooks.py Fig4
+
 ## Requirements
 
 R ≥ 4.3, and CRAN packages `tidyverse`, `data.table`, `patchwork`, `ggh4x`,
