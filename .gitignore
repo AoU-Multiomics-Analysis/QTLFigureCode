@@ -11,6 +11,11 @@
 /external/
 /reference/
 /input_data/
+/high_level_coloc_outputs/
+/R2_TWAS_combined.tsv
+/ConditionalTWAS.cleaned.tsv.gz
+/data/
+/susie_local/
 
 # Figure outputs
 /Figure1.pdf
@@ -22,6 +27,8 @@
 /FigS_*.png
 /Figure3.pdf
 /Figure3.png
+/Figure4.pdf
+/Figure4.png
 
 # MetaSoft intermediates
 /*_wide_metasoft_input.tsv
