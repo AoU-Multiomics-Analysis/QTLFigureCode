@@ -9,6 +9,7 @@
 /annotated/
 /enloc/
 /external/
+/expression/
 /reference/
 /input_data/
 /high_level_coloc_outputs/
@@ -29,6 +30,8 @@
 /Figure3.png
 /Figure4.pdf
 /Figure4.png
+/SupplementalFig1.pdf
+/SupplementalFig1.png
 
 # MetaSoft intermediates
 /*_wide_metasoft_input.tsv

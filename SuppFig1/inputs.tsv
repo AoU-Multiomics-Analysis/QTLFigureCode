@@ -1,0 +1,6 @@
+key	local_subpath	gs_uri
+aou_tpms	expression/aou_rnaseq_121624.gene_tpm.fixed.gct.gz	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/QTL_5500_subset/expression/aou_rnaseq_121624.gene_tpm.fixed.gct.gz
+gtex_tpms	external/gene_tpm_v10_whole_blood.gct.gz	https://storage.googleapis.com/adult-gtex/bulk-gex/v10/rna-seq/tpms-by-tissue/gene_tpm_v10_whole_blood.gct.gz
+gencode_gtf	reference/gencode.v45.annotation.gtf.gz	https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz
+tf_list	reference/TF_names_v_1.01.txt	https://humantfs.ccbr.utoronto.ca/download/v_1.01/TF_names_v_1.01.txt
+go_annotations	reference/GO_annotations.csv	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/annotations/GO_annotations.csv
