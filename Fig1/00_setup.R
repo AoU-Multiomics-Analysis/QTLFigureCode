@@ -72,74 +72,14 @@ AncestryColorPalette <- data.frame(
 )
 
 # =============================================================================
-# Input manifest & lazy staging
+# Input manifest & lazy staging (shared implementation)
 # -----------------------------------------------------------------------------
-# fig1/inputs.tsv columns: key, group, assay, local_subpath, gs_uri
-# Files are cached under INPUT/<local_subpath>; a gs_uri is copied down with
-# gsutil ONLY when the local copy is missing. "-" means not applicable/absent.
-# Each script loads only the keys it needs (see the panel scripts).
+# fig1/inputs.tsv columns: key, group, Assay, local_subpath, gs_uri
+# `key`, `local_subpath` and `gs_uri` are reserved; `group` and `Assay` are
+# metadata attached to the rows returned by load_input(). Each script loads only
+# the keys it needs (see the panel scripts).
 # =============================================================================
-.manifest_env <- new.env(parent = emptyenv())
-
-input_manifest <- function() {
-  if (is.null(.manifest_env$m)) {
-    # as_tibble() avoids data.table non-standard evaluation: the manifest has a
-    # column literally named "key", which would shadow a `key` filter argument.
-    .manifest_env$m <- tibble::as_tibble(
-      data.table::fread(MANIFEST, sep = "\t", na.strings = c("", "-"),
-                        colClasses = "character"))
-  }
-  .manifest_env$m
-}
-
-manifest_rows <- function(key) {
-  m <- input_manifest()
-  rows <- m[m$key == key, ]
-  if (nrow(rows) == 0L) stop("Unknown input key '", key, "' in ", MANIFEST)
-  rows
-}
-
-# Ensure every file for `key` exists locally (staging from gs_uri if needed) and
-# return a tibble of the manifest rows plus a resolved local `path` column.
-input_files <- function(key) {
-  rows  <- manifest_rows(key)
-  paths <- file.path(INPUT, rows$local_subpath)
-  for (i in seq_len(nrow(rows))) {
-    lp <- paths[i]
-    if (file.exists(lp)) next
-    gs <- rows$gs_uri[i]
-    if (is.na(gs))
-      stop("Missing local input '", lp, "' and no gs_uri to stage it (key '", key, "').")
-    dir.create(dirname(lp), showWarnings = FALSE, recursive = TRUE)
-    message("  staging ", gs, " -> ", lp)
-    status <- system2("gsutil", c("cp", gs, lp))
-    if (status != 0L || !file.exists(lp)) stop("gsutil cp failed for ", gs)
-  }
-  rows$path <- paths
-  tibble::as_tibble(rows)
-}
-
-# Single-file key -> its local path (staged if needed).
-input_path <- function(key) {
-  f <- input_files(key)
-  if (nrow(f) != 1L)
-    stop("Key '", key, "' maps to ", nrow(f), " files; use input_files()/load_input().")
-  f$path
-}
-
-# Read every file for `key` and row-bind, attaching `group` / `Assay` from the
-# manifest where provided. reader defaults to fread; override for other formats.
-load_input <- function(key, reader = data.table::fread, ..., attach_meta = TRUE) {
-  f <- input_files(key)
-  purrr::pmap_dfr(list(f$path, f$group, f$assay), function(p, grp, asy) {
-    d <- tibble::as_tibble(reader(p, ...))
-    if (attach_meta) {
-      if (!is.na(grp)) d$group <- grp
-      if (!is.na(asy)) d$Assay <- asy
-    }
-    d
-  })
-}
+source("common/manifest.R")
 
 # =============================================================================
 # Folded-in functions (from QTLAnalysisUtils, bug-fixed)

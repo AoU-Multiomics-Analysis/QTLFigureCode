@@ -1,4 +1,4 @@
-key	group	assay	local_subpath	gs_uri
+key	group	Assay	local_subpath	gs_uri
 gene_gtf	-	-	reference/gencode.v48.annotation.gtf.gz	-
 ancestry_preds	-	-	reference/echo_v4_r2.ancestry_preds.tsv	-
 comb_sample_list	-	-	reference/COMB_eQTL_9k_sample_list.tsv	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/eQTL_9k_set/sample_lists/COMB_eQTL_9k_sample_list.tsv

@@ -7,6 +7,7 @@
 /permutations/
 /finemapping/
 /annotated/
+/enloc/
 /external/
 /reference/
 /input_data/
@@ -19,6 +20,8 @@
 /Fig2.png
 /FigS_*.pdf
 /FigS_*.png
+/Figure3.pdf
+/Figure3.png
 
 # MetaSoft intermediates
 /*_wide_metasoft_input.tsv
