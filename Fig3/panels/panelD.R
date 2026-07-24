@@ -1,5 +1,5 @@
 # Panel D — eQTL vs pQTL posterior effect size, faceted by MAF bin.
-# Inputs: enloc_variant, annotations, susie_eqtl, susie_pqtl
+# Inputs: enloc_variant, annotations, susie_eqtl, susie_sqtl, susie_pqtl
 source("fig3/00_setup.R")
 
 binned <- coloc_model_input()[["eQTL-pQTL"]] %>%

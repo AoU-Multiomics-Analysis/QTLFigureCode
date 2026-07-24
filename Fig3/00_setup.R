@@ -66,10 +66,7 @@ theme_update(
   legend.title     = element_text(size = SZ_LEG_TITLE)
 )
 
-blank_plot <- ggplot() + theme_void()
-
-# The three assay pairs, in the order used throughout the figure.
-COLOC_PAIRS <- c("eQTL-pQTL", "sQTL-pQTL", "eQTL-sQTL")
+blank_plot <- ggplot() + theme_void(base_family = FONT)
 
 # Panel A fill — number of colocalized molecular layers.
 LAYER_FILL <- c("0" = "#D9D9D9", "1" = "#A9C1D9", "2" = "#7B9AB8", "3" = "#577590")
@@ -129,7 +126,7 @@ LoadEnlocTable <- function(path, cols) {
   rows <- strsplit(trimws(x), "\\s+")
   # do.call(rbind, ...) SILENTLY RECYCLES when row lengths differ, so a ragged
   # row (wrong token count) would land its values in the wrong columns without
-  # ever tripping the ncol() guard below. Check lengths before rbind instead.
+  # ever tripping the length check below. Check lengths before rbind instead.
   n <- lengths(rows)
   bad <- which(n != length(cols))
   if (length(bad))
@@ -355,9 +352,13 @@ coloc_variant_level <- function(refresh = FALSE)
     tryCatch(
       left_join(variants, annotations, by = "SNP", relationship = "many-to-one"),
       error = function(e) {
+        dup <- annotations$SNP[duplicated(annotations$SNP) |
+                                duplicated(annotations$SNP, fromLast = TRUE)]
+        offender <- if (length(dup)) sprintf("(SNP = '%s')", dup[1])
+                    else "<offending SNP not found>"
         stop("Annotation table '", ann_path, "' has duplicate SNP keys, ",
-             "violating the expected many-to-one variant-level join: ",
-             conditionMessage(e), call. = FALSE)
+             "violating the expected many-to-one variant-level join -- e.g. ",
+             offender, ": ", conditionMessage(e), call. = FALSE)
       }
     )
   })
@@ -439,7 +440,7 @@ coloc_model_input <- function(refresh = FALSE)
       mutate(across(everything(), ~ ifelse(. > .5, 1 - ., .)))
 
     cleaned <- v %>%
-      mutate(max_af  = do.call(pmax, c(as.list(folded), na.rm = TRUE)),
+      mutate(max_af  = do.call(pmax, as.list(folded)),
              rare    = max_af < .01,
              log_maf = as.numeric(scale(-log10(max_af)))) %>%
       filter(Coloc == TRUE)

@@ -208,6 +208,9 @@ repository.
 This directory replaces a single ~858-line notebook export (`Fig3.R`). The
 restructuring and the defects it fixed are recorded in
 [`docs/superpowers/specs/2026-07-23-fig3-cleanup-design.md`](../docs/superpowers/specs/2026-07-23-fig3-cleanup-design.md).
+The retired original is recoverable at commit **`dab3c47`** —
+`git show dab3c47:Fig3/Fig3.R` — for whoever wants to compare against the
+pre-cleanup figure.
 
 **Two defects in the original changed results**, but not in the way they
 first appeared to. `Fig3.R:462` held a pasted terminal escape sequence inside

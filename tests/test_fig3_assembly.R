@@ -63,20 +63,44 @@ extract_tag_labels <- function(patchwork_obj) {
   labels
 }
 
-# --- Build the five panels exactly as fig3/run_all.R does ------------------
+# Extract the font family actually drawn for each tag grob (Finding 2:
+# blank_plot's `theme_void()` reset `text` and discarded the global
+# `family = FONT`, so panel E's tag rendered in the device default font while
+# A-D rendered in FONT). Mirrors extract_tag_labels()'s walk, but reads each
+# tag grob's `gp$fontfamily` instead of just checking it is a bare letter.
+extract_tag_fonts <- function(patchwork_obj) {
+  grDevices::pdf(NULL)
+  on.exit({ grDevices::dev.off() })
+  grid::grid.newpage()
+  print(patchwork_obj)
+  grabbed <- grid::grid.grab()
+
+  fonts <- character(0)
+  walk <- function(x) {
+    if (is.null(x)) return(invisible())
+    if (inherits(x, "text")) {
+      lab <- paste(x$label, collapse = "")
+      if (nchar(lab) == 1L && lab %in% LETTERS)
+        fonts <<- c(fonts, if (!is.null(x$gp)) x$gp$fontfamily else NA_character_)
+    } else if (inherits(x, "gtable")) {
+      for (gr in x$grobs) walk(gr)
+    } else if (!is.null(x$children)) {
+      for (ch in x$children) walk(ch)
+    }
+  }
+  walk(grabbed)
+  fonts
+}
+
+# --- Build the five panels, then the real assembly, exactly as
+# fig3/run_all.R does. Sourcing fig3/assemble.R (rather than re-implementing
+# its patchwork composition here) means a reordered row, a changed
+# plot_layout, or a dropped plot_annotation() in the real assembly is exactly
+# what this test exercises -- assemble.R leaves `Fig3` in the global
+# environment and ggsave()s into OUTDIR, which under use_fig3_fixture() is
+# the fixture's own temp directory, so sourcing it is safe here.
 for (p in LETTERS[1:5]) source(sprintf("fig3/panels/panel%s.R", p))
-
-P <- setNames(lapply(LETTERS[1:5],
-                     function(x) readRDS(file.path(OBJ_DIR, paste0(x, ".rds")))),
-              LETTERS[1:5])
-
-coloc_counts <- P$A + P$B + plot_layout(widths = c(1, 1))
-top_row      <- (coloc_counts | P$C) + plot_layout(widths = c(2.5, 1))
-bottom_row   <- (P$D | P$E) + plot_layout(widths = c(1.3, 1))
-
-Fig3 <- (top_row / bottom_row) +
-  plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = SZ_TAG, face = "bold"))
+source("fig3/assemble.R")
 
 fig3_tags <- extract_tag_labels(Fig3)
 
@@ -85,6 +109,10 @@ ok("Figure 3's tags are exactly A, B, C, D, E in order",
    identical(fig3_tags, c("A", "B", "C", "D", "E")))
 ok("no sixth tag (the inset) leaked into the sequence",
    !"F" %in% fig3_tags)
+
+fig3_tag_fonts <- extract_tag_fonts(Fig3)
+ok("all five tags render in a single, non-empty font family",
+   length(unique(fig3_tag_fonts)) == 1L && nzchar(fig3_tag_fonts[1]))
 
 # --- Supplemental: exactly two tags, A on the density row, B on discovery --
 source("fig3/supp_coloc_qc.R")

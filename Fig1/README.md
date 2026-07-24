@@ -45,7 +45,7 @@ Standalone; requires the MetaSoft Java tool.
 .
 ├── fig1/                        # modular pipeline (split by panel)
 │   ├── 00_setup.R               #   libraries, font, theme, palette, manifest loaders, folded-in functions
-│   ├── inputs.tsv               #   input manifest: key, group, assay, local_subpath, gs_uri
+│   ├── inputs.tsv               #   input manifest: key, group, Assay, local_subpath, gs_uri
 │   ├── panels/panelA.R … panelH.R  #   each STAGES + LOADS only its own inputs -> fig1/objects/<X>.rds
 │   ├── assemble.R               #   composes panels -> Figure1.pdf / Figure1.png
 │   ├── run_all.R                #   panels -> assemble (end-to-end)
@@ -137,7 +137,7 @@ External tool (supplemental only): **MetaSoft**
 ## Data & inputs
 
 Every input is declared in **`fig1/inputs.tsv`** (the manifest), which is also the
-single record of each file's `gs://` origin. Columns: `key`, `group`, `assay`,
+single record of each file's `gs://` origin. Columns: `key`, `group`, `Assay`,
 `local_subpath` (relative to the staging root — the cwd by default, overridable
 via `FIG1_INPUT`), `gs_uri` (`-` = local-only). Missing files with a `gs_uri`
 are staged under the cwd on demand; pre-stage them at `<cwd>/<local_subpath>`
