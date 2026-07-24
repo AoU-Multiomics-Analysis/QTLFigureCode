@@ -276,3 +276,57 @@ coloc_by_trait <- function(refresh = FALSE)
                     read_any(input_path("coloc_rate")),
                     min_coloc_genes = 1, rate_type = "lenient")
   })
+
+# =============================================================================
+# Panel C/D upstream — conditional TWAS read, and gene-set annotations
+# =============================================================================
+read_conditional_twas <- function(refresh = FALSE)
+  build_or_cache("conditional_twas", refresh = refresh, {
+    read_any(input_path("conditional_twas"))
+  })
+
+# Heme / immune disease keyword pattern (hand-curated; see NOTES.md).
+HEME_IMMUNE_KW <- str_c(c(
+  "an[a]?emia", "thrombocyt", "neutropen", "leuk[a]?emia", "lymphoma",
+  "h[a]?emoglobin", "platelet", "h[a]?emolytic", "spherocytosis", "sideroblastic",
+  "myelodysplas", "granulocyt", "erythrocyt", "reticulocyt", "coagulation",
+  "thromb", "bleeding", "h[a]?emophilia", "neutrophil", "eosinophil", "basophil",
+  "monocyt", "myeloid", "h[a]?ematopoie", "pancytopenia", "h[a]?emochromatosis",
+  "polycythemia", "thalass", "macrocyt", "blood cell", "bone marrow", "hemostasis",
+  "porphyria", "fanconi", "immunodefic", "immune", "autoimmun", "autoinflammat",
+  "immunodysreg", "agammaglobulin", "lymphoproliferat", "complement",
+  "immunoglobulin", "hypogammaglobulin", "granulomatous", "histiocyt",
+  "hemophagocytic", "interferonopathy"), collapse = "|")
+
+# Pure gene-set derivation (testable without arrow / the parquet read).
+derive_gene_sets <- function(clingen_df, drug_df) {
+  clingen_cleaned <- clingen_df %>%
+    distinct(targetId, targetFromSourceId, studyId, confidence,
+             allelicRequirements, diseaseFromSource) %>%
+    filter(confidence == "Definitive" | confidence == "Strong") %>%
+    unnest(allelicRequirements)
+  heme_immune_genes <- clingen_cleaned %>%
+    filter(str_detect(tolower(diseaseFromSource), HEME_IMMUNE_KW)) %>%
+    pull(targetId) %>% unique()
+
+  dg <- as.data.table(drug_df)
+  dg[, sym := toupper(gene_name)]
+  druggable <- unique(dg[sym != "", sym])
+  approved  <- unique(dg[approved == TRUE & sym != "", sym])
+
+  list(druggable = druggable, approved = approved,
+       mendelian = unique(clingen_cleaned$targetId),
+       heme_immune = heme_immune_genes, clingen_cleaned = clingen_cleaned)
+}
+
+gene_sets <- function(refresh = FALSE)
+  build_or_cache("gene_sets", refresh = refresh, {
+    clingen_dir <- input_path("clingen")
+    pq <- list.files(clingen_dir, pattern = "\\.parquet$", full.names = TRUE)
+    if (length(pq) == 0) stop("No .parquet files under ", clingen_dir)
+    clingen_df <- arrow::read_parquet(pq[1]) %>%
+      select(targetFromSourceId, allelicRequirements, confidence, score,
+             studyId, targetId, diseaseFromSource)
+    drug_df <- read_any(input_path("drug_interactions"))
+    derive_gene_sets(clingen_df, drug_df)
+  })

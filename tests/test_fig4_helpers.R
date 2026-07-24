@@ -30,4 +30,28 @@ ok("min_coloc_genes trims traits with too few genes", nrow(trimmed) == 0L)
 ok("as_logical_flag maps yes/1/true",
    identical(as_logical_flag(c("yes", "1", "true", "no")), c(TRUE, TRUE, TRUE, FALSE)))
 
+# --- derive_gene_sets ------------------------------------------------------
+clingen_mock <- tibble::tibble(
+  targetId          = c("ENSG1", "ENSG1", "ENSG2", "ENSG3"),
+  targetFromSourceId = c("S1", "S1", "S2", "S3"),
+  studyId           = c("st1", "st1", "st2", "st3"),
+  confidence        = c("Definitive", "Definitive", "Strong", "Limited"),
+  allelicRequirements = list("AR", "AR", "AD", "AD"),
+  diseaseFromSource = c("hereditary anemia", "hereditary anemia",
+                        "dilated cardiomyopathy", "some limited disease"))
+drug_mock <- tibble::tibble(
+  gene_name = c("geneA", "geneB", "geneB", ""),
+  approved  = c(TRUE, FALSE, FALSE, TRUE))
+
+gs <- derive_gene_sets(clingen_mock, drug_mock)
+ok("mendelian keeps only Definitive/Strong genes",
+   setequal(gs$mendelian, c("ENSG1", "ENSG2")))
+ok("Limited-confidence genes are excluded", !"ENSG3" %in% gs$mendelian)
+ok("heme-immune picks the anemia gene", "ENSG1" %in% gs$heme_immune)
+ok("heme-immune excludes the cardiomyopathy gene", !"ENSG2" %in% gs$heme_immune)
+ok("druggable upper-cases symbols and drops blanks",
+   setequal(gs$druggable, c("GENEA", "GENEB")))
+ok("approved keeps only approved==TRUE non-blank symbols",
+   setequal(gs$approved, "GENEA"))
+
 cat("test_fig4_helpers.R (Task 2): all assertions passed\n")
