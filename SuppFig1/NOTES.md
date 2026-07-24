@@ -45,6 +45,10 @@ default (3), so this is a behavioral no-op for the assembled figure — recorded
 here in case a future caller passes a non-default value and expects it to take
 effect.
 
+## Layout: the lncRNA panel's extra margin was dropped
+
+The original's bottom row was `TF_gene_comparison | lncRNA_comparison & theme(plot.margin = margin(l = 2, t = 5, unit = "cm"))`. Because `&` binds tighter than `|`, that margin applied only to the lncRNA panel — a notebook artifact rather than a deliberate choice. `assemble.R` uses `P$C | P$D` with no extra margin, so panel D (lncRNA) sits slightly tighter than in the original. This is a layout-spacing difference only; no plotted or tested value changes.
+
 ## Retained extras (not in the assembled figure)
 
 `extra/gene_type_comparisons.R` (snRNA, miRNA), `extra/rrna_expression.R`,

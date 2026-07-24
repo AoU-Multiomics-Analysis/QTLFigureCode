@@ -8,8 +8,9 @@
 # COLUMN is metadata, attached by load_input() to the rows it returns, under its
 # own name. Empty or "-" is read as NA and never attached.
 #
-# Files are cached at INPUT/<local_subpath>. A gs_uri is copied down with
-# gsutil ONLY when the local copy is missing, so a pre-staged file is never re-fetched.
+# Files are cached at INPUT/<local_subpath>. A gs_uri is staged ONLY when the
+# local copy is missing (gs:// via gsutil; http(s):// or file:// via
+# download.file — see .stage_uri), so a pre-staged file is never re-fetched.
 # =============================================================================
 .MANIFEST_RESERVED <- c("key", "local_subpath", "gs_uri")
 
