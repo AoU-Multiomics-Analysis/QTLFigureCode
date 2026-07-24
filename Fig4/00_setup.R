@@ -330,3 +330,77 @@ gene_sets <- function(refresh = FALSE)
     drug_df <- read_any(input_path("drug_interactions"))
     derive_gene_sets(clingen_df, drug_df)
   })
+
+# =============================================================================
+# Panel C helpers — conditional-TWAS QQ with propensity matching
+# =============================================================================
+prepare_qq_match_source <- function(data) {
+  data %>%
+    filter(status == "ok") %>%
+    distinct(gene, coloc_trait, molecular_trait_id, .keep_all = TRUE) %>%
+    mutate(any_coloc = coalesce(any_coloc, FALSE),
+           inflation = abs(z_rare_cond) / pmax(abs(rare_zscore), 0.5),
+           artifact  = coalesce(inflation > 3 & abs(Vcor) > 0.3, FALSE)) %>%
+    filter(!artifact) %>%
+    group_by(gene, coloc_trait) %>%
+    arrange(desc(coalesce(GLCP, -Inf)), p_rare_cond, .by_group = TRUE) %>%
+    slice_head(n = 1) %>%
+    ungroup() %>%
+    mutate(coloc = as.integer(any_coloc), log_tpm = log1p(mean_TPM),
+           log_shet = log10(shet), log_n_rare = log1p(n_rare), abs_vcor = abs(Vcor)) %>%
+    filter(is.finite(log_tpm), is.finite(log_shet),
+           is.finite(log_n_rare), is.finite(abs_vcor))
+}
+
+calculate_qq_data <- function(matched_data, traits, common_cap = 40, rare_cap = 12.5) {
+  matched_data %>%
+    filter(as.character(coloc_trait) %in% traits) %>%
+    select(group, common = common_pvalue, rare = p_rare_cond) %>%
+    pivot_longer(c(common, rare), names_to = "test", values_to = "p_value") %>%
+    filter(is.finite(p_value), between(p_value, 0, 1)) %>%
+    group_by(test, group) %>%
+    arrange(p_value, .by_group = TRUE) %>%
+    mutate(rank = row_number(), n = n(),
+           expected = -log10(rank / (n + 1)),
+           observed = -log10(pmax(p_value, .Machine$double.xmin)),
+           y_cap = case_when(test == "common" ~ common_cap,
+                             test == "rare" ~ rare_cap, .default = Inf),
+           observed_display = pmin(observed, y_cap),
+           capped = observed > y_cap) %>%
+    ungroup()
+}
+
+match_colocalized_pairs <- function(data, seed = 20260713, ratio = 1,
+                                    caliper = 0.2, replace = FALSE) {
+  set.seed(seed)
+  match_fit <- MatchIt::matchit(
+    coloc ~ log_tpm + log_shet + log_n_rare + abs_vcor, data = data,
+    method = "nearest", distance = "glm", exact = ~ coloc_trait,
+    ratio = ratio, replace = replace, caliper = caliper, std.caliper = TRUE)
+  matched_data <- MatchIt::match.data(match_fit, drop.unmatched = TRUE) %>%
+    mutate(group = if_else(coloc == 1L, "Colocalized genes", "Matched non-colocalized genes"),
+           group = factor(group, levels = c("Matched non-colocalized genes", "Colocalized genes")))
+  list(fit = match_fit, data = matched_data)
+}
+
+plot_qq <- function(qq_data) {
+  ggplot(qq_data, aes(x = expected, y = observed_display, colour = group)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+                linewidth = 0.55, colour = "#666666") +
+    geom_point(size = 1, alpha = 0.8) +
+    facet_wrap(~test, scales = "free_y",
+               labeller = as_labeller(c(common = "Common", rare = "Rare"))) +
+    scale_colour_manual(values = c("Matched non-colocalized genes" = "#2B2B2B",
+                                   "Colocalized genes" = "#275D8E"), name = NULL) +
+    guides(colour = guide_legend(override.aes = list(shape = 16, size = 2.5, alpha = 1))) +
+    labs(x = expression(Expected ~ -log[10](P)), y = expression(Observed ~ -log[10](P))) +
+    theme_classic(base_size = 12) +
+    theme(strip.background = element_blank(), strip.text = element_text(size = 12),
+          panel.spacing = grid::unit(2, "lines"), legend.position = "top",
+          legend.text = element_text(size = 10), legend.key.width = grid::unit(1.2, "lines"))
+}
+
+qq_match_source <- function(refresh = FALSE)
+  build_or_cache("qq_match_source", refresh = refresh, {
+    match_colocalized_pairs(prepare_qq_match_source(read_conditional_twas()))$data
+  })
