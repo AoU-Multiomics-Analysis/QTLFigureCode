@@ -240,3 +240,36 @@ use_fig4_fixture <- function(fx) {
              FIG4_OBJ      = file.path(fx$root, "objects"),
              FIG4_OUTDIR   = fx$root)
 }
+
+# --- SuppFig1 mock project ---------------------------------------------------
+# Mock AoU / GTEx GCT TPM matrices (Name, Description, then sample columns) and a
+# small GENCODE gene-type table, enough to exercise the pure transforms. The GTF
+# import and enrichR calls are not run here (rtracklayer/enrichR/network).
+make_suppfig1_fixture <- function(root = file.path(tempdir(), "suppfig1_fixture")) {
+  unlink(root, recursive = TRUE)
+  for (d in c("expression", "external", "reference"))
+    dir.create(file.path(root, d), recursive = TRUE, showWarnings = FALSE)
+  wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
+
+  # Six genes spanning the gene types the panels filter on.
+  ids  <- c("ENSG001.1","ENSG002.1","ENSG003.1","ENSG004.1","ENSG005.1","ENSG006.1")
+  desc <- c("GENEA","TFGENE","LNC1","SNR1","HBB","RRNA1")
+  types <- c("protein_coding","protein_coding","lncRNA","snRNA","protein_coding","rRNA")
+
+  aou <- data.frame(Name = ids, Description = desc,
+                    s1 = c(10, 8, 0.5, 0.3, 40, 0.05),
+                    s2 = c(12, 9, 0.4, 0.2, 44, 0.05))
+  wtsv(aou, file.path(root, "expression/aou.gct.tsv"))   # plain tsv stand-in
+
+  gtex <- data.frame(Name = ids, Description = desc,
+                     s1 = c(11, 2, 0.02, 0.25, 38, 0.06),
+                     s2 = c(9,  3, 0.03, 0.30, 42, 0.05))
+  wtsv(gtex, file.path(root, "external/gtex.gct.tsv"))
+
+  ann <- data.frame(gene_id = ids, gene_type = types)
+  saveRDS(ann, file.path(root, "reference/gene_annotations.rds"))
+
+  list(root = root, aou_tpms = file.path(root, "expression/aou.gct.tsv"),
+       gtex_tpms = file.path(root, "external/gtex.gct.tsv"),
+       annotations = ann)
+}
