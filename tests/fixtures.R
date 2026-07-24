@@ -177,6 +177,60 @@ make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
     pct_stringent_union = c(30, 20), pct_lenient_union = c(45, 33))
   wtsv(rate_tbl, file.path(root, "high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv"))
 
+  # R^2 TWAS: two AF thresholds per phenotype so the pivot has `0` and `0.01`
+  r2 <- do.call(rbind, lapply(1:12, function(i) data.frame(
+    phenotype_id = paste0("g", i), AF_threshold = c(0, 0.01),
+    r.squared = c(0.30 + i/100, 0.20 + i/100), H2 = 0.5, SE = 0.05, Pval = 1e-8)))
+  wtsv(r2, file.path(root, "R2_TWAS_combined.tsv"))
+
+  # Conditional TWAS: enough colocalized + non-colocalized rows for MatchIt and glm
+  # Conditional TWAS: 200 genes, seeded for reproducibility. any_coloc and the
+  # gene-set memberships below are independent random draws at moderate prevalence
+  # so that (a) Panel C's MatchIt has both a treated and a control group, and
+  # (b) Panel D's per-outcome enrichment glms are well-posed (no constant outcome
+  # or perfect separation, which would break broom's confint profiling).
+  set.seed(2026)
+  ng      <- 200
+  gene_id <- paste0("ENSG", sprintf("%08d", 1:ng))
+  desc    <- paste0("GENE", 1:ng)
+  ct <- data.frame(
+    status = "ok", gene = gene_id, coloc_trait = "eosinophil",
+    molecular_trait_id = paste0("m", 1:ng),
+    any_coloc = sample(c(TRUE, FALSE), ng, replace = TRUE),
+    TWAS_path = "p1",
+    z_rare_cond = stats::rnorm(ng, 2), rare_zscore = stats::rnorm(ng, 2),
+    common_zscore = stats::rnorm(ng, 1), Vcor = 0.1, GLCP = 0.9,
+    p_rare_cond = stats::runif(ng), rare_pvalue = stats::runif(ng),
+    common_pvalue = stats::runif(ng), full_pvalue = stats::runif(ng),
+    mean_TPM = stats::runif(ng, 1, 50), shet = stats::runif(ng, 0.001, 0.1),
+    n_rare = sample(1:10, ng, replace = TRUE), Description = desc)
+  # data.table::fwrite handles the .gz extension by gzipping
+  data.table::fwrite(ct, file.path(root, "ConditionalTWAS.cleaned.tsv.gz"), sep = "\t")
+
+  # Drug interactions: ~55% druggable, ~40% of those approved (independent)
+  is_drug <- sample(c(TRUE, FALSE), ng, replace = TRUE, prob = c(.55, .45))
+  drug_genes <- desc[is_drug]
+  wtsv(data.frame(gene_name = drug_genes,
+                  approved = sample(c(TRUE, FALSE), length(drug_genes),
+                                    replace = TRUE, prob = c(.4, .6))),
+       file.path(root, "reference/interactions.tsv"))
+
+  # ClinGen parquet: ~65% Definitive/Strong (Mendelian), ~35% anemia/immune (heme)
+  if (requireNamespace("arrow", quietly = TRUE)) {
+    dir.create(file.path(root, "reference/evidence_clingen"), showWarnings = FALSE)
+    clingen <- data.frame(
+      targetFromSourceId = paste0("S", 1:ng),
+      allelicRequirements = "autosomal recessive",
+      confidence = sample(c("Definitive", "Strong", "Limited"), ng,
+                          replace = TRUE, prob = c(.35, .30, .35)),
+      score = 1, studyId = paste0("st", 1:ng), targetId = gene_id,
+      diseaseFromSource = sample(c("hereditary anemia", "cardiomyopathy",
+                                   "immune deficiency"), ng,
+                                 replace = TRUE, prob = c(.35, .40, .25)))
+    arrow::write_parquet(clingen,
+      file.path(root, "reference/evidence_clingen/part-0.parquet"))
+  }
+
   list(root = root)
 }
 
