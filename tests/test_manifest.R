@@ -55,13 +55,39 @@ src <- file.path(tmp, "sub", "remote_src.tsv")
 wtsv(data.frame(v = 42), src)
 writeLines(c(
   "key\ttype\tlocal_subpath\tgs_uri",
-  paste0("remote\t-\tsub/fetched.tsv\tfile://", src)
+  paste0("remote\t-\tsub/fetched.tsv\tfile://", src),
+  "badscheme\t-\tsub/badscheme.tsv\ts3://bucket/obj"
 ), file.path(tmp, "inputs.tsv"))
-.manifest_env$m <- NULL                     # force a re-read of the rewritten manifest
-f <- input_files("remote")
-ok("file:// URI stages a missing local input",
-   file.exists(file.path(tmp, "sub/fetched.tsv")))
-ok("staged file has the source contents",
-   identical(readLines(f$path)[1], "v"))
+
+# On this machine `gsutil cp` itself accepts a file:// source, so a naive
+# file:// staging assertion would pass even if the code (wrongly) routed
+# file:// through the gsutil branch instead of download.file. Shadow `gsutil`
+# on PATH with a stub that always fails, so staging can only succeed here if
+# the download.file branch is actually the one handling file://.
+run_file_staging_test <- function() {
+  stub_dir <- file.path(tmp, "path_stub")
+  dir.create(stub_dir, showWarnings = FALSE)
+  stub <- file.path(stub_dir, "gsutil")
+  writeLines(c("#!/bin/sh", "exit 1"), stub)
+  Sys.chmod(stub, "0755")
+  old_path <- Sys.getenv("PATH")
+  Sys.setenv(PATH = paste(stub_dir, old_path, sep = .Platform$path.sep))
+  on.exit(Sys.setenv(PATH = old_path), add = TRUE)
+
+  fetched <- file.path(tmp, "sub/fetched.tsv")
+  if (file.exists(fetched)) unlink(fetched)   # ensure staging is actually attempted
+
+  .manifest_env$m <- NULL                     # force a re-read of the rewritten manifest
+  f <- input_files("remote")
+  ok("file:// URI stages a missing local input despite gsutil being broken",
+     file.exists(fetched))
+  ok("staged file has the source contents",
+     identical(readLines(f$path)[1], "v"))
+}
+run_file_staging_test()
+
+.manifest_env$m <- NULL
+expect_error("unsupported gs_uri scheme errors when staging is attempted",
+             input_files("badscheme"))
 
 cat("test_manifest.R: all assertions passed\n")
