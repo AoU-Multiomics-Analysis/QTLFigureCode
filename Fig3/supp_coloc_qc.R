@@ -17,14 +17,23 @@ variant_lvl <- coloc_variant_level()
 
 density_panel <- function(d, col, show_legend) {
   ggplot(d, aes(x = .data[[col]], fill = type)) +
+    # The original applied alpha = 0.7 only to the FIRST density panel
+    # (GLCP); RCP and SCP used geom_density()'s opaque default. Applying a
+    # uniform alpha to all three here is a deliberate, intentional deviation
+    # from the original -- uniform alpha reads better across the row -- not
+    # an oversight.
     geom_density(alpha = 0.7, show.legend = show_legend) +
     theme(axis.line.y = element_blank(), axis.ticks.y = element_blank(),
           axis.text.y = element_blank())
 }
 
-posterior_dists <- density_panel(gene_lvl,    "GLCP", FALSE) +
-                   density_panel(cs_lvl,      "RCP",  FALSE) +
-                   density_panel(variant_lvl, "SCP",  TRUE)
+# wrap_elements() folds the three density panels into a single taggable
+# element, so plot_annotation(tag_levels = "A") below sees this row as ONE
+# leaf (tag "A") rather than walking into it and tagging each density panel
+# separately (which would shift the discovery plot's tag from "B" to "D").
+posterior_dists <- wrap_elements(full = density_panel(gene_lvl,    "GLCP", FALSE) +
+                                         density_panel(cs_lvl,      "RCP",  FALSE) +
+                                         density_panel(variant_lvl, "SCP",  TRUE))
 
 THRESHOLDS <- c(0.01, 0.1, 0.5, 0.9)
 

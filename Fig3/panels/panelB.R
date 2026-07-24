@@ -44,11 +44,33 @@ inset <- coloc_rate %>%
     theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),
           axis.line.y = element_line(color = "lightgrey"),
           axis.ticks.y = element_blank(),
-          plot.tag = element_blank(),      # an inset is never tagged
+          # No plot.tag = element_blank() override here: it would do nothing.
+          # wrap_elements(full = ...) below folds `main` and this inset into
+          # ONE opaque leaf before tagging happens, so recurse_tags() never
+          # walks down into the inset to assign (or theme) a tag on it in the
+          # first place -- confirmed empirically by rendering with `&
+          # theme(plot.tag = element_text(color = "red"))` and observing no
+          # tag, styled or not, on the inset either way.
           plot.margin = margin(0, 0, 0, 0))
 
-pB <- main + inset_element(inset, left = 0.48, bottom = 0.60,
-                           right = 0.98, top = 0.98, align_to = "panel")
+pB_raw <- main + inset_element(inset, left = 0.48, bottom = 0.60,
+                               right = 0.98, top = 0.98, align_to = "panel",
+                               ignore_tag = TRUE)
+
+# ignore_tag = TRUE keeps the inset itself out of the auto-tag sequence, but
+# it has a sharp edge: patchwork gives "main + inset_element(...)" the class
+# "inset_patch", and its auto-tagging walk (patchwork:::recurse_tags) skips
+# ANY inset_patch object whose has_tag() is FALSE -- which, with ignore_tag =
+# TRUE, is this whole composite, not just the inset. When pB_raw sits as a
+# sibling among other panels (as it does once assemble.R does `P$A + P$B`),
+# that means pB_raw's own main plot silently loses ITS tag too, and every
+# later panel's letter shifts down by one -- confirmed empirically (see
+# tests/test_fig3_assembly.R) before this wrap_elements() call was added.
+# wrap_elements(full = ...) folds the whole composite into a single
+# "wrapped_patch" leaf, which is not an inset_patch and so is exempt from
+# that skip: it gets tagged normally as one panel, and the inset inside it
+# still carries no tag of its own.
+pB <- wrap_elements(full = pB_raw)
 
 saveRDS(pB, file.path(OBJ_DIR, "B.rds"))
 message("Panel B built.")
