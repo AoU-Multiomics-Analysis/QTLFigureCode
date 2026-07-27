@@ -40,8 +40,9 @@ as a line. Computed over fine-mapped expression variants (PIP > 0.9).
 .
 ├── Fig2_clean.R                 # standalone, all-in-one script (builds the main figure)
 ├── fig2/                        # modular pipeline (same figure, split by panel)
-│   ├── 00_setup.R               #   libraries, font, theme, uniform text sizes, shared helpers
-│   ├── 01_prep_data.R           #   reads raw inputs ONCE -> fig2/data/<A-G>.rds
+│   ├── 00_setup.R               #   libraries, font, theme, uniform text sizes, manifest loaders, shared helpers
+│   ├── inputs.tsv               #   input manifest: key, Assay, local_subpath, gs_uri
+│   ├── 01_prep_data.R           #   reads raw inputs ONCE (by manifest key) -> fig2/data/<A-G>.rds
 │   ├── panels/panelA.R … panelG.R  #   each builds one panel -> fig2/objects/<X>.rds
 │   ├── assemble.R               #   composes panels -> Fig2.pdf / Fig2.png
 │   ├── run_all.R                #   prep -> panels -> assemble (end-to-end)
@@ -117,16 +118,30 @@ sizes render correctly.
 
 ## Data & inputs
 
-Expected in `input_data/` (not distributed here):
+**Inputs are manifest-driven.** `fig2/inputs.tsv` maps each logical input (a
+`key`) to a `local_subpath` (relative to the staging root, `FIG2_INPUT`, which
+defaults to the cwd) and, where applicable, a `gs://` origin. `01_prep_data.R`
+reads each input by key via helpers in `00_setup.R`:
 
-| File | Used by |
-|------|---------|
-| `COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz` | A, B, C, D |
-| `COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz` | A, B |
-| `COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz` | A, B *(optional — auto-included if present)* |
-| `MedianKOSummary.tsv` | F |
-| `QTLBurdenOutlierEnrichment.tsv` | E |
-| `QTLBurdenOutlierCount.rds` | G |
+- `read_qtl(key)` → `fread(input_path(key))` for a single-file key (staged if missing)
+- `input_path(key)` → local path for a single-file key
+- `load_input(key)` → reads + row-binds every file for a key, attaching the
+  manifest's `Assay` metadata column
+
+When a file is absent locally and the manifest has a `gs://` URI, the loader
+copies it down with `gsutil` **once**, into `<cwd>/<local_subpath>` (the local
+copy then acts as the cache); pre-staged files skip the copy entirely. All six
+Fig2 inputs are locally-derived (`gs_uri = -`), so they must be present under
+`input_data/` — there is no remote origin recorded for them.
+
+| key | File (`local_subpath`) | Assay | Used by |
+|-----|------------------------|-------|---------|
+| `susie_eqtl` | `input_data/COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz` | Expression | A, B, C, D |
+| `susie_sqtl` | `input_data/COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz` | Splicing | A, B |
+| `susie_pqtl` | `input_data/COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz` | Proteomics | A, B *(optional — auto-included if present)* |
+| `burden_enrichment` | `input_data/QTLBurdenOutlierEnrichment.tsv` | — | E |
+| `median_ko` | `input_data/MedianKOSummary.tsv` | — | F |
+| `burden_count` | `input_data/QTLBurdenOutlierCount.rds` | — | G |
 
 The expression/splicing tables are SuSiE fine-mapping results annotated with
 variant consequences, allele-count/-frequency data (per-ancestry GVS fields),

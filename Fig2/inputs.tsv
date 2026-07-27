@@ -1,0 +1,7 @@
+key	Assay	local_subpath	gs_uri
+susie_eqtl	Expression	input_data/COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz	-
+susie_sqtl	Splicing	input_data/COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz	-
+susie_pqtl	Proteomics	input_data/COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz	-
+burden_enrichment	-	input_data/QTLBurdenOutlierEnrichment.tsv	-
+median_ko	-	input_data/MedianKOSummary.tsv	-
+burden_count	-	input_data/QTLBurdenOutlierCount.rds	-

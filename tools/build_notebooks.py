@@ -192,8 +192,9 @@ so the panels can run even without the raw inputs.)
 ### Inputs
 
 > **Controlled-access.** The raw inputs derive from *All of Us* controlled-access
-> data and are not in this repository. The prep step reads them from `FIG2_INPUT`
-> (default `input_data/`); the derived per-panel `Fig2/data/*.rds` are committed,
+> data and are not in this repository. The prep step reads them **by manifest key**
+> (`Fig2/inputs.tsv`) from the staging root `FIG2_INPUT` (default the cwd; the files
+> live under `input_data/`); the derived per-panel `Fig2/data/*.rds` are committed,
 > so the panel cells below run from those even if the raw inputs are absent.
 """,
    "env": {"FIG2_OBJ": "objects", "FIG2_DATA": "data"},

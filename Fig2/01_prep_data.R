@@ -6,10 +6,12 @@
 source("fig2/00_setup.R")
 
 message("Loading QTL inputs ...")
-eQTL_COMB_susie <- add_derived(read_qtl("COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"))
-sQTL_COMB_susie <- add_derived(read_qtl("COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz"))
-pqtl_file  <- "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz"
-pQTL_susie <- if (file.exists(file.path(INPUT, pqtl_file))) add_derived(read_qtl(pqtl_file)) else NULL
+eQTL_COMB_susie <- add_derived(read_qtl("susie_eqtl"))
+sQTL_COMB_susie <- add_derived(read_qtl("susie_sqtl"))
+# Proteomics is optional: input_path() errors if the file is absent (no gs_uri to
+# stage it), so treat that as "omit pQTL" — mirrors fig5's optional `nohom` input.
+pqtl_path  <- tryCatch(input_path("susie_pqtl"), error = function(e) NA_character_)
+pQTL_susie <- if (!is.na(pqtl_path)) add_derived(fread(pqtl_path, nThread = 4)) else NULL
 if (is.null(pQTL_susie)) message("Note: proteomics (pQTL) input not found — omitted.")
 
 saveit <- function(x, name) {
@@ -122,17 +124,17 @@ cumulative_effects <- eQTL_COMB_susie %>%
 saveit(cumulative_effects, "D")
 
 ## ---- Panel E: QTL-burden outlier enrichment -------------------------------
-saveit(read_qtl("QTLBurdenOutlierEnrichment.tsv"), "E")
+saveit(read_qtl("burden_enrichment"), "E")
 
 ## ---- Panel F: median genes per individual ---------------------------------
-median_pc <- read_qtl("MedianKOSummary.tsv") %>%
+median_pc <- read_qtl("median_ko") %>%
   filter(gene_type == "protein_coding") %>%
   mutate(gene_type = "Protein Coding",
          lower = as.numeric(str_extract(as.character(pct_bin), "-?[0-9]+\\.?[0-9]*")))
 saveit(median_pc, "F")
 
 ## ---- Panel G: validated dosage-like events (dumbbell) ---------------------
-outliers_df <- readRDS(file.path(INPUT, "QTLBurdenOutlierCount.rds")) %>%
+outliers_df <- readRDS(input_path("burden_count")) %>%
   mutate(label = str_replace(label, "\\(", "\n"),
          label = str_replace(label, ", ", "\n"),
          label = str_remove(label, "\\)"),
