@@ -1,8 +1,8 @@
 # =============================================================================
-# Shared setup for the Figure 5 supplements (Fig5/supplements/*.R).
-# Self-contained; run each script from this directory (Fig5/supplements/).
-# Provides fonts, the ANC palette, borzoi/AG/output paths, and the SPR browser
-# machinery (Fig5/panels/_helpers_spr.R). Override paths via env vars.
+# Shared setup for the Figure 5 supplements (Fig5/extra/supplements/*.R).
+# Provides fonts, the ANC palette, borzoi/AG/output paths, and — when run from
+# the project root — the SPR browser machinery folded into fig5/00_setup.R
+# (sourced at the end of this file). Override paths via env vars.
 # =============================================================================
 suppressPackageStartupMessages({
   library(tidyverse); library(data.table); library(cowplot); library(ggseqlogo)

@@ -857,7 +857,7 @@ build_panelG <- function(eqtl, variant_freq) {
              fill = focal_color, colour = "black", stroke = 0.8) +
     scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
     scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
-    theme_void()
+    theme_void(base_family = FONT)
   wrap_elements(full = cowplot::plot_grid(g_header, make_spr_browser(),
                                           ncol = 1, rel_heights = c(0.14, 1)))
 }

@@ -49,6 +49,13 @@ tags <- extract_tag_labels(Fig5)
 ok("Figure 5 carries exactly 7 tags", length(tags) == 7L)
 ok("its tags are exactly A, B, C, D, E, F, G",
    setequal(unique(tags), c("A", "B", "C", "D", "E", "F", "G")))
+# Pin the letter-to-position mapping, not just the set: patchwork draws leaves in
+# the row-major traversal order A,B,C,D,F,E,G, and assemble.R's explicit tag
+# sequence assigns those exact letters in that order. A regression to plain
+# tag_levels="A" would draw A,B,C,D,E,F,G here and fail this — the point being the
+# bottom 2x2 is column-major (ACVRL1 D/E left, SPR F/G right).
+ok("tags are drawn in the intended order (D,F top row; E,G bottom row)",
+   identical(tags, c("A", "B", "C", "D", "F", "E", "G")))
 ok("Figure5.pdf was written", file.exists(file.path(root, "Figure5.pdf")))
 
 cat("test_fig5_assembly.R passed.\n")
