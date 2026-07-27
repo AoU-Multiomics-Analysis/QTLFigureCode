@@ -15,7 +15,7 @@ and their relationship to expression-outlier and dosage-like phenotypes.
 
 ## The figure
 
-**Main figure** (`Fig2.pdf` / `Fig2.png`), composed of seven panels (A–G):
+**Main figure** (`Figure2.pdf` / `Figure2.png`), composed of seven panels (A–G):
 
 | Panel | Content | Source |
 |-------|---------|--------|
@@ -38,30 +38,28 @@ as a line. Computed over fine-mapped expression variants (PIP > 0.9).
 
 ```
 .
-├── Fig2_clean.R                 # standalone, all-in-one script (builds the main figure)
-├── fig2/                        # modular pipeline (same figure, split by panel)
+├── fig2/                        # modular pipeline (one directory per figure)
 │   ├── 00_setup.R               #   libraries, font, theme, uniform text sizes, manifest loaders, shared helpers
 │   ├── inputs.tsv               #   input manifest: key, Assay, local_subpath, gs_uri
 │   ├── 01_prep_data.R           #   reads raw inputs ONCE (by manifest key) -> fig2/data/<A-G>.rds
 │   ├── panels/panelA.R … panelG.R  #   each builds one panel -> fig2/objects/<X>.rds
-│   ├── assemble.R               #   composes panels -> Fig2.pdf / Fig2.png
+│   ├── assemble.R               #   composes panels -> Figure2.pdf / Figure2.png
 │   ├── run_all.R                #   prep -> panels -> assemble (end-to-end)
 │   ├── supp_ancestry_stacked.R  #   supplemental figure (standalone)
+│   ├── NOTES.md                 #   behaviour changes + deferred work
+│   ├── Fig2.ipynb               #   generated notebook (tools/build_notebooks.py)
 │   ├── data/                    #   per-panel data frames (.rds)   [git-ignored]
 │   └── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
 ├── input_data/                  # raw inputs (controlled access, NOT committed)
-├── Fig2.pdf / Fig2.png          # main figure outputs
+├── Figure2.pdf / Figure2.png    # main figure outputs
 └── FigS_AncestryStacked.*       # supplemental figure outputs
 ```
 
-Two equivalent ways to build the main figure:
-
-- **`Fig2_clean.R`** — one self-contained script. Good for a quick, single-shot render.
-- **`fig2/`** — a modular pipeline. The large expression table is read **once**
-  in `01_prep_data.R`; each panel is built and cached independently, then
-  `assemble.R` composes them. Iterate on a single panel without re-reading the
-  raw data. Per-panel **data** and **ggplot objects** are saved so a downstream
-  assembly/re-plot script can consume either.
+The large SuSiE tables are read **once** in `01_prep_data.R`; each panel is then
+built and cached independently, and `assemble.R` composes them — so you can
+iterate on a single panel without re-reading the raw data. Per-panel **data** and
+**ggplot objects** are both cached, so a downstream assembly/re-plot script can
+consume either. Both caches are participant-derived and git-ignored.
 
 ---
 
@@ -70,11 +68,8 @@ Two equivalent ways to build the main figure:
 Run everything from the **project root** (the folder containing `input_data/`).
 
 ```bash
-# Modular pipeline (recommended): data prep -> panels -> assembly
+# Full pipeline: data prep -> panels -> assembly
 Rscript fig2/run_all.R
-
-# ...or the standalone equivalent
-Rscript Fig2_clean.R
 
 # Supplemental figure
 Rscript fig2/supp_ancestry_stacked.R
@@ -89,8 +84,8 @@ Rscript fig2/assemble.R        # recompose the figure
 
 ### Outputs
 
-- `Fig2.pdf` — 40×24″ vector figure (primary deliverable)
-- `Fig2.png` — full-size raster preview
+- `Figure2.pdf` — 40×24″ vector figure (primary deliverable)
+- `Figure2.png` — full-size raster preview
 - `FigS_AncestryStacked.pdf` / `.png` — supplemental figure
 
 ---
