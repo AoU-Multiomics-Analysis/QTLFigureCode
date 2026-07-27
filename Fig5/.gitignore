@@ -1,0 +1,14 @@
+objects/
+data/
+inputs/
+.DS_Store
+
+# Generated supplement/analysis outputs (participant-derived — never commit)
+extra/analysis/figures/
+extra/supplements/output/
+extra/supplements/ada_scifig/output/
+extra/supplements/ada_scifig/panels/
+
+# Python bytecode
+__pycache__/
+*.pyc
