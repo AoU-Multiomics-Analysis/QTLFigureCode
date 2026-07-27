@@ -3,6 +3,10 @@ source("fig2/00_setup.R")
 median_pc <- readRDS(file.path(DATA_DIR, "F.rds"))
 
 # Grey highlight boxes over the deletion-like / duplication-like bins.
+# These box bounds are plain script locals. Anything referencing them must be
+# evaluated EAGERLY (annotate(), or a bare geom_* parameter) -- inside aes() the
+# reference stays lazy, the saved .rds keeps only the symbol, and assemble.R in
+# a fresh session dies with "object 'DupBoxStart' not found".
 DelBoxStart <- 0.5;  DelBoxEnd <- 2.45
 DupBoxStart <- 7.5;  DupBoxEnd <- 13.45
 DupBoxMid   <- DupBoxStart + (DupBoxEnd - DupBoxStart) / 2
@@ -21,12 +25,12 @@ pF <- median_pc %>%
               color = "grey35", fontface = "bold") +
     geom_text(x = DupBoxMid, y = max_median + 250, label = "Dup-Like", size = ANN_MD,
               color = "grey35", fontface = "bold") +
-    geom_segment(aes(x = 0.6, xend = 2.25, y = 1000, yend = 1000),
-                 inherit.aes = FALSE, color = "black", linewidth = 0.25) +
+    annotate("segment", x = 0.6, xend = 2.25, y = 1000, yend = 1000,
+             color = "black", linewidth = 0.25) +
     geom_text(x = 1.425, y = 1200, label = "5 Genes", size = ANN_MD,
               color = "grey35", fontface = "bold") +
-    geom_segment(aes(x = DupBoxStart + 0.5, xend = DupBoxEnd - 0.5, y = 1000, yend = 1000),
-                 inherit.aes = FALSE, color = "black", linewidth = 0.25) +
+    annotate("segment", x = DupBoxStart + 0.5, xend = DupBoxEnd - 0.5,
+             y = 1000, yend = 1000, color = "black", linewidth = 0.25) +
     geom_text(x = DupBoxMid, y = 1200, label = "108 Genes", size = ANN_MD,
               color = "grey35", fontface = "bold") +
     labs(x = "Percent change bin", y = "Median genes per individual") +
