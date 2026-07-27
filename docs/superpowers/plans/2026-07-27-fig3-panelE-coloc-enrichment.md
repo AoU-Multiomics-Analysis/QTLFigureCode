@@ -585,10 +585,13 @@ coloc_feature_enrichment <- function(refresh = FALSE)
         d <- d %>% filter(Coloc == TRUE)
         d$.outcome <- as.logical(d$rare)
       }
+      # `rare` is a tested FEATURE in A but the OUTCOME in B. Regressing a
+      # variable on itself is meaningless, so it is dropped from B only.
+      use <- if (analysis == "A") feats else setdiff(feats, "rare")
       message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
-      res <- fit_feature_enrichment(d, ".outcome", setdiff(feats, "rare"))
+      res <- fit_feature_enrichment(d, ".outcome", use)
       # Coverage assertion: a shrinking feature set must not look like a clean run.
-      n_expected <- length(setdiff(feats, "rare"))
+      n_expected <- length(use)
       if (nrow(res) < n_expected)
         message("    ", nrow(res), "/", n_expected, " features tested")
       if (!nrow(res)) return(NULL)
@@ -600,7 +603,7 @@ coloc_feature_enrichment <- function(refresh = FALSE)
   })
 ```
 
-Note `rare` is excluded from the feature list — it is a *feature* in analysis A but the *outcome* in B, and regressing a variable on itself is meaningless. Excluding it from both keeps one feature list and avoids the trap.
+Note `rare` is a tested feature in analysis A (spec §4 lists it among the binarized covariates) but the *outcome* in B, so it is dropped from B only. Regressing a variable on itself would otherwise be meaningless.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -619,6 +622,7 @@ git commit -m "Fig3: memoized coloc feature-enrichment builder"
 ### Task 6: Panel E — the pair-contrast scatter
 
 **Files:**
+- Modify: `Fig3/00_setup.R` (add `build_panelE()` beside the other builders)
 - Modify: `Fig3/panels/panelE.R`
 - Modify: `Fig3/NOTES.md`
 - Test: `tests/test_fig3_enrichment.R` (append)
