@@ -6,7 +6,12 @@ results, with authored markdown explaining each analysis step.
 The code cells are pulled from the actual pipeline scripts at build time, so the
 notebooks stay faithful to the code and can be regenerated after any change:
 
-    python3 tools/build_notebooks.py
+    python3 tools/build_notebooks.py          # all figures
+    python3 tools/build_notebooks.py Fig4     # just one figure
+
+Generating a figure's notebook is a **standard part of cleaning that figure up**:
+when a figure gains a modular pipeline, add its config to FIGURES below and commit
+`FigN/FigN.ipynb` alongside the pipeline.
 
 Design
 ------
@@ -111,6 +116,11 @@ PANEL_NOTES = {
  ("Fig3","C"): "Fits, per assay pair, the interaction between −log(MAF) and cross-assay effect-size correlation, and plots each coefficient with its 95% CI — does the strength of a shared signal track allele frequency? (The three per-pair model formulas are deliberately not identical; see `NOTES.md`.)",
  ("Fig3","D"): "eQTL vs. pQTL fine-mapped effect sizes, faceted by MAF bin (Common / Low-Freq / Rare), with a per-bin slope and N — how expression and protein effects relate across the frequency spectrum.",
  ("Fig3","E"): "A reserved slot in the bottom row; its content is undecided, so the code renders a blank to keep the layout stable (see `Fig3/NOTES.md`).",
+
+ ("Fig4","A"): "For each trait category, the number of colocalizing genes (intensity-shaded bars) beside the credible-set colocalization rate (lollipop, with a dashed median reference) — restricted to the top-10 categories with more than five colocalizing genes.",
+ ("Fig4","B"): "Histogram of the R² increase (%) that rare variants add to TWAS, computed as the difference in adjusted R² between allele-frequency thresholds 0 and 0.01 for genes with a significant fit — how much predictive signal rare variants contribute.",
+ ("Fig4","C"): "Common and rare conditional-TWAS QQ plots over nine blood traits, comparing colocalized genes against **MatchIt propensity-matched** non-colocalized genes (\"Null\") — an inflation test that controls for expression, selection, rare-variant count and LD.",
+ ("Fig4","D"): "Odds-ratio forest (logistic regression) for the enrichment of rare vs. common conditional-TWAS signal across four gene-set outcomes — Mendelian (any), Mendelian (immune/hematological), druggable, and approved drug target. Both continuous and binary predictor sets are fit; the panel plots the continuous rare/common terms (see `Fig4/NOTES.md`).",
 }
 
 FIGURES = {
@@ -250,6 +260,48 @@ changing an input.
         "colocalized, by assay pair."),
    ],
  },
+ "Fig4": {
+   "num": 4, "cap": "Fig4", "lower": "fig4", "obj_letters": list("ABCD"),
+   "title": "Figure 4 — QTL–GWAS colocalization and rare-variant TWAS",
+   "overview": """
+This notebook reproduces **Figure 4**. The figure connects molecular QTL
+colocalization with GWAS traits to downstream rare-variant signal: how many genes
+colocalize per trait category and at what credible-set rate, the R² that rare
+variants add to TWAS, whether colocalized genes carry inflated conditional-TWAS
+signal versus matched controls, and whether that signal enriches in clinically
+important gene sets.
+
+Like Figure 3, `00_setup.R` provides **memoized derived-data builders**
+(`read_conditional_twas()`, `gene_sets()`, `coloc_by_trait()`,
+`qq_match_source()`, `gene_twas_data()`) that each build once and cache to
+`Fig4/data/`. Panels call only the builders they need.
+""",
+   "data_note": """
+### Inputs
+
+> **Controlled-access.** Every input derives from *All of Us* controlled-access
+> data and is not in this repository; run this on the Workbench.
+
+Inputs are **manifest-driven** (`Fig4/inputs.tsv`). The two
+`high_level_coloc_outputs/` tables are extracted from a single archive
+(`gsutil cp gs://…/high_level_coloc_outputs.tar.gz . && tar -xf …`); the ClinGen
+parquet, drug-interaction table, R² and conditional-TWAS tables are local-only and
+must be pre-staged. The derived-data builders cache to `Fig4/data/` **by name**,
+so clear that directory (or pass `refresh = TRUE`) after changing an input.
+
+> **Results differ from the pre-cleanup script.** The duplicated
+> conditional-TWAS table (Panel D) is deduplicated to its clean version, and the
+> unused GeneBayes read is dropped. See `Fig4/NOTES.md`.
+""",
+   "env": {"FIG4_MANIFEST": "inputs.tsv", "FIG4_OBJ": "objects", "FIG4_DATA": "data"},
+   "steps": [
+     ("panel","Fig4/panels/panelA.R","A","coloc_plot"),
+     ("panel","Fig4/panels/panelB.R","B","R2_dist"),
+     ("panel","Fig4/panels/panelC.R","C","p_blood_qq"),
+     ("panel","Fig4/panels/panelD.R","D","p"),
+     ("assemble","Fig4/assemble.R",None,"Fig4"),
+   ],
+ },
 }
 
 # --- build -------------------------------------------------------------------
@@ -279,12 +331,12 @@ def build(figkey):
         + ("brings in the manifest loaders and the folded-in analysis / plot "
            "functions" if figkey != "Fig2" else "brings in the shared helper "
            "functions")
-        + (" plus the memoized derived-data builders" if figkey == "Fig3" else "")
+        + (" plus the memoized derived-data builders" if figkey in ("Fig3", "Fig4") else "")
         + " — so the figure is self-contained."
     ))
     cells.append(code(setup_cell_code(lower, cap, F["env"])))
 
-    if figkey in ("Fig1", "Fig3"):
+    if figkey in ("Fig1", "Fig3", "Fig4"):
         cells.append(md(
             "### Panels\n\nEach panel below **loads only the inputs it needs** "
             "(staging them on demand), does its wrangling, builds one ggplot object, "
@@ -344,6 +396,14 @@ def build(figkey):
 
 
 if __name__ == "__main__":
-    for k in ("Fig1", "Fig2", "Fig3"):
+    # No args -> build every figure's notebook. Pass figure keys (e.g. "Fig4")
+    # to build only those -- the per-figure regeneration used during a cleanup.
+    import sys
+    targets = sys.argv[1:] or list(FIGURES.keys())
+    unknown = [t for t in targets if t not in FIGURES]
+    if unknown:
+        sys.exit(f"unknown figure(s): {', '.join(unknown)}; "
+                 f"choose from {', '.join(FIGURES)}")
+    for k in targets:
         out, n = build(k)
         print(f"wrote {out.relative_to(ROOT)}  ({n} cells)")

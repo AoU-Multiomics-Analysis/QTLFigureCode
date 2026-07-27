@@ -144,3 +144,99 @@ use_fig3_fixture <- function(fx) {
              FIG3_OBJ      = file.path(fx$root, "objects"),
              FIG3_OUTDIR   = fx$root)
 }
+
+# --- Fig4 mock project -------------------------------------------------------
+# Small TSV stand-ins for Fig4's tabular inputs, enough to exercise the pure
+# transforms. The ClinGen parquet and gene-set derivation are tested from an
+# in-memory frame (see tests/test_fig4_helpers.R). Task 8 extends this fixture
+# with the r2_twas / conditional_twas / drug / ClinGen inputs for the full run.
+make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
+  unlink(root, recursive = TRUE)
+  for (d in c("high_level_coloc_outputs/harmonized",
+              "high_level_coloc_outputs/final_summaries", "reference"))
+    dir.create(file.path(root, d), recursive = TRUE, showWarnings = FALSE)
+  wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
+
+  # coloc gene table: gene / trait / trait_category / any_coloc
+  genes <- expand.grid(g = 1:8, trait = c("eosinophil", "LDL"),
+                       stringsAsFactors = FALSE)
+  gene_tbl <- data.frame(
+    gene = paste0("ENSG", sprintf("%08d", genes$g)),
+    trait = genes$trait,
+    trait_category = ifelse(genes$trait == "eosinophil", "hematological", "lipid"),
+    any_coloc = TRUE)
+  # fwrite gzips by the .gz extension, so read_any()'s `gzip -dc` path works.
+  data.table::fwrite(
+    gene_tbl,
+    file.path(root, "high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz"),
+    sep = "\t")
+
+  # coloc rate: one union row per trait
+  rate_tbl <- data.frame(
+    trait = c("eosinophil", "LDL"), layer = "union",
+    pct_stringent_union = c(30, 20), pct_lenient_union = c(45, 33))
+  wtsv(rate_tbl, file.path(root, "high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv"))
+
+  # R^2 TWAS: two AF thresholds per phenotype so the pivot has `0` and `0.01`
+  r2 <- do.call(rbind, lapply(1:12, function(i) data.frame(
+    phenotype_id = paste0("g", i), AF_threshold = c(0, 0.01),
+    r.squared = c(0.30 + i/100, 0.20 + i/100), H2 = 0.5, SE = 0.05, Pval = 1e-8)))
+  wtsv(r2, file.path(root, "R2_TWAS_combined.tsv"))
+
+  # Conditional TWAS: enough colocalized + non-colocalized rows for MatchIt and glm
+  # Conditional TWAS: 200 genes, seeded for reproducibility. any_coloc and the
+  # gene-set memberships below are independent random draws at moderate prevalence
+  # so that (a) Panel C's MatchIt has both a treated and a control group, and
+  # (b) Panel D's per-outcome enrichment glms are well-posed (no constant outcome
+  # or perfect separation, which would break broom's confint profiling).
+  set.seed(2026)
+  ng      <- 200
+  gene_id <- paste0("ENSG", sprintf("%08d", 1:ng))
+  desc    <- paste0("GENE", 1:ng)
+  ct <- data.frame(
+    status = "ok", gene = gene_id, coloc_trait = "eosinophil",
+    molecular_trait_id = paste0("m", 1:ng),
+    any_coloc = sample(c(TRUE, FALSE), ng, replace = TRUE),
+    TWAS_path = "p1",
+    z_rare_cond = stats::rnorm(ng, 2), rare_zscore = stats::rnorm(ng, 2),
+    common_zscore = stats::rnorm(ng, 1), Vcor = 0.1, GLCP = 0.9,
+    p_rare_cond = stats::runif(ng), rare_pvalue = stats::runif(ng),
+    common_pvalue = stats::runif(ng), full_pvalue = stats::runif(ng),
+    mean_TPM = stats::runif(ng, 1, 50), shet = stats::runif(ng, 0.001, 0.1),
+    n_rare = sample(1:10, ng, replace = TRUE), Description = desc)
+  # data.table::fwrite handles the .gz extension by gzipping
+  data.table::fwrite(ct, file.path(root, "ConditionalTWAS.cleaned.tsv.gz"), sep = "\t")
+
+  # Drug interactions: ~55% druggable, ~40% of those approved (independent)
+  is_drug <- sample(c(TRUE, FALSE), ng, replace = TRUE, prob = c(.55, .45))
+  drug_genes <- desc[is_drug]
+  wtsv(data.frame(gene_name = drug_genes,
+                  approved = sample(c(TRUE, FALSE), length(drug_genes),
+                                    replace = TRUE, prob = c(.4, .6))),
+       file.path(root, "reference/interactions.tsv"))
+
+  # ClinGen parquet: ~65% Definitive/Strong (Mendelian), ~35% anemia/immune (heme)
+  if (requireNamespace("arrow", quietly = TRUE)) {
+    dir.create(file.path(root, "reference/evidence_clingen"), showWarnings = FALSE)
+    clingen <- data.frame(
+      targetFromSourceId = paste0("S", 1:ng),
+      allelicRequirements = "autosomal recessive",
+      confidence = sample(c("Definitive", "Strong", "Limited"), ng,
+                          replace = TRUE, prob = c(.35, .30, .35)),
+      score = 1, studyId = paste0("st", 1:ng), targetId = gene_id,
+      diseaseFromSource = sample(c("hereditary anemia", "cardiomyopathy",
+                                   "immune deficiency"), ng,
+                                 replace = TRUE, prob = c(.35, .40, .25)))
+    arrow::write_parquet(clingen,
+      file.path(root, "reference/evidence_clingen/part-0.parquet"))
+  }
+
+  list(root = root)
+}
+
+use_fig4_fixture <- function(fx) {
+  Sys.setenv(FIG4_INPUT    = fx$root,
+             FIG4_DATA     = file.path(fx$root, "data"),
+             FIG4_OBJ      = file.path(fx$root, "objects"),
+             FIG4_OUTDIR   = fx$root)
+}
