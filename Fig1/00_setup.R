@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
 # permutations/eqtl/…). Set FIG1_INPUT to keep inputs in a separate folder.
 INPUT    <- Sys.getenv("FIG1_INPUT",    ".")            # staging root (cwd)
 OBJ_DIR  <- Sys.getenv("FIG1_OBJ",      "fig1/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG1_OUTDIR",   ".")            # final Figure1.pdf/png
+OUTDIR   <- Sys.getenv("FIG1_OUTDIR", "fig1")         # final Figure1.pdf/png
 MANIFEST <- Sys.getenv("FIG1_MANIFEST", "fig1/inputs.tsv")
 dir.create(OBJ_DIR, showWarnings = FALSE, recursive = TRUE)
 
@@ -79,6 +79,8 @@ AncestryColorPalette <- data.frame(
 # metadata attached to the rows returned by load_input(). Each script loads only
 # the keys it needs (see the panel scripts).
 # =============================================================================
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
+
 source("common/manifest.R")
 
 # =============================================================================
@@ -122,8 +124,10 @@ LoadTopmedeQTL <- function(path) {
     mutate(study = "Topmed")
 }
 
-# UKBB pQTL reference. Currently deferred (no input file); kept for the
-# novel-pGene comparison once the reference is supplied. See NOTES.md.
+# UKBB-PPP cis-pQTL reference for the novel-pGene comparison in Panel D.
+# Reads sheet 10 (ST9) of the Nature 2023 supplementary workbook, skipping the
+# 4 header rows, keeps the cis associations and exposes the Ensembl gene ID as
+# `gene_id`. See NOTES.md.
 LoadUKBBpQTL <- function(path) {
   read_xlsx(path, sheet = 10, skip = 4) %>%
     filter(`cis/trans` == "cis") %>%
@@ -189,9 +193,36 @@ ComputeCredibleSetCDF <- function(cs_count_data) {
 }
 
 # --- Fine-mapping annotation enrichment (PlotFunctions.R) -------------------
+# VEP reports every consequence for a variant as ONE comma-separated string
+# ("intron_variant,NMD_transcript_variant"), and ~20% of rows carry more than
+# one term. ComputeFinemappingAnnotationEnrichment() picks annotation columns up
+# via where(is.logical), so unless each term becomes its own logical column the
+# whole coding / splice / UTR / noncoding-RNA half of variant_functional_groups
+# is silently absent from panel H -- the panel still renders, just with three
+# regulatory annotations instead of the full set.
+#
+# One-hot expansion is done by matrix construction rather than
+# separate_rows() + pivot_wider(): these tables carry ~80 columns, and
+# pivot_wider would treat every one of them as an id column.
+.expand_vep_consequences <- function(d) {
+  if (!"consequence" %in% names(d) || !nrow(d)) return(d)
+  terms <- lapply(strsplit(as.character(d$consequence), ",", fixed = TRUE),
+                  function(x) unique(trimws(x)))
+  lvl <- setdiff(unique(unlist(terms)), c("", ".", NA))
+  if (!length(lvl)) return(d)
+  # Never clobber a column that already exists (the cCRE logicals are already
+  # one-hot); a duplicate name would make select() ambiguous downstream.
+  lvl <- setdiff(lvl, names(d))
+  if (!length(lvl)) return(d)
+  m <- vapply(lvl, function(t) vapply(terms, function(x) t %in% x, logical(1)),
+              logical(length(terms)))
+  dplyr::bind_cols(d, as.data.frame(m, stringsAsFactors = FALSE))
+}
+
 ComputeFinemappingAnnotationEnrichment <- function(AnnotatedFinemapping) {
   VariantAnnotationsLong <- AnnotatedFinemapping %>%
     filter(pip > .9 | pip < .01) %>%
+    .expand_vep_consequences() %>%
     select(variant, where(is.logical), pip) %>%
     group_by(variant) %>%
     filter(pip == max(pip)) %>%
@@ -312,8 +343,11 @@ PlotFinemappingEnrichment <- function(MergedEnrichmentData, variant_functional_g
     inframe_deletion        = "Inframe deletion",
     PLS                     = "Promoter",
     dELS                    = "Distal enhancer",
-    `5_prime_utr_variant`   = "5' UTR",
-    `3_prime_utr_variant`   = "3' UTR",
+    # VEP spells these with a capital UTR. The lowercase form silently failed
+    # the `name %in% names(annotation_labels)` filter below, dropping both UTR
+    # bars from the panel even though their enrichments were computed fine.
+    `5_prime_UTR_variant`   = "5' UTR",
+    `3_prime_UTR_variant`   = "3' UTR",
     pELS                    = "Proximal enhancer",
     splice_region_variant   = "Splice region"
   )
@@ -330,6 +364,7 @@ PlotFinemappingEnrichment <- function(MergedEnrichmentData, variant_functional_g
   shade_df <- plot_data %>%
     distinct(functional_group, annotation_clean, row) %>%
     filter(row %% 2 == 0)
+
   xmax_rect <- max(plot_data$conf.high, na.rm = TRUE)
   xmin_rect <- min(1, min(plot_data$conf.low, na.rm = TRUE) / 1.5)
   xmax_rect <- xmax_rect * 1.5

@@ -1,5 +1,6 @@
-# Panel D — novel eGene + sGene counts vs external consortia (pGene deferred)
-# Inputs: perm (COMB expression/splicing), gene_gtf, external references
+# Panel D — novel eGene + sGene + pGene counts vs external consortia
+# Inputs: perm (COMB expression/splicing/protein), gene_gtf, external references,
+#         ukbb_pqtl
 source("fig1/00_setup.R")
 
 QTL_data <- load_input("perm")
@@ -35,13 +36,29 @@ novel_sQTLs <- QTL_data %>%
   ExtractNovelQTLs(ExternalsQTLs$gene_id) %>%
   mutate(type = "sGene")
 
+# Novel pGenes vs the UKBB-PPP cis-pQTL reference. The original notebook
+# referenced UKBB_pqtl_path but never assigned it, so this bar was silently
+# absent; see NOTES.md. lncRNA is dropped because the proteomics assay cannot
+# measure it, so a "novel lncRNA pGene" count would be an artefact of the join.
+UKBB_pQTLs <- LoadUKBBpQTL(input_path("ukbb_pqtl"))
+
+novel_pQTLs <- QTL_data %>%
+  filter(group == "COMB" & Assay == "Protein") %>%
+  filter(qval < .05) %>%
+  mutate(phenotype_id = str_remove_all(phenotype_id, ".*_|\\..*")) %>%
+  left_join(gene_types, by = c("phenotype_id" = "gene_id")) %>%
+  ExtractNovelQTLs(UKBB_pQTLs$gene_id) %>%
+  filter(group != "lncRNA") %>%
+  mutate(type = "pGene")
+
 gene_type_levels <- c("Protein-Coding", "lncRNA", "non-coding RNA")
-novel_qtl_count <- bind_rows(novel_eQTLs, novel_sQTLs) %>%
+type_levels      <- c("eGene", "sGene", "pGene")
+novel_qtl_count <- bind_rows(novel_eQTLs, novel_sQTLs, novel_pQTLs) %>%
   mutate(group = factor(group, levels = gene_type_levels),
-         type  = factor(type,  levels = c("eGene", "sGene"))) %>%
+         type  = factor(type,  levels = type_levels)) %>%
   tidyr::complete(group, type, fill = list(count = 0)) %>%
   mutate(group = factor(group, levels = gene_type_levels),
-         type  = factor(type,  levels = c("eGene", "sGene")))
+         type  = factor(type,  levels = type_levels))
 
 pD <- PlotNovelQTLCount(novel_qtl_count)
 
