@@ -1,3 +1,19 @@
+# Resolve a manifest key to the path that manifest DECLARES for it, creating the
+# parent directory. Fixtures must follow the manifest rather than hardcode a
+# layout: the two silently drifted apart the first time the real manifests were
+# repointed at a different staging root, and every affected test failed with a
+# "Missing local input" that pointed at the manifest, not at the fixture.
+manifest_path <- function(rows, root, key, type = NULL) {
+  r <- rows[rows$key == key, , drop = FALSE]
+  if (!is.null(type)) r <- r[r$type == type, , drop = FALSE]
+  if (nrow(r) != 1L)
+    stop("fixture: key '", key, "'", if (!is.null(type)) paste0(" / type '", type, "'") else "",
+         " matched ", nrow(r), " manifest rows; expected exactly 1")
+  out <- file.path(root, r$local_subpath)
+  dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
+  out
+}
+
 # Builds a mock Fig3 project in a temp directory: a manifest plus tiny input
 # files with the same schemas as the real ones. Sourcing scripts set the FIG3_*
 # environment variables from the returned paths BEFORE sourcing fig3/00_setup.R.
@@ -15,8 +31,10 @@
 # comes from.
 make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   unlink(root, recursive = TRUE)
-  for (d in c("finemapping/coloc", "enloc", "reference"))
-    dir.create(file.path(root, d), recursive = TRUE, showWarnings = FALSE)
+  dir.create(root, recursive = TRUE, showWarnings = FALSE)
+  rows <- read.delim("Fig3/inputs.tsv", colClasses = "character")
+  rows <- rows[!rows$key %in% c("protein_lod", "median_tpm", "genebayes_shet"), ]
+  mp <- function(key, type = NULL) manifest_path(rows, root, key, type)
 
   wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
 
@@ -74,7 +92,7 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_index = "L1", posterior_mean = 0.3, posterior_sd = 0.1,
     cs_id = "E_ENSG003_L1", gene_name = "GENE_ENSG003",
     af_cols[NA_integer_, , drop = FALSE]))
-  wtsv(eqtl, file.path(root, "finemapping/coloc/eQTL_susie.COMB.annotated.cleaned.tsv.gz"))
+  wtsv(eqtl, mp("susie_eqtl"))
 
   sqtl <- data.frame(
     molecular_trait_id = paste0(genes, ":clu_1"),    # gene is extracted from this
@@ -86,7 +104,7 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id          = s_cs
   )
   sqtl <- cbind(sqtl, af_for(sqtl$variant))
-  wtsv(sqtl, file.path(root, "finemapping/coloc/sQTL_susie.COMB.annotated.cleaned.tsv.gz"))
+  wtsv(sqtl, mp("susie_sqtl"))
 
   pqtl <- data.frame(
     molecular_trait_id = genes,
@@ -96,21 +114,17 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     posterior_mean = seq(0.7, 0.2, length.out = nv),
     posterior_sd   = 0.1,
     cs_id          = p_cs,
-    group          = "COMB"
+    group          = "COMB.proteomics"   # real tables carry the per-assay value
   )
   pqtl <- cbind(pqtl, af_for(pqtl$variant))
-  # A non-COMB row that filter(group == "COMB") must drop. Its frequencies are
-  # deliberately WRONG: if the group filter ever stopped running, this row would
-  # collide with the COMB row for the same variant and trip the conflict guard.
-  pqtl <- rbind(pqtl, transform(pqtl[1, ], group = "AFR", gvs_afr_af = 0.99))
-  wtsv(pqtl, file.path(root, "finemapping/coloc/pQTL_susie.COMB.annotated.cleaned.tsv.gz"))
+  wtsv(pqtl, mp("susie_pqtl"))
 
   # --- FastENLOC gene level (a normal TSV) ----------------------------------
   gene_out <- function(p, glcp) wtsv(
     data.frame(Gene = c("ENSG001", "ENSG002"), GLCP = glcp), p)
-  gene_out(file.path(root, "enloc/eQTL_pQTL.enloc.gene.out"), c(0.99, 0.98))
-  gene_out(file.path(root, "enloc/sQTL_pQTL.enloc.gene.out"), c(0.99, 0.01))
-  gene_out(file.path(root, "enloc/eQTL_sQTL.enloc.gene.out"), c(0.99, 0.01))
+  gene_out(mp("enloc_gene", "eQTL-pQTL"), c(0.99, 0.98))
+  gene_out(mp("enloc_gene", "sQTL-pQTL"), c(0.99, 0.01))
+  gene_out(mp("enloc_gene", "eQTL-sQTL"), c(0.99, 0.01))
 
   # --- FastENLOC signal level (whitespace-aligned; the header is discarded) --
   # Signal = "<gene>:<left cs_id>(@)<gene>:<right cs_id>".
@@ -118,13 +132,13 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     "Signal Num_SNP CPIP_qtl CPIP_gwas_marginal CPIP_gwas_qtl_prior RCP LCP",
     sprintf("%s(@)%s 5 0.9 0.1 0.8 %s 0.9", left, right, rcp)), p)
   g2 <- c("ENSG001", "ENSG002")
-  sig_out(file.path(root, "enloc/eQTL_pQTL.enloc.sig.out"),
+  sig_out(mp("enloc_cs", "eQTL-pQTL"),
           paste0(g2, ":E_", g2, "_L1"), paste0(g2, ":", uni[g2], "_L1"),
           c("0.99", "0.98"))
-  sig_out(file.path(root, "enloc/sQTL_pQTL.enloc.sig.out"),
+  sig_out(mp("enloc_cs", "sQTL-pQTL"),
           paste0(g2, ":S_", g2, "_L1"), paste0(g2, ":", uni[g2], "_L1"),
           c("0.99", "0.01"))
-  sig_out(file.path(root, "enloc/eQTL_sQTL.enloc.sig.out"),
+  sig_out(mp("enloc_cs", "eQTL-sQTL"),
           paste0(g2, ":E_", g2, "_L1"), paste0(g2, ":S_", g2, "_L1"),
           c("0.99", "0.01"))
 
@@ -132,18 +146,21 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   snp_out <- function(p, cs) writeLines(c(
     "Signal SNP PIP_qtl PIP_gwas_marginal PIP_gwas_qtl_prior SCP",
     sprintf("%s:%s %s 0.9 0.1 0.8 0.99", genes, cs, snps)), p)
-  snp_out(file.path(root, "enloc/eQTL_pQTL.enloc.snp.out"), e_cs)
-  snp_out(file.path(root, "enloc/sQTL_pQTL.enloc.snp.out"), s_cs)
-  snp_out(file.path(root, "enloc/eQTL_sQTL.enloc.snp.out"), e_cs)
+  snp_out(mp("enloc_variant", "eQTL-pQTL"), e_cs)
+  snp_out(mp("enloc_variant", "sQTL-pQTL"), s_cs)
+  snp_out(mp("enloc_variant", "eQTL-sQTL"), e_cs)
 
   # --- Manifest -------------------------------------------------------------
   manifest <- file.path(root, "inputs.tsv")
-  rows <- read.delim("Fig3/inputs.tsv", colClasses = "character")
-  rows <- rows[!rows$key %in% c("protein_lod", "median_tpm", "genebayes_shet"), ]
   write.table(rows, manifest, sep = "\t", row.names = FALSE, quote = FALSE)
 
   list(root = root, manifest = manifest)
 }
+
+# Path of a manifest key inside an already-built fixture, for tests that poke at
+# an input file directly. Same rule as manifest_path(): never hardcode a layout.
+fixture_path <- function(fx, key, type = NULL)
+  manifest_path(read.delim(fx$manifest, colClasses = "character"), fx$root, key, type)
 
 # Point fig3/00_setup.R at the fixture. Call BEFORE sourcing it.
 use_fig3_fixture <- function(fx) {
@@ -161,9 +178,11 @@ use_fig3_fixture <- function(fx) {
 # with the r2_twas / conditional_twas / drug / ClinGen inputs for the full run.
 make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
   unlink(root, recursive = TRUE)
-  for (d in c("high_level_coloc_outputs/harmonized",
-              "high_level_coloc_outputs/final_summaries", "reference"))
-    dir.create(file.path(root, d), recursive = TRUE, showWarnings = FALSE)
+  dir.create(root, recursive = TRUE, showWarnings = FALSE)
+  # Fig4 has no fixture manifest of its own -- it runs against the real
+  # Fig4/inputs.tsv -- so every file must land where THAT declares it.
+  rows <- read.delim("Fig4/inputs.tsv", colClasses = "character")
+  mp <- function(key) manifest_path(rows, root, key)
   wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
 
   # coloc gene table: gene / trait / trait_category / any_coloc
@@ -177,20 +196,20 @@ make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
   # fwrite gzips by the .gz extension, so read_any()'s `gzip -dc` path works.
   data.table::fwrite(
     gene_tbl,
-    file.path(root, "high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz"),
+    mp("coloc_gene"),
     sep = "\t")
 
   # coloc rate: one union row per trait
   rate_tbl <- data.frame(
     trait = c("eosinophil", "LDL"), layer = "union",
     pct_stringent_union = c(30, 20), pct_lenient_union = c(45, 33))
-  wtsv(rate_tbl, file.path(root, "high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv"))
+  wtsv(rate_tbl, mp("coloc_rate"))
 
   # R^2 TWAS: two AF thresholds per phenotype so the pivot has `0` and `0.01`
   r2 <- do.call(rbind, lapply(1:12, function(i) data.frame(
     phenotype_id = paste0("g", i), AF_threshold = c(0, 0.01),
     r.squared = c(0.30 + i/100, 0.20 + i/100), H2 = 0.5, SE = 0.05, Pval = 1e-8)))
-  wtsv(r2, file.path(root, "R2_TWAS_combined.tsv"))
+  wtsv(r2, mp("r2_twas"))
 
   # Conditional TWAS: enough colocalized + non-colocalized rows for MatchIt and glm
   # Conditional TWAS: 200 genes, seeded for reproducibility. any_coloc and the
@@ -214,7 +233,7 @@ make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
     mean_TPM = stats::runif(ng, 1, 50), shet = stats::runif(ng, 0.001, 0.1),
     n_rare = sample(1:10, ng, replace = TRUE), Description = desc)
   # data.table::fwrite handles the .gz extension by gzipping
-  data.table::fwrite(ct, file.path(root, "ConditionalTWAS.cleaned.tsv.gz"), sep = "\t")
+  data.table::fwrite(ct, mp("conditional_twas"), sep = "\t")
 
   # Drug interactions: ~55% druggable, ~40% of those approved (independent)
   is_drug <- sample(c(TRUE, FALSE), ng, replace = TRUE, prob = c(.55, .45))
@@ -222,11 +241,12 @@ make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
   wtsv(data.frame(gene_name = drug_genes,
                   approved = sample(c(TRUE, FALSE), length(drug_genes),
                                     replace = TRUE, prob = c(.4, .6))),
-       file.path(root, "reference/interactions.tsv"))
+       mp("drug_interactions"))
 
   # ClinGen parquet: ~65% Definitive/Strong (Mendelian), ~35% anemia/immune (heme)
   if (requireNamespace("arrow", quietly = TRUE)) {
-    dir.create(file.path(root, "reference/evidence_clingen"), showWarnings = FALSE)
+    clingen_dir <- mp("clingen")
+    dir.create(clingen_dir, recursive = TRUE, showWarnings = FALSE)
     clingen <- data.frame(
       targetFromSourceId = paste0("S", 1:ng),
       allelicRequirements = "autosomal recessive",
@@ -236,8 +256,7 @@ make_fig4_fixture <- function(root = file.path(tempdir(), "fig4_fixture")) {
       diseaseFromSource = sample(c("hereditary anemia", "cardiomyopathy",
                                    "immune deficiency"), ng,
                                  replace = TRUE, prob = c(.35, .40, .25)))
-    arrow::write_parquet(clingen,
-      file.path(root, "reference/evidence_clingen/part-0.parquet"))
+    arrow::write_parquet(clingen, file.path(clingen_dir, "part-0.parquet"))
   }
 
   list(root = root)

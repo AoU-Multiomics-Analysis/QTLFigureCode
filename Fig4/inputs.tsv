@@ -1,7 +1,7 @@
 key	local_subpath	gs_uri
-coloc_gene	high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz	-
-coloc_rate	high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv	-
-r2_twas	R2_TWAS_combined.tsv	-
-conditional_twas	ConditionalTWAS.cleaned.tsv.gz	-
-drug_interactions	reference/interactions.tsv	-
-clingen	reference/evidence_clingen	-
+coloc_gene	Fig4Data/high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz	-
+coloc_rate	Fig4Data/high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv	-
+r2_twas	Fig4Data/R2_TWAS_combined.tsv	-
+conditional_twas	Fig4Data/ConditionalTWAS.cleaned.tsv.gz	-
+drug_interactions	interactions.tsv	-
+clingen	Fig4Data/evidence_clingen	-
