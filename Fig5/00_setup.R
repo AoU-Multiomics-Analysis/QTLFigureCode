@@ -120,3 +120,71 @@ build_or_cache <- function(name, expr, refresh = FALSE) {
   saveRDS(val, f)
   val
 }
+
+# =============================================================================
+# Data loaders (cached). GeneBayes shet + ClinGen Definitive/Strong genes, then
+# the eQTL SuSiE table annotated with shet + ClinGen flag + rarity.
+#
+# Each heavy loader wraps a PURE seam (frames -> frames) so the join / filter
+# logic is unit-testable without the real Excel / gzip reads.
+# =============================================================================
+
+# ClinGen Definitive/Strong AD/AR/SD genes mapped to Ensembl ids via the SuSiE
+# gene map. NB: a gene curated under BOTH AD and AR yields two rows here; that
+# fan-out is deliberately preserved downstream (Panels B/C) — see NOTES.md.
+derive_clingen <- function(clingen_raw, susie_gene_map) {
+  clingen_raw %>%
+    filter(confidence %in% c("Definitive", "Strong"), moi %in% c("AD", "AR", "SD")) %>%
+    distinct(gene, moi, confidence) %>%
+    transmute(targetFromSourceId = gene, allelicRequirements = moi, confidence) %>%
+    left_join(susie_gene_map, by = c("targetFromSourceId" = "gene_name")) %>%
+    dplyr::rename(targetId = gene_id)
+}
+
+load_reference <- function() {
+  GeneBayes <- read_excel(input_path("genebayes"), sheet = "Supplementary Table 1") %>%
+    transmute(ensg, post_mean)
+  clingen_raw <- fread(input_path("clingen"), skip = 6, header = FALSE, select = 1:7,
+    col.names = c("gene", "hgnc", "disease", "mondo", "moi", "sop", "confidence"))
+  susie_gene_map <- fread(input_path("susie"), select = c("gene_id", "gene_name")) %>%
+    distinct() %>% mutate(gene_id = sub("\\..*", "", gene_id))
+  list(GeneBayes = GeneBayes, clingen = derive_clingen(clingen_raw, susie_gene_map))
+}
+
+# Annotate the SuSiE eQTL table with GeneBayes shet, a ClinGen flag, and rarity.
+# `clingen_genes` is passed as a plain character vector (not reference$...) so it
+# cannot collide with the SuSiE table's own `ref` column under data masking.
+annotate_eqtl <- function(susie, genebayes, clingen_genes) {
+  susie %>%
+    mutate(gene_id_nov = sub("\\..*", "", gene_id)) %>%
+    left_join(genebayes, by = c("gene_id_nov" = "ensg")) %>%
+    mutate(ClinGen = gene_name %in% clingen_genes, rare = gvs_max_af < 0.01)
+}
+
+load_eqtl_susie <- function(reference)
+  annotate_eqtl(fread(input_path("susie")),
+                reference$GeneBayes, reference$clingen$targetFromSourceId)
+
+build_variant_freq <- function(eqtl) {
+  eqtl %>%
+    transmute(variant_key = normalize_variant_id(variant),
+              max_af = gvs_max_af, subpop = gvs_max_subpop, rare, log2_aFC) %>%
+    distinct(variant_key, .keep_all = TRUE) %>%
+    mutate(freq_label = make_freq_label(max_af, subpop, rare),
+           afc_label  = sprintf("log₂ aFC %+.1f", log2_aFC))
+}
+
+# optional private list refining Panel C; NULL (with a note) if absent
+load_nohomozygotes <- function() {
+  f <- tryCatch(input_path("nohom"), error = function(e) NA_character_)
+  if (!is.na(f) && file.exists(f))
+    return(fread(f) %>% mutate(variant = paste(V1, V2, V3, V4, sep = "_")))
+  message("NOTE: nohom input not found (private) — Panel C ranks the strongest ",
+          "decreasing variant per gene without it.")
+  NULL
+}
+
+# cached getters used by the panel scripts
+get_reference    <- function(refresh = FALSE) build_or_cache("reference", load_reference(), refresh)
+get_eqtl         <- function(refresh = FALSE) build_or_cache("eqtl_susie", load_eqtl_susie(get_reference()), refresh)
+get_variant_freq <- function(refresh = FALSE) build_or_cache("variant_freq", build_variant_freq(get_eqtl()), refresh)

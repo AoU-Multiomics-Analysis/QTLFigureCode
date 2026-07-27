@@ -279,3 +279,77 @@ make_suppfig1_fixture <- function(root = file.path(tempdir(), "suppfig1_fixture"
        gtex_tpms = file.path(root, "external/gtex.gct.tsv"),
        annotations = ann)
 }
+
+# --- Fig5 mock project -------------------------------------------------------
+# In-memory frames (and small on-disk stand-ins) matching the schemas the folded
+# Fig5 loaders read, enough to exercise the pure seams: derive_clingen,
+# annotate_eqtl, build_variant_freq, variant_effect_by_inheritance, pct_at_element.
+#
+# Six genes: HEXA / MLC1 (ClinGen AR), GENE_AD (AD), GENE_BOTH (curated under
+# BOTH AD and AR -- pins the preserved fan-out double-count), CTRL1 (low-shet
+# control, not ClinGen), NONCLIN (not ClinGen, high shet -> excluded from B/C).
+make_fig5_fixture <- function(root = file.path(tempdir(), "fig5_fixture")) {
+  unlink(root, recursive = TRUE)
+  dir.create(root, recursive = TRUE, showWarnings = FALSE)
+  wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
+
+  # SuSiE eQTL table (one rare variant per gene, plus a common HEXA variant to
+  # exercise the rarity flag). `ref` is present on purpose (the data-masking trap).
+  susie <- data.frame(
+    gene_id      = c("ENSGH.1","ENSGM.2","ENSGAD.1","ENSGB.1","ENSGC.1","ENSGN.1","ENSGH.1"),
+    gene_name    = c("HEXA","MLC1","GENE_AD","GENE_BOTH","CTRL1","NONCLIN","HEXA"),
+    variant      = c("chr15:72346:C:T","chr22:50100:G:A","chr9:130000:A:C",
+                     "chr1:200000:T:G","chr2:30000:C:G","chr3:40000:G:T","chr15:72999:A:G"),
+    gvs_max_af   = c(0.002, 0.005, 0.003, 0.004, 0.006, 0.008, 0.02),
+    gvs_max_subpop = c("gvs_eur_af","gvs_afr_af","gvs_sas_af","gvs_eas_af",
+                       "gvs_amr_af","gvs_eur_af","gvs_eur_af"),
+    log2_aFC       = c(-6, -4, -3, -2, 0.5, 1.0, -1),
+    posterior_mean = c(0.9, 0.7, 0.6, 0.5, 0.2, 0.3, 0.2),
+    pip            = c(0.98, 0.95, 0.92, 0.95, 0.95, 0.95, 0.99),
+    ref            = c("C","G","A","T","C","G","A"),
+    clinvar_classification = c("pathogenic","uncertain significance",NA,"benign",NA,NA,NA),
+    stringsAsFactors = FALSE)
+  wtsv(susie, file.path(root, "susie.tsv"))
+
+  susie_gene_map <- susie %>% distinct(gene_id, gene_name) %>%
+    mutate(gene_id = sub("\\..*", "", gene_id))
+
+  # GeneBayes shet: CTRL1 low (< 0.01 -> a control gene), the rest high.
+  genebayes <- data.frame(
+    ensg = c("ENSGH","ENSGM","ENSGAD","ENSGB","ENSGC","ENSGN"),
+    post_mean = c(0.8, 0.7, 0.6, 0.5, 0.005, 0.5), stringsAsFactors = FALSE)
+  saveRDS(genebayes, file.path(root, "genebayes.rds"))
+
+  # ClinGen raw (as fread(skip=6, header=FALSE, select=1:7) yields it): 6 filler
+  # lines, then gene / hgnc / disease / mondo / moi / sop / confidence rows.
+  # GENE_BOTH is curated AD *and* AR; LIMGENE (Limited) and XLGENE (XL) are dropped.
+  clingen_lines <- c(
+    "CLINGEN GENE DISEASE VALIDITY,,,,,,", "banner1,,,,,,", "banner2,,,,,,",
+    "banner3,,,,,,", "banner4,,,,,,", "header,,,,,,",
+    "HEXA,HGNC1,d1,MONDO1,AR,SOP1,Definitive",
+    "MLC1,HGNC2,d2,MONDO2,AR,SOP2,Strong",
+    "GENE_AD,HGNC3,d3,MONDO3,AD,SOP3,Definitive",
+    "GENE_BOTH,HGNC4,d4,MONDO4,AD,SOP4,Definitive",
+    "GENE_BOTH,HGNC5,d5,MONDO5,AR,SOP5,Definitive",
+    "LIMGENE,HGNC6,d6,MONDO6,AD,SOP6,Limited",
+    "XLGENE,HGNC7,d7,MONDO7,XL,SOP7,Definitive")
+  writeLines(clingen_lines, file.path(root, "clingen.csv"))
+  clingen_raw <- data.table::fread(file.path(root, "clingen.csv"), skip = 6,
+    header = FALSE, select = 1:7,
+    col.names = c("gene","hgnc","disease","mondo","moi","sop","confidence"))
+
+  # SPR browser tracks for pct_at_element: one mark, alt = half of ref -> -50%.
+  pos <- seq(-300, 300, by = 8)
+  refv <- 10 * exp(-(pos / 60)^2)
+  spr_tracks <- bind_rows(
+    tibble(mark = "CTCF", type = factor("reference", levels = c("reference","alternate")),
+           relative_pos = pos, score = refv),
+    tibble(mark = "CTCF", type = factor("alternate", levels = c("reference","alternate")),
+           relative_pos = pos, score = refv * 0.5))
+
+  list(root = root, susie = susie, susie_gene_map = susie_gene_map,
+       genebayes = genebayes, clingen_raw = clingen_raw, spr_tracks = spr_tracks,
+       susie_path = file.path(root, "susie.tsv"),
+       genebayes_path = file.path(root, "genebayes.rds"),
+       clingen_path = file.path(root, "clingen.csv"))
+}
