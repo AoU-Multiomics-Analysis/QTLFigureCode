@@ -59,6 +59,12 @@ ok("build_panelB returns an untagged ggplot",
 ok("build_panelC returns a ggplot", inherits(build_panelC(eqtl, cg), "ggplot"))
 ok("build_panelA returns a patchwork", inherits(build_panelA(eqtl, cg), "patchwork"))
 
+# --- pct_at_element (SPR % change at the regulatory element) ----------------
+pc <- pct_at_element(fx$spr_tracks)
+ok("pct_at_element returns one row per mark", nrow(pc) == 1L && pc$mark[1] == "CTCF")
+ok("pct_at_element computes alt-vs-ref % change (alt = half of ref -> -50%)",
+   abs(pc$pct[1] - (-50)) < 1e-6)
+
 # --- id utilities -----------------------------------------------------------
 ok("make_variant_id normalizes delimiters and upcases alleles",
    make_variant_id("chr1", 100, "a", "g") == "chr1_100_A_G")
