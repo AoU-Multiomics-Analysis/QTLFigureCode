@@ -11,7 +11,6 @@ enloc_cs	eQTL-sQTL	enloc/eQTL_sQTL.enloc.sig.out	-
 enloc_variant	eQTL-pQTL	enloc/eQTL_pQTL.enloc.snp.out	-
 enloc_variant	sQTL-pQTL	enloc/sQTL_pQTL.enloc.snp.out	-
 enloc_variant	eQTL-sQTL	enloc/eQTL_sQTL.enloc.snp.out	-
-annotations	-	annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/checkpoints/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz
 protein_lod	-	reference/LOD_proportions_per_proteins.tsv	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/LOD_proportions_per_proteins.tsv
 median_tpm	-	reference/median_tpms.tsv.gz	-
 genebayes_shet	-	reference/41588_2024_1820_MOESM4_ESM.xlsx	-

@@ -21,8 +21,8 @@ variant level, and whether that sharing depends on allele frequency.
 |-------|---------|--------|
 | **A** | Percent of genes by number of colocalized molecular layers (0–3), among genes fine-mapped in all three assays | gene-level FastENLOC + SuSiE |
 | **B** | Percent of genes by number of colocalized signals, inset with per-assay credible-set colocalization rate | signal-level FastENLOC + SuSiE |
-| **C** | Effect of −log(MAF) on cross-assay effect-size correlation, per assay pair | variant-level FastENLOC + annotations + SuSiE |
-| **D** | eQTL vs pQTL posterior effect size, faceted by MAF bin | variant-level FastENLOC + annotations + SuSiE |
+| **C** | Effect of −log(MAF) on cross-assay effect-size correlation, per assay pair | variant-level FastENLOC + SuSiE |
+| **D** | eQTL vs pQTL posterior effect size, faceted by MAF bin | variant-level FastENLOC + SuSiE |
 | **E** | *Reserved slot — content undecided (see [`NOTES.md`](NOTES.md))* | — |
 
 **Supplemental figures** (standalone; not built by `run_all.R`):
@@ -65,7 +65,7 @@ copy entirely. Panels reach inputs through `input_path(key)`,
 `load_input(key)` and `input_files(key)`.
 
 **Derived tables** (`fig3/data/`) — Fig3's panels share a heavy upstream: the
-AoU annotation table and three SuSiE tables. Six builders in `00_setup.R`
+three SuSiE tables. Six builders in `00_setup.R`
 memoize their results, so a panel still declares only what it needs while the
 expensive work runs once:
 
@@ -183,10 +183,9 @@ applicable), `local_subpath` (relative to the staging root, overridable via
 | `enloc_gene` | `enloc/*.enloc.gene.out` (3 pairs) | A, S1, S2 |
 | `enloc_cs` | `enloc/*.enloc.sig.out` (3 pairs) | B, S1 |
 | `enloc_variant` | `enloc/*.enloc.snp.out` (3 pairs) | C, D, S1 |
-| `annotations` | `annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz` | C, D |
 | `protein_lod` / `median_tpm` / `genebayes_shet` | `reference/…` | *(deferred — see NOTES.md)* |
 
-**Only `annotations` and `protein_lod` currently carry a `gs://` URI.** The
+**Only `protein_lod` currently carries a `gs://` URI.** The
 rest are local-only and must be pre-staged; a missing one fails with a
 message naming the file and the key. See [`NOTES.md`](NOTES.md) for the full
 list.

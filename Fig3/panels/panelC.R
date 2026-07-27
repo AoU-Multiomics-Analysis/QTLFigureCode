@@ -1,6 +1,6 @@
 # Panel C — effect of -log(MAF) on cross-assay effect-size correlation:
 # the interaction coefficient and 95% CI for each assay pair.
-# Inputs: enloc_variant, annotations, susie_eqtl, susie_sqtl, susie_pqtl
+# Inputs: enloc_variant, susie_eqtl, susie_sqtl, susie_pqtl
 source("fig3/00_setup.R")
 
 # The original fit these models TWICE: once on the raw scale without an NA

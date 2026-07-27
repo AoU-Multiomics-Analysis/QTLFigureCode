@@ -15,7 +15,7 @@
 # comes from.
 make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   unlink(root, recursive = TRUE)
-  for (d in c("finemapping/coloc", "enloc", "annotated", "reference"))
+  for (d in c("finemapping/coloc", "enloc", "reference"))
     dir.create(file.path(root, d), recursive = TRUE, showWarnings = FALSE)
 
   wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
@@ -33,6 +33,27 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   s_cs <- paste0("S_", genes, "_L1")
   p_cs <- paste0(uni[genes], "_L1")
 
+  # --- Per-ancestry allele frequencies --------------------------------------
+  # These ride along on the annotated SuSiE tables (Fig3 no longer reads a
+  # separate annotation table). Three variants per MAF bin so each panel-D
+  # facet can fit a slope. Variant 1 has gvs_eur_af = 0.90, which must FOLD to
+  # 0.10, leaving max_af at 0.30 from gvs_afr_af — the assertion in
+  # tests/test_fig3_builders.R.
+  afr <- c(0.30, 0.20, 0.10, 0.030, 0.020, 0.015, 0.005, 0.003, 0.002)
+  eur <- afr; eur[1] <- 0.90
+  af_cols <- data.frame(
+    gvs_afr_af = afr,
+    gvs_amr_af = afr * 0.9,
+    gvs_eas_af = afr * 0.8,
+    gvs_eur_af = eur,
+    gvs_mid_af = afr * 0.7,
+    gvs_sas_af = afr * 0.6,
+    gvs_oth_af = afr * 0.5
+  )
+  # Every assay reports the SAME frequencies for a given variant; a disagreement
+  # is what .variant_af_map()'s conflict guard exists to catch.
+  af_for <- function(v) af_cols[match(v, snps), , drop = FALSE]
+
   # --- SuSiE fine-mapping ---------------------------------------------------
   eqtl <- data.frame(
     molecular_trait_id = paste0(genes, ".1"),        # version suffix is stripped
@@ -44,11 +65,15 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id          = e_cs,
     gene_name      = paste0("GENE_", genes)
   )
-  # An eQTL-only gene, so genes_all_three_assays is a strict subset.
+  eqtl <- cbind(eqtl, af_for(eqtl$variant))
+  # An eQTL-only gene, so genes_all_three_assays is a strict subset. Its variant
+  # appears in no other table and carries NA frequencies, exercising the
+  # all-NA drop in .variant_af_map().
   eqtl <- rbind(eqtl, data.frame(
     molecular_trait_id = "ENSG003.1", variant = "chr3_100_G_A", pip = 0.6,
     cs_index = "L1", posterior_mean = 0.3, posterior_sd = 0.1,
-    cs_id = "E_ENSG003_L1", gene_name = "GENE_ENSG003"))
+    cs_id = "E_ENSG003_L1", gene_name = "GENE_ENSG003",
+    af_cols[NA_integer_, , drop = FALSE]))
   wtsv(eqtl, file.path(root, "finemapping/coloc/eQTL_susie.COMB.annotated.cleaned.tsv.gz"))
 
   sqtl <- data.frame(
@@ -60,6 +85,7 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     posterior_sd   = 0.1,
     cs_id          = s_cs
   )
+  sqtl <- cbind(sqtl, af_for(sqtl$variant))
   wtsv(sqtl, file.path(root, "finemapping/coloc/sQTL_susie.COMB.annotated.cleaned.tsv.gz"))
 
   pqtl <- data.frame(
@@ -72,8 +98,11 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id          = p_cs,
     group          = "COMB"
   )
-  # A non-COMB row that filter(group == "COMB") must drop.
-  pqtl <- rbind(pqtl, transform(pqtl[1, ], group = "AFR"))
+  pqtl <- cbind(pqtl, af_for(pqtl$variant))
+  # A non-COMB row that filter(group == "COMB") must drop. Its frequencies are
+  # deliberately WRONG: if the group filter ever stopped running, this row would
+  # collide with the COMB row for the same variant and trip the conflict guard.
+  pqtl <- rbind(pqtl, transform(pqtl[1, ], group = "AFR", gvs_afr_af = 0.99))
   wtsv(pqtl, file.path(root, "finemapping/coloc/pQTL_susie.COMB.annotated.cleaned.tsv.gz"))
 
   # --- FastENLOC gene level (a normal TSV) ----------------------------------
@@ -106,26 +135,6 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   snp_out(file.path(root, "enloc/eQTL_pQTL.enloc.snp.out"), e_cs)
   snp_out(file.path(root, "enloc/sQTL_pQTL.enloc.snp.out"), s_cs)
   snp_out(file.path(root, "enloc/eQTL_sQTL.enloc.snp.out"), e_cs)
-
-  # --- AoU annotation table -------------------------------------------------
-  # Three variants per MAF bin so each panel-D facet can fit a slope.
-  # Variant 1 has gvs_eur_af = 0.90, which must FOLD to 0.10, leaving max_af at
-  # 0.30 from gvs_afr_af — the assertion in tests/test_fig3_builders.R.
-  afr <- c(0.30, 0.20, 0.10, 0.030, 0.020, 0.015, 0.005, 0.003, 0.002)
-  eur <- afr; eur[1] <- 0.90
-  ann <- data.frame(
-    chrom = "chr1", pos = pos, ref = "A", alt = "G",
-    gvs_afr_af = afr,
-    gvs_amr_af = afr * 0.9,
-    gvs_eas_af = afr * 0.8,
-    gvs_eur_af = eur,
-    gvs_mid_af = afr * 0.7,
-    gvs_sas_af = afr * 0.6,
-    gvs_oth_af = afr * 0.5,
-    gvs_all_af = afr,
-    gvs_max_af = pmax(afr, eur)
-  )
-  wtsv(ann, file.path(root, "annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz"))
 
   # --- Manifest -------------------------------------------------------------
   manifest <- file.path(root, "inputs.tsv")

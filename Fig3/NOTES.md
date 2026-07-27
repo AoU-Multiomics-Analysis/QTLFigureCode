@@ -137,6 +137,57 @@ input file or a builder's logic, clear the whole cache directory
 (`rm -rf fig3/data`) rather than passing `refresh = TRUE` to the one builder
 you touched. (Also noted in the README's cache section.)
 
+### 7. Allele frequencies now come from the SuSiE tables, not the AoU annotation table — panels C and D are expected to move
+
+The `annotations` input
+(`annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz`) has been
+removed from `inputs.tsv` entirely. It was the largest input in the repo and
+Fig3 used it for exactly one thing: the seven per-ancestry allele-frequency
+columns (`AF_POP_COLS`), folded to MAF and reduced with `pmax()` to `max_af`
+(and hence `rare` and `log_maf`). `chrom`/`pos`/`ref`/`alt` only built the
+join key; nothing else in the table was ever read.
+
+Those same seven columns ride along on the annotated SuSiE outputs, so
+`coloc_variant_level()` (`00_setup.R`, previously the `fread(input_path(
+"annotations"))` + `left_join(..., by = "SNP")` block) now sources them from
+`susie_finemapping()` via the new `.variant_af_map()`, which pools the three
+assay tables and reduces them to one row per variant.
+
+**Why this can move a result — two distinct mechanisms:**
+
+1. **Coverage.** The annotation table was genome-wide; the SuSiE tables are
+   not. A variant in the FastENLOC `.snp.out` output that appears in no SuSiE
+   table now gets no allele frequency, and is dropped downstream by the
+   `max_af` NA filters (panel D's `filter(!is.na(max_af))`, panel C's NA
+   filter). `coloc_variant_level()` emits a `note:` line reporting how many
+   rows this affects — **check it on the first real rebuild.** Under the old
+   code these variants were annotated and retained.
+
+2. **`log_maf` is standardised over the pooled set.** In
+   `coloc_model_input()`, `log_maf = as.numeric(scale(-log10(max_af)))` is
+   computed *before* `filter(Coloc == TRUE)`, across all three pairs at once.
+   `scale()`'s mean and SD therefore depend on exactly which variants carry a
+   non-NA `max_af`. Any coverage change shifts the centring for **every**
+   variant, so panel C's interaction coefficients and confidence intervals
+   move even for variants whose own frequency is unchanged. This is why the
+   change is recorded here rather than treated as a refactor.
+
+Where both sources have a variant, the frequencies themselves are expected to
+be identical — the SuSiE annotation step draws from the same AoU callset. The
+folding is unchanged and still uses the seven per-ancestry columns, **not**
+the precomputed `gvs_max_af`, which is an unfolded max ALT frequency and would
+give a different answer (the fixture pins this: a variant with
+`gvs_eur_af = 0.90` must fold to 0.10, leaving `max_af = 0.30`).
+
+Because allele frequency is a property of the variant rather than of an assay,
+`.variant_af_map()` hard-stops if two SuSiE tables disagree about the same
+variant, rather than silently picking a winner — a disagreement would give one
+variant two AF rows and fan out the variant-level join.
+
+**Existing caches are stale.** Per note 6 there is no cascading invalidation,
+so `rm -rf fig3/data` before the first rebuild or `coloc_variant_level()` will
+return a cached frame still built from the annotation table.
+
 ## Panel E — reserved slot (undecided)
 
 The bottom row of Figure 3 reserves a slot beside panel D. Its content has not
