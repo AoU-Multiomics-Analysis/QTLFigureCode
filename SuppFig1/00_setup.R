@@ -28,10 +28,12 @@ suppressPackageStartupMessages({
 INPUT    <- Sys.getenv("SUPPFIG1_INPUT",    ".")                 # staging root (cwd)
 DATA_DIR <- Sys.getenv("SUPPFIG1_DATA",     "suppfig1/data")     # memoized tables
 OBJ_DIR  <- Sys.getenv("SUPPFIG1_OBJ",      "suppfig1/objects")  # per-panel objects
-OUTDIR   <- Sys.getenv("SUPPFIG1_OUTDIR",   ".")                 # final outputs
+OUTDIR   <- Sys.getenv("SUPPFIG1_OUTDIR", "suppfig1")     # final outputs
 MANIFEST <- Sys.getenv("SUPPFIG1_MANIFEST", "suppfig1/inputs.tsv")
 dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
+
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
 

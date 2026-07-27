@@ -26,10 +26,12 @@ suppressPackageStartupMessages({
 INPUT    <- Sys.getenv("FIG4_INPUT",    ".")            # staging root (cwd)
 DATA_DIR <- Sys.getenv("FIG4_DATA",     "fig4/data")    # memoized derived tables
 OBJ_DIR  <- Sys.getenv("FIG4_OBJ",      "fig4/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG4_OUTDIR",   ".")            # final Figure4.pdf/png
+OUTDIR   <- Sys.getenv("FIG4_OUTDIR", "fig4")         # final Figure4.pdf/png
 MANIFEST <- Sys.getenv("FIG4_MANIFEST", "fig4/inputs.tsv")
 dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
+
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
 

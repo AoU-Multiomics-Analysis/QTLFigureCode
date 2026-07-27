@@ -4,6 +4,14 @@
 # Controlled-access QTL inputs staged into the working dir (never commit).
 # Figure scripts gsutil-cache inputs under the cwd in these subdirs, or set
 # FIG*_INPUT to relocate them.
+#
+# Current per-figure staging roots, as declared in each Fig<N>/inputs.tsv.
+/Fig1Data/
+/Fig2Data/
+/Fig3Data/
+/Fig4Data/
+/Fig5Data/
+# Legacy staging roots kept so older working copies stay covered.
 /permutations/
 /finemapping/
 /annotated/
@@ -18,7 +26,16 @@
 /data/
 /susie_local/
 
-# Figure outputs
+# Figure outputs. Each figure's assemble.R writes into its OWN directory
+# (FIG<N>_OUTDIR, default fig<n>/), so the outputs are ignored there. The
+# bare-root entries are kept as well: FIG<N>_OUTDIR can still be pointed at the
+# repo root, and older runs left files there.
+/Fig?/*.pdf
+/Fig?/*.png
+/SuppFig?/*.pdf
+/SuppFig?/*.png
+
+# Same outputs when OUTDIR is pointed at the repo root instead.
 /Figure1.pdf
 /Figure1.png
 /xGeneMetasoftSummary.pdf

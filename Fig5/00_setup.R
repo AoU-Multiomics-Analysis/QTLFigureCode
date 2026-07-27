@@ -29,10 +29,12 @@ suppressPackageStartupMessages({
 INPUT    <- Sys.getenv("FIG5_INPUT",    ".")             # staging root (repo root)
 DATA_DIR <- Sys.getenv("FIG5_DATA",     "fig5/data")     # memoized derived tables
 OBJ_DIR  <- Sys.getenv("FIG5_OBJ",      "fig5/objects")  # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG5_OUTDIR",   ".")             # final Figure5.pdf/png
+OUTDIR   <- Sys.getenv("FIG5_OUTDIR", "fig5")         # final Figure5.pdf/png
 MANIFEST <- Sys.getenv("FIG5_MANIFEST", "fig5/inputs.tsv")
 dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
+
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
 
