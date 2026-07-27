@@ -236,28 +236,55 @@ build_or_cache <- function(name, expr, refresh = FALSE) {
     ungroup()
 }
 
+# Columns every SuSiE table must supply. AF_POP_COLS are carried through so
+# .variant_af_map() can source allele frequencies here instead of from a
+# separate annotation table.
+SUSIE_BASE_COLS <- c("molecular_trait_id", "variant", "pip", "cs_index",
+                     "posterior_mean", "cs_id", "posterior_sd")
+
+# Read one SuSiE table for `key`, validating its schema first.
+#
+# Fig3 reads the SAME tables as Fig2. These are combined-ancestry (COMB)
+# fine-mapping exports, one per assay, so there is nothing to select on: the old
+# pQTL read's filter(group == "COMB") is gone. It would in fact have matched
+# NOTHING here -- the `group` column holds "COMB.proteomics", not "COMB" -- and
+# handed the pipeline a silently empty table.
+#
+# The schema is checked up front and reports EVERY missing column: a bare
+# select() error names only the first, and these files come from an upstream
+# pipeline this repo does not control, so a partial message sends you round the
+# loop once per column.
+.read_susie_table <- function(key, extra_cols = character()) {
+  path <- input_path(key)
+  d    <- fread(path)
+  need <- c(SUSIE_BASE_COLS, extra_cols, AF_POP_COLS)
+  absent <- setdiff(need, names(d))
+  if (length(absent))
+    stop("SuSiE table for key '", key, "' (", basename(path), ") is missing ",
+         "required column(s): ", paste(absent, collapse = ", "),
+         ".\n  Fig3 reads the same SuSiE tables as Fig2; a differently ",
+         "post-processed export may not carry the credible-set columns ",
+         "(cs_id / cs_index / posterior_sd) that Fig3's colocalization needs.",
+         call. = FALSE)
+  d
+}
+
 susie_finemapping <- function(refresh = FALSE)
   build_or_cache("susie_finemapping", refresh = refresh, {
-    # AF_POP_COLS are carried through so .variant_af_map() can source allele
-    # frequencies here instead of from a separate annotation table.
-    eQTL <- fread(input_path("susie_eqtl")) %>%
-      select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
-             posterior_sd, gene_name, all_of(AF_POP_COLS)) %>%
+    eQTL <- .read_susie_table("susie_eqtl", "gene_name") %>%
+      select(all_of(SUSIE_BASE_COLS), gene_name, all_of(AF_POP_COLS)) %>%
       mutate(molecular_trait_id = str_remove(molecular_trait_id, "\\..*"),
              variant = str_replace(variant, "chrchr", "chr")) %>%
       .add_cs_stats()
 
-    sQTL <- fread(input_path("susie_sqtl")) %>%
+    sQTL <- .read_susie_table("susie_sqtl") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
-      select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
-             posterior_sd, all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS)) %>%
       .add_cs_stats()
 
-    pQTL <- fread(input_path("susie_pqtl")) %>%
-      filter(group == "COMB") %>%
+    pQTL <- .read_susie_table("susie_pqtl") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
-      select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
-             posterior_sd, all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS)) %>%
       .add_cs_stats()
 
     cs_list <- bind_rows(

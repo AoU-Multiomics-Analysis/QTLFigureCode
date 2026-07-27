@@ -264,3 +264,59 @@ URI so the pipeline can self-stage on Terra:
 In the original these were hardcoded to
 `/home/jupyter/multiomics_qtls/edit/FastEnlocInput/` or to bare
 working-directory filenames.
+
+## Fig3 reads the same SuSiE tables as Fig2
+
+The `susie_eqtl` / `susie_sqtl` / `susie_pqtl` keys were repointed from
+
+    finemapping/coloc/{eQTL,sQTL,pQTL}_susie.COMB.annotated.cleaned.tsv.gz
+
+to the tables Fig2 already reads:
+
+    COMB.{expression,splicing,proteomics}_SusieMerged.annotated.ancestry_skew.tsv.gz
+
+**Verified against the real files.** All three carry every column Fig3 needs --
+`cs_id`, `cs_index`, `posterior_sd`, `gene_name` (expression) and the seven
+`AF_POP_COLS`. `susie_finemapping()` builds 844,442 eQTL / 254,361 sQTL / 60,636
+pQTL rows, with 755 genes fine-mapped in all three assays.
+
+The FastENLOC credible-set ids join back to these tables, which is the thing a
+mismatched export would break silently:
+
+| pair | edges | left matched | right matched |
+|------|------:|-------------:|--------------:|
+| eQTL-pQTL | 1,996 | 100% | 100% |
+| eQTL-sQTL | 3,663 | 100% | 97.1% |
+| sQTL-pQTL |   371 | 70.9% | 100% |
+
+The sQTL side matches 97.1% in `eQTL_sQTL` but 70.9% in `sQTL_pQTL`. **This is
+expected, not a defect.** Each assay pair's FastENLOC run is given its own
+inputs by design, because the set of genes and credible sets shared between
+eQTL/sQTL, eQTL/pQTL and sQTL/pQTL is different in each case. A pair's run
+therefore covers only the credible sets relevant to that pair, so a lower match
+rate against the full splicing table is what the design implies -- not evidence
+that the wrong export was used.
+
+The rates matter only as a check that the join CONNECTS at all: a repointed
+SuSiE table whose `cs_id` format disagreed with the enloc output would show
+near-zero matches on the affected side, which is the failure this table rules
+out.
+
+### The `group` filter is gone
+
+The old pQTL read did `filter(group == "COMB")`. These are combined-ancestry
+exports, one file per assay, so there is nothing to select on -- and the filter
+would in fact have matched **nothing**: the `group` column holds
+`"COMB.proteomics"`, not `"COMB"`. Left in place it would have handed the
+pipeline a silently empty table.
+
+The fixture previously carried a deliberately-wrong non-COMB pQTL row as a
+canary for that filter being dropped; with the filter gone the row would be a
+genuine duplicate, so it has been removed along with the assertions covering it.
+
+### Schema validation
+
+`.read_susie_table()` checks the schema up front and reports *every* missing
+column at once, naming the offending key and file. A bare `select()` error names
+only the first missing column, and these files come from an upstream pipeline
+this repo does not control.

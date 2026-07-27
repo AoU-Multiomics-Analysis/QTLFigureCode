@@ -27,7 +27,7 @@ ok("eQTL trait ids are version-stripped",
    setequal(fm$eQTL$molecular_trait_id, c("ENSG001", "ENSG002", "ENSG003")))
 ok("sQTL trait ids reduce to the gene",
    setequal(fm$sQTL$molecular_trait_id, c("ENSG001", "ENSG002")))
-ok("pQTL drops the non-COMB row",          nrow(fm$pQTL) == 9L)
+ok("pQTL keeps every row (`group` is no longer filtered)", nrow(fm$pQTL) == 9L)
 # Row 1 is ENSG001, whose credible set holds the 5 odd-indexed variants
 # (pip 0.9, 0.7, 0.5, 0.3, 0.1).
 ok("cpip sums pip within a credible set",  abs(fm$eQTL$cpip[1] - 2.5) < 1e-9)
@@ -74,8 +74,7 @@ ok("pooling on the same frame would have wrongly labelled the weak pair",
 # must agree: a disagreement would otherwise give one variant two AF rows,
 # fanning out the variant-level join and caching inflated rows to disk.
 fx_dup_ann <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_dup_ann"))
-sq_path <- file.path(fx_dup_ann$root,
-                     "finemapping/coloc/sQTL_susie.COMB.annotated.cleaned.tsv.gz")
+sq_path <- fixture_path(fx_dup_ann, "susie_sqtl")
 sq <- read.delim(sq_path)
 sq$gvs_afr_af[1] <- sq$gvs_afr_af[1] + 0.123   # disagree with eQTL/pQTL
 write.table(sq, sq_path, sep = "\t", row.names = FALSE, quote = FALSE)
@@ -94,7 +93,7 @@ expect_error("conflicting per-assay allele frequencies error the variant-level j
 # "(@)", so two or more "(@)" indicates a malformed row that must not be
 # silently folded by extra = "merge".
 fx_dup_sig <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_dup_sig"))
-sig_path <- file.path(fx_dup_sig$root, "enloc/eQTL_pQTL.enloc.sig.out")
+sig_path <- fixture_path(fx_dup_sig, "enloc_cs", "eQTL-pQTL")
 sig_lines <- readLines(sig_path)
 sig_lines[2] <- sub("ENSG001:P00001_L1", "ENSG001:P00001_L1(@)EXTRA", sig_lines[2])
 writeLines(sig_lines, sig_path)
@@ -159,9 +158,9 @@ ok("eQTL-pQTL posterior joins preserve row count",
 # inner join's error and mis-attribute it to the OTHER table's name. For each
 # of the three fine-mapping tables in turn, inject a duplicate (variant,
 # gene) row and confirm the error names THAT table -- and only that table.
-dup_finemap_row <- function(rel_path) {
-  fx_dup <- make_fig3_fixture(file.path(tempdir(), paste0("fig3_fixture_dup_", basename(rel_path))))
-  p <- file.path(fx_dup$root, rel_path)
+dup_finemap_row <- function(key) {
+  fx_dup <- make_fig3_fixture(file.path(tempdir(), paste0("fig3_fixture_dup_", key)))
+  p <- fixture_path(fx_dup, key)
   d <- read.delim(p)
   d <- rbind(d, d[1, ])   # duplicate row 1's (variant, gene) key
   write.table(d, p, sep = "\t", row.names = FALSE, quote = FALSE)
@@ -171,7 +170,7 @@ dup_finemap_row <- function(rel_path) {
            error = conditionMessage)
 }
 
-msg_eqtl <- dup_finemap_row("finemapping/coloc/eQTL_susie.COMB.annotated.cleaned.tsv.gz")
+msg_eqtl <- dup_finemap_row("susie_eqtl")
 ok("eQTL duplicate is reported as an eQTL problem",
    grepl("^eQTL fine-mapping table has duplicate", msg_eqtl))
 ok("eQTL duplicate is NOT blamed on sQTL or pQTL",
@@ -181,7 +180,7 @@ ok("eQTL duplicate error shows an offending (variant, gene) pair",
 ok("a failed coloc_model_input build (eQTL) leaves no cache file behind",
    !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
 
-msg_sqtl <- dup_finemap_row("finemapping/coloc/sQTL_susie.COMB.annotated.cleaned.tsv.gz")
+msg_sqtl <- dup_finemap_row("susie_sqtl")
 ok("sQTL duplicate is reported as an sQTL problem",
    grepl("^sQTL fine-mapping table has duplicate", msg_sqtl))
 ok("sQTL duplicate is NOT blamed on eQTL or pQTL",
@@ -189,7 +188,7 @@ ok("sQTL duplicate is NOT blamed on eQTL or pQTL",
 ok("a failed coloc_model_input build (sQTL) leaves no cache file behind",
    !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
 
-msg_pqtl <- dup_finemap_row("finemapping/coloc/pQTL_susie.COMB.annotated.cleaned.tsv.gz")
+msg_pqtl <- dup_finemap_row("susie_pqtl")
 ok("pQTL duplicate is reported as a pQTL problem",
    grepl("^pQTL fine-mapping table has duplicate", msg_pqtl))
 ok("pQTL duplicate is NOT blamed on eQTL or sQTL",
@@ -208,7 +207,7 @@ source("fig3/00_setup.R")
 # credible set spans several variants) and must not trip the many-to-one
 # guard, which keys on the (variant, gene) PAIR, not either column alone.
 fx_legit <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_legit"))
-eqtl_path <- file.path(fx_legit$root, "finemapping/coloc/eQTL_susie.COMB.annotated.cleaned.tsv.gz")
+eqtl_path <- fixture_path(fx_legit, "susie_eqtl")
 eqtl_legit <- read.delim(eqtl_path)
 # Row 1 is (chr1_100_A_G, ENSG001); add the SAME variant for a DIFFERENT gene.
 extra <- eqtl_legit[1, ]
@@ -234,4 +233,46 @@ ok("...and coloc_model_input() built successfully over that fixture",
 use_fig3_fixture(fx)
 source("fig3/00_setup.R")
 
+
+# =============================================================================
+# Shared SuSiE tables with Fig2
+# -----------------------------------------------------------------------------
+# Fig3 now reads the SAME SuSiE tables as Fig2. Those exports are per-assay COMB
+# files, so `group` may be absent, and they are produced by an upstream pipeline
+# this repo does not control -- hence an explicit schema check.
+# =============================================================================
+
+# Rebuild susie_finemapping() against a fixture mutated by `mutate_fn`, and
+# return either the error message or NULL on success.
+susie_with <- function(tag, mutate_fn) {
+  fx <- make_fig3_fixture(file.path(tempdir(), paste0("fig3_fixture_", tag)))
+  mutate_fn(fx)
+  use_fig3_fixture(fx)
+  source("fig3/00_setup.R")
+  tryCatch({ susie_finemapping(refresh = TRUE); NULL }, error = conditionMessage)
+}
+
+# `group` is no longer filtered on: these are combined-ancestry exports, one
+# file per assay. The real tables hold "COMB.proteomics" etc., so the old
+# filter(group == "COMB") would have matched nothing and emptied the table.
+fx_grp <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_grp"))
+use_fig3_fixture(fx_grp); source("fig3/00_setup.R")
+ok("no row is dropped on `group`",
+   nrow(susie_finemapping(refresh = TRUE)$pQTL) ==
+     nrow(read.delim(fixture_path(fx_grp, "susie_pqtl"))))
+
+# A missing credible-set column must name every absent column, not just the
+# first -- these files come from upstream and a partial message costs a round
+# trip per column.
+msg2 <- susie_with("nocs", function(fx) {
+  p <- fixture_path(fx, "susie_eqtl")
+  d <- read.delim(p); d$cs_id <- NULL; d$posterior_sd <- NULL
+  write.table(d, p, sep = "\t", row.names = FALSE, quote = FALSE)
+})
+ok("a SuSiE table missing credible-set columns errors",
+   !is.null(msg2))
+ok("the error names EVERY missing column, not just the first",
+   grepl("cs_id", msg2) && grepl("posterior_sd", msg2))
+ok("the error names the offending key and file",
+   grepl("susie_eqtl", msg2) && grepl("annotated", msg2))
 cat("test_fig3_builders.R: all assertions passed\n")
