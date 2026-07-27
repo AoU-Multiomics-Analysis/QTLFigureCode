@@ -75,9 +75,11 @@ LAYER_FILL <- c("0" = "#D9D9D9", "1" = "#A9C1D9", "2" = "#7B9AB8", "3" = "#57759
 SIGNAL_FILL <- c("0" = "#E9DCDC", "1" = "#D8BBBB", "2" = "#C89A9A", "3" = "#B37979",
                  "4" = "#9E5E5E", "5" = "#8A4D4D", "6" = "#763F3F", "7" = "#643232")
 
-# Per-ancestry allele-frequency columns of the AoU annotation table, used to
-# derive a per-variant maximum MAF. Named explicitly so a schema change fails
-# loudly rather than silently changing which columns are folded.
+# Per-ancestry allele-frequency columns, used to derive a per-variant maximum
+# MAF. They ride along on the annotated SuSiE tables, which is why Fig3 no
+# longer reads the standalone AoU annotation table (see NOTES.md). Named
+# explicitly so a schema change fails loudly rather than silently changing
+# which columns are folded.
 AF_POP_COLS <- c("gvs_afr_af", "gvs_amr_af", "gvs_eas_af", "gvs_eur_af",
                  "gvs_mid_af", "gvs_sas_af", "gvs_oth_af")
 
@@ -236,9 +238,11 @@ build_or_cache <- function(name, expr, refresh = FALSE) {
 
 susie_finemapping <- function(refresh = FALSE)
   build_or_cache("susie_finemapping", refresh = refresh, {
+    # AF_POP_COLS are carried through so .variant_af_map() can source allele
+    # frequencies here instead of from a separate annotation table.
     eQTL <- fread(input_path("susie_eqtl")) %>%
       select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
-             posterior_sd, gene_name) %>%
+             posterior_sd, gene_name, all_of(AF_POP_COLS)) %>%
       mutate(molecular_trait_id = str_remove(molecular_trait_id, "\\..*"),
              variant = str_replace(variant, "chrchr", "chr")) %>%
       .add_cs_stats()
@@ -246,14 +250,14 @@ susie_finemapping <- function(refresh = FALSE)
     sQTL <- fread(input_path("susie_sqtl")) %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
       select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
-             posterior_sd) %>%
+             posterior_sd, all_of(AF_POP_COLS)) %>%
       .add_cs_stats()
 
     pQTL <- fread(input_path("susie_pqtl")) %>%
       filter(group == "COMB") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
       select(molecular_trait_id, variant, pip, cs_index, posterior_mean, cs_id,
-             posterior_sd) %>%
+             posterior_sd, all_of(AF_POP_COLS)) %>%
       .add_cs_stats()
 
     cs_list <- bind_rows(
@@ -333,34 +337,66 @@ coloc_cs_level <- function(refresh = FALSE)
              cs_2 = str_remove(cs_2, "^ENSG[0-9]+:"))
   })
 
+# Allele frequency is a property of the VARIANT, not of an assay, so the three
+# SuSiE tables are pooled and reduced to one row per variant. Rows whose AF
+# columns are entirely NA carry no information and are dropped before the
+# uniqueness check, so a table that simply lacks a variant cannot manufacture a
+# spurious conflict with one that has it.
+.variant_af_map <- function(fm) {
+  af <- bind_rows(
+      fm$eQTL %>% select(variant, all_of(AF_POP_COLS)),
+      fm$sQTL %>% select(variant, all_of(AF_POP_COLS)),
+      fm$pQTL %>% select(variant, all_of(AF_POP_COLS))
+    ) %>%
+    mutate(across(all_of(AF_POP_COLS), as.numeric),
+           # The eQTL reader already repairs "chrchr"; normalise all three here
+           # so a stray prefix cannot split one variant into two AF rows.
+           variant = str_replace(variant, "chrchr", "chr"))
+  af <- af[rowSums(!is.na(af[AF_POP_COLS])) > 0, , drop = FALSE] %>% distinct()
+
+  # One AF row per variant, or the variant-level join below fans out. A
+  # duplicate here means two SuSiE tables disagree about the same variant's
+  # allele frequencies, which is a genuine upstream inconsistency rather than
+  # something to silently pick a winner for.
+  dup <- unique(af$variant[duplicated(af$variant)])
+  if (length(dup))
+    stop(length(dup), " variant(s) carry CONFLICTING per-ancestry allele ",
+         "frequencies across the SuSiE fine-mapping tables -- e.g. '", dup[1],
+         "'. Allele frequency is a property of the variant alone; resolve the ",
+         "disagreement upstream.", call. = FALSE)
+  af
+}
+
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
-    ann_path <- input_path("annotations")
-    annotations <- fread(ann_path) %>%
-      mutate(SNP = paste(chrom, pos, ref, alt, sep = "_"))
+    af <- .variant_af_map(susie_finemapping())
 
     variants <- load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
       .label_by_pair("SCP", "variant level") %>%
       mutate(Gene = str_remove(Signal, ":.*"))
 
-    # relationship = "many-to-one" asserts SNP is unique in `annotations` --
-    # the largest external input in the repo, which nothing upstream
-    # validates. Without this, a duplicated key would silently multiply rows
-    # (dplyr's default only warns) and build_or_cache would cache the
-    # inflated result on this very run. Wrap the bare dplyr error so it names
-    # the annotation file as the culprit.
-    tryCatch(
-      left_join(variants, annotations, by = "SNP", relationship = "many-to-one"),
-      error = function(e) {
-        dup <- annotations$SNP[duplicated(annotations$SNP) |
-                                duplicated(annotations$SNP, fromLast = TRUE)]
-        offender <- if (length(dup)) sprintf("(SNP = '%s')", dup[1])
-                    else "<offending SNP not found>"
-        stop("Annotation table '", ann_path, "' has duplicate SNP keys, ",
-             "violating the expected many-to-one variant-level join -- e.g. ",
-             offender, ": ", conditionMessage(e), call. = FALSE)
-      }
+    # relationship = "many-to-one" asserts SNP is unique in `af`. .variant_af_map()
+    # already enforces that, so this is a belt-and-braces guard: without it a
+    # duplicated key would silently multiply rows (dplyr's default only warns)
+    # and build_or_cache would cache the inflated result on this very run.
+    joined <- tryCatch(
+      left_join(variants, af, by = c("SNP" = "variant"), relationship = "many-to-one"),
+      error = function(e)
+        stop("SuSiE-derived allele-frequency table has duplicate variant keys, ",
+             "violating the expected many-to-one variant-level join: ",
+             conditionMessage(e), call. = FALSE)
     )
+
+    # Coverage is no longer guaranteed the way it was with the genome-wide
+    # annotation table: an enloc variant absent from every SuSiE table now gets
+    # no AF and is dropped downstream by the max_af NA filters in panels C/D.
+    # Report it rather than let the sample size shrink silently.
+    n_missing <- sum(is.na(joined[[AF_POP_COLS[1]]]))
+    if (n_missing)
+      message("  note: ", n_missing, " of ", nrow(joined), " variant-level rows ",
+              "have no allele frequency in the SuSiE tables (dropped downstream).")
+
+    joined
   })
 
 # =============================================================================
@@ -432,7 +468,7 @@ coloc_model_input <- function(refresh = FALSE)
 
     missing_af <- setdiff(AF_POP_COLS, names(v))
     if (length(missing_af))
-      stop("Annotation table is missing allele-frequency columns: ",
+      stop("SuSiE fine-mapping tables are missing allele-frequency columns: ",
            paste(missing_af, collapse = ", "))
 
     folded <- v %>%

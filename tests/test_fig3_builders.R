@@ -68,23 +68,24 @@ pooled <- add_fdr_threshold_label(fdr_test, "GLCP", quiet = TRUE)
 ok("pooling on the same frame would have wrongly labelled the weak pair",
    any(pooled$Coloc[pooled$type == "weak"]))
 
-# --- coloc_variant_level: duplicated annotation SNP key must error --------
-# The annotation join assumes SNP is unique in the (unvalidated) AoU table.
-# A duplicated key must fail the build loudly (relationship = "many-to-one")
-# rather than silently multiplying rows that then get cached to disk.
+# --- coloc_variant_level: conflicting allele frequencies must error --------
+# Allele frequencies now come from the SuSiE tables rather than a standalone
+# annotation table, so the same variant appears in up to three of them. They
+# must agree: a disagreement would otherwise give one variant two AF rows,
+# fanning out the variant-level join and caching inflated rows to disk.
 fx_dup_ann <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_dup_ann"))
-ann_path <- file.path(fx_dup_ann$root,
-                      "annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz")
-ann <- read.delim(ann_path)
-ann <- rbind(ann, ann[1, ])   # duplicate one SNP's row
-write.table(ann, ann_path, sep = "\t", row.names = FALSE, quote = FALSE)
+sq_path <- file.path(fx_dup_ann$root,
+                     "finemapping/coloc/sQTL_susie.COMB.annotated.cleaned.tsv.gz")
+sq <- read.delim(sq_path)
+sq$gvs_afr_af[1] <- sq$gvs_afr_af[1] + 0.123   # disagree with eQTL/pQTL
+write.table(sq, sq_path, sep = "\t", row.names = FALSE, quote = FALSE)
 # INPUT/DATA_DIR/MANIFEST/OUTDIR are plain R globals, assigned once from
 # Sys.getenv() when fig3/00_setup.R is sourced -- setting the env vars alone
 # does not retroactively change them, so 00_setup.R must be re-sourced
 # (cheap and idempotent, per its header) to pick up the new fixture.
 use_fig3_fixture(fx_dup_ann)
 source("fig3/00_setup.R")
-expect_error("a duplicated annotation SNP key errors the variant-level join",
+expect_error("conflicting per-assay allele frequencies error the variant-level join",
              coloc_variant_level(refresh = TRUE))
 
 # --- coloc_cs_level: a Signal with more than one '(@)' must error ---------
