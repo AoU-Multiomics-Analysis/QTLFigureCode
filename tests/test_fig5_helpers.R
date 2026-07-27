@@ -41,6 +41,24 @@ ok("build_variant_freq prefixes rare variants with 'rare'",
 ok("build_variant_freq formats the aFC label with a sign",
    any(grepl("aFC -6", vf$afc_label)))
 
+# --- variant_effect_by_inheritance (Panels B/C core) ------------------------
+vebi <- variant_effect_by_inheritance(eqtl, cg)
+ok("variant_effect_by_inheritance assigns Control to low-shet non-ClinGen genes",
+   "Control" %in% as.character(vebi$allelicRequirements[vebi$gene_name == "CTRL1"]))
+ok("variant_effect_by_inheritance excludes high-shet non-ClinGen genes (NONCLIN)",
+   !"NONCLIN" %in% vebi$gene_name)
+ok("variant_effect_by_inheritance drops common variants (rare filter keeps aFC != -1)",
+   !any(vebi$log2_aFC == -1))
+ok("preserved fan-out: a gene curated under BOTH AD and AR counts under both",
+   setequal(as.character(vebi$allelicRequirements[vebi$gene_name == "GENE_BOTH"]),
+            c("AD", "AR")))
+
+# --- panels build without error (smoke test on fixture frames) --------------
+ok("build_panelB returns an untagged ggplot",
+   inherits(build_panelB(eqtl, cg), "ggplot") && is.null(build_panelB(eqtl, cg)$labels$tag))
+ok("build_panelC returns a ggplot", inherits(build_panelC(eqtl, cg), "ggplot"))
+ok("build_panelA returns a patchwork", inherits(build_panelA(eqtl, cg), "patchwork"))
+
 # --- id utilities -----------------------------------------------------------
 ok("make_variant_id normalizes delimiters and upcases alleles",
    make_variant_id("chr1", 100, "a", "g") == "chr1_100_A_G")

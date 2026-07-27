@@ -188,3 +188,159 @@ load_nohomozygotes <- function() {
 get_reference    <- function(refresh = FALSE) build_or_cache("reference", load_reference(), refresh)
 get_eqtl         <- function(refresh = FALSE) build_or_cache("eqtl_susie", load_eqtl_susie(get_reference()), refresh)
 get_variant_freq <- function(refresh = FALSE) build_or_cache("variant_freq", build_variant_freq(get_eqtl()), refresh)
+
+# =============================================================================
+# Panels A-C (population / constraint view). Each build_panel*() returns a single
+# UNTAGGED object; tagging is applied in fig5/assemble.R.
+#   A  fine-mapped rare ClinGen variants by ancestry (AD/AR) + ClinVar proportion
+#   B  |average QTL effect| by variant-effect category (Control/AD/AR)
+#   C  log2 aFC of the strongest decreasing variant per gene (AD/AR)
+# =============================================================================
+
+# Rare, confidently fine-mapped variants at ClinGen vs low-shet control genes. The
+# gene_assignments left_join fans a gene curated under BOTH AD and AR into two rows
+# (counted under both classes) — preserved from the original; see NOTES.md.
+variant_effect_by_inheritance <- function(eqtl, clingen) {
+  gene_assignments <- clingen %>%
+    distinct(targetFromSourceId, allelicRequirements) %>%
+    filter(allelicRequirements != "SD")
+  eqtl %>%
+    mutate(ControlGene = post_mean < 0.01 & ClinGen == FALSE) %>%
+    filter((ClinGen == TRUE | ControlGene == TRUE), pip > 0.9, rare == TRUE) %>%
+    select(variant, log2_aFC, gene_name, posterior_mean) %>%
+    left_join(gene_assignments, by = c("gene_name" = "targetFromSourceId")) %>%
+    distinct() %>%
+    mutate(allelicRequirements = factor(replace_na(allelicRequirements, "Control"),
+                                        levels = c("Control", "AD", "AR")))
+}
+
+build_panelB <- function(eqtl, clingen) {
+  vebi <- variant_effect_by_inheritance(eqtl, clingen)
+  sign_summary <- vebi %>%
+    mutate(dir = if_else(log2_aFC < 0, "Decreasing", "Increasing")) %>%
+    group_by(allelicRequirements, dir) %>%
+    summarise(MeanEffect = mean(abs(posterior_mean), na.rm = TRUE),
+              se = sd(abs(posterior_mean), na.rm = TRUE) / sqrt(n()), .groups = "drop")
+  aggregate_summary <- vebi %>%
+    group_by(allelicRequirements) %>%
+    summarise(MeanEffect = mean(abs(posterior_mean), na.rm = TRUE),
+              se = sd(abs(posterior_mean), na.rm = TRUE) / sqrt(n()), .groups = "drop") %>%
+    mutate(dir = "Aggregate")
+  average_effect_summary <- bind_rows(sign_summary, aggregate_summary) %>%
+    mutate(dir = factor(dir, levels = c("Aggregate", "Decreasing", "Increasing")),
+           conf.low = MeanEffect - 1.96 * se, conf.high = MeanEffect + 1.96 * se)
+  category_lines <- tibble(x = c(0.60, 1.60, 2.60), xend = c(1.40, 2.40, 3.40))
+
+  ggplot(average_effect_summary, aes(dir, MeanEffect, color = allelicRequirements)) +
+    geom_segment(data = category_lines, aes(x = x, xend = xend, y = -Inf, yend = -Inf),
+                 inherit.aes = FALSE, color = "grey72", linewidth = 0.55, lineend = "round") +
+    geom_linerange(aes(ymin = conf.low, ymax = conf.high),
+                   position = position_dodge(width = 0.5), linewidth = 0.6) +
+    geom_point(position = position_dodge(width = 0.5), size = 2.3) +
+    scale_x_discrete(drop = FALSE) +
+    scale_color_manual(values = inheritance_colors, drop = FALSE) +
+    labs(x = "Variant Effect Category", y = "|Average QTL effect|", color = NULL) +
+    coord_cartesian(clip = "off") +
+    theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),
+          axis.text.x = element_text(margin = margin(t = 1)),
+          legend.position = c(0.5, 0.96), legend.direction = "horizontal")
+}
+
+build_panelC <- function(eqtl, clingen, nohom = NULL, n_genes = 7,
+                         required_genes = c("HEXA", "MLC1")) {
+  vebi <- variant_effect_by_inheritance(eqtl, clingen)
+  candidate <- vebi %>%
+    {if (!is.null(nohom)) filter(., variant %in% nohom$variant) else .} %>%
+    filter(allelicRequirements %in% c("AD", "AR"), !is.na(log2_aFC), log2_aFC < 0) %>%
+    group_by(gene_name, allelicRequirements) %>%
+    slice_min(log2_aFC, n = 1, with_ties = FALSE) %>% ungroup() %>%
+    mutate(required_gene = gene_name %in% required_genes)
+  high_effect <- candidate %>%
+    group_by(allelicRequirements) %>%
+    arrange(desc(required_gene), log2_aFC, .by_group = TRUE) %>%
+    slice_head(n = n_genes) %>% ungroup() %>%
+    mutate(allelicRequirements = factor(allelicRequirements, levels = c("AD", "AR")),
+           display_gene = fct_reorder(gene_name, log2_aFC, .desc = TRUE))
+
+  ggplot(high_effect, aes(log2_aFC, display_gene, color = allelicRequirements)) +
+    geom_vline(xintercept = 0, color = "grey70", linewidth = 0.5) +
+    geom_segment(aes(x = 0, xend = log2_aFC, y = display_gene, yend = display_gene),
+                 color = "grey78", linewidth = 0.65) +
+    geom_point(size = 3.2) +
+    facet_grid(allelicRequirements ~ ., scales = "free_y", space = "free_y", switch = "y") +
+    scale_y_discrete(position = "right") +
+    scale_color_manual(values = inheritance_colors, breaks = c("AD", "AR"), guide = "none") +
+    scale_x_continuous(limits = c(-7, 0), breaks = c(-6, -4, -2, 0),
+                       expand = expansion(mult = c(0.03, 0.02))) +
+    labs(x = expression("log"[2]*" aFC (decreasing variants only)"), y = NULL) +
+    theme(strip.placement = "outside",
+          strip.text.y.left = element_text(face = "bold", angle = 0),
+          axis.text.y.right = element_text(hjust = 0),
+          panel.spacing.y = unit(1, "lines"),
+          axis.line.y = element_blank(), axis.ticks.y = element_blank(),
+          plot.margin = margin(5.5, 20, 5.5, 5.5))
+}
+
+build_panelA <- function(eqtl, clingen) {
+  clingen_only <- eqtl %>%
+    filter(ClinGen == TRUE) %>%
+    left_join(clingen, by = c("gene_id_nov" = "targetId")) %>%
+    mutate(causal = !is.na(log2_aFC))
+  rare_clingen <- clingen_only %>%
+    filter(rare == TRUE) %>% mutate(InClinvar = !is.na(clinvar_classification))
+
+  ancestry_count <- rare_clingen %>%
+    count(allelicRequirements, gvs_max_subpop, InClinvar) %>%
+    mutate(gvs_max_subpop = str_remove_all(gvs_max_subpop, "gvs_|_af"),
+           gvs_max_subpop = if_else(gvs_max_subpop == "oth", "admix", gvs_max_subpop)) %>%
+    filter(allelicRequirements != "SD", !is.na(gvs_max_subpop))
+
+  ancestry_plot <- ancestry_count %>%
+    ggplot(aes(gvs_max_subpop, n, fill = interaction(gvs_max_subpop, InClinvar))) +
+    geom_col(color = "transparent") +
+    geom_point(aes(color = InClinvar), x = Inf, y = Inf, inherit.aes = FALSE) +
+    facet_wrap(~allelicRequirements) +
+    scale_fill_manual(values = ancestry_fill, guide = "none") +
+    scale_x_discrete(labels = toupper) +
+    scale_color_manual(values = c(`FALSE` = "grey70", `TRUE` = "grey30"),
+                       labels = c(`FALSE` = "Novel Variant", `TRUE` = "ClinVar Annotated"),
+                       name = NULL) +
+    guides(color = guide_legend(override.aes = list(size = 5, shape = 15))) +
+    geom_segment(aes(x = 0.6, xend = 7.4, y = Inf, yend = Inf), inherit.aes = FALSE,
+                 color = "grey70", linewidth = 0.6) +
+    labs(y = "Fine-mapped Rare Variants") +
+    theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),
+          axis.title.x = element_blank(), legend.position = c(0.9, 0.85))
+
+  clinvar_prop <- rare_clingen %>%
+    mutate(clinvar_class = case_when(
+      str_detect(clinvar_classification, "pathogenic") ~ "P/LP",
+      str_detect(clinvar_classification, "uncertain significance") ~ "VUS",
+      str_detect(clinvar_classification, "benign") ~ "B/LB",
+      TRUE ~ "Unannotated")) %>%
+    count(allelicRequirements, clinvar_class) %>%
+    filter(allelicRequirements != "SD") %>%
+    group_by(allelicRequirements) %>% mutate(prop = n / sum(n)) %>% ungroup() %>%
+    ggplot(aes(prop, allelicRequirements, fill = clinvar_class)) +
+    geom_col(position = "stack", width = 0.85) +
+    facet_wrap(~allelicRequirements, nrow = 1, scales = "free_y") +
+    paletteer::scale_fill_paletteer_d("futurevisions::mars") +
+    scale_x_continuous(breaks = c(0, .25, .5, .75, 1),
+                       labels = \(x) paste0(x * 100, "%"), expand = expansion(mult = 0)) +
+    scale_y_discrete(expand = expansion(add = 0.06)) +
+    guides(fill = guide_legend(nrow = 1)) +
+    labs(fill = NULL, x = NULL) +
+    theme(axis.text.y = element_blank(), axis.line.y = element_blank(),
+          axis.title.y = element_blank(), axis.ticks.y = element_blank(),
+          axis.line.x = element_blank(),
+          axis.text.x = element_text(size = 9.5, margin = margin(t = 0)),
+          axis.ticks.x = element_blank(),
+          strip.text = element_blank(), panel.spacing.x = unit(1.6, "lines"),
+          plot.margin = margin(0, 8, 0, 8),
+          legend.position = "bottom", legend.direction = "horizontal",
+          legend.box.spacing = unit(2, "pt"), legend.margin = margin(t = 0, b = 0),
+          legend.text = element_text(size = 9), legend.title = element_text(size = 9),
+          legend.key.width = unit(0.45, "cm"), legend.key.height = unit(0.35, "cm"))
+
+  ancestry_plot / clinvar_prop + plot_layout(heights = c(7, 1))
+}
