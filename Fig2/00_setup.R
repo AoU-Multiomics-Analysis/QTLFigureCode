@@ -23,11 +23,14 @@ suppressPackageStartupMessages({
 })
 
 # --- Paths (override via env vars if needed) --------------------------------
-INPUT    <- Sys.getenv("FIG2_INPUT",  "input_data")   # raw inputs
-DATA_DIR <- Sys.getenv("FIG2_DATA",   "fig2/data")    # per-panel data (01_prep)
-OBJ_DIR  <- Sys.getenv("FIG2_OBJ",    "fig2/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG2_OUTDIR", ".")            # final Fig2.pdf/png
+INPUT    <- Sys.getenv("FIG2_INPUT",    ".")            # staging root (cwd); inputs live under input_data/
+DATA_DIR <- Sys.getenv("FIG2_DATA",     "fig2/data")    # per-panel data (01_prep)
+OBJ_DIR  <- Sys.getenv("FIG2_OBJ",      "fig2/objects") # per-panel ggplot objects
+OUTDIR   <- Sys.getenv("FIG2_OUTDIR",   ".")            # final Fig2.pdf/png
+MANIFEST <- Sys.getenv("FIG2_MANIFEST", "fig2/inputs.tsv")
 for (d in c(DATA_DIR, OBJ_DIR)) dir.create(d, showWarnings = FALSE, recursive = TRUE)
+
+source("common/manifest.R")
 
 # --- Font: Inter via Google if reachable, else default sans -----------------
 FONT <- "sans"
@@ -72,7 +75,9 @@ add_derived <- function(df) {
   )
 }
 
-read_qtl <- function(f) fread(file.path(INPUT, f), nThread = 4)
+# Read a manifest key's file (single-file keys) with fread; the manifest maps
+# the key -> input_data/<file> and stages it from gs_uri if ever added.
+read_qtl <- function(key) fread(input_path(key), nThread = 4)
 
 # For each gene, accumulate up/down variants by descending |effect| and track the
 # implied heterozygous expression, then report how many genes reach dosage-like

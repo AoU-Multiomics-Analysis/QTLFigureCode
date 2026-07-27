@@ -12,7 +12,7 @@
 source("fig2/00_setup.R")
 
 message("Loading expression input ...")
-eQTL_COMB_susie <- add_derived(read_qtl("COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"))
+eQTL_COMB_susie <- add_derived(read_qtl("susie_eqtl"))
 
 af_cols <- c("gvs_all_af", "gvs_max_af", "gvs_afr_af", "gvs_amr_af",
              "gvs_eas_af", "gvs_eur_af", "gvs_mid_af", "gvs_sas_af", "gvs_oth_af")
