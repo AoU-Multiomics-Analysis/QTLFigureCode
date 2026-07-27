@@ -94,6 +94,9 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     af_cols[NA_integer_, , drop = FALSE]))
   wtsv(eqtl, mp("susie_eqtl"))
 
+  # NOTE: splicing ids are INTRON-level. `sqtl_extra` below adds a SECOND intron
+  # cluster for ENSG001 that shares a variant with the first, reproducing the
+  # duplicate (variant, gene) key that appears once these ids collapse to a gene.
   sqtl <- data.frame(
     molecular_trait_id = paste0(genes, ":clu_1"),    # gene is extracted from this
     variant        = snps,
@@ -104,6 +107,15 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id          = s_cs
   )
   sqtl <- cbind(sqtl, af_for(sqtl$variant))
+  # A second intron cluster of ENSG001, sharing variant 1 with clu_1 but with a
+  # LARGER |posterior_mean|, so the "keep the strongest effect" collapse has a
+  # determinate winner to assert on.
+  sqtl_extra <- sqtl[1, ]
+  sqtl_extra$molecular_trait_id <- "ENSG001:clu_2"
+  sqtl_extra$cs_id              <- "S_ENSG001_L2"
+  sqtl_extra$cs_index           <- "L2"
+  sqtl_extra$posterior_mean     <- 0.95            # strongest for this (variant, gene)
+  sqtl <- rbind(sqtl, sqtl_extra)
   wtsv(sqtl, mp("susie_sqtl"))
 
   pqtl <- data.frame(

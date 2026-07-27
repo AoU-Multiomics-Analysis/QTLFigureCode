@@ -320,3 +320,38 @@ genuine duplicate, so it has been removed along with the assertions covering it.
 column at once, naming the offending key and file. A bare `select()` error names
 only the first missing column, and these files come from an upstream pipeline
 this repo does not control.
+
+### Duplicate (variant, gene) keys are collapsed, not rejected
+
+Splicing `molecular_trait_id`s are **intron-level**
+(`chr7:150803456:150803620:clu_96688_+:ENSG00000002933.9`) and are collapsed to
+a gene in `susie_finemapping()`. A variant sitting in credible sets for two
+introns of the same gene therefore produces two rows for one (variant, gene)
+key. In the shared tables:
+
+| assay | rows | duplicated (variant, gene) | max copies |
+|-------|-----:|---------------------------:|-----------:|
+| sQTL  | 254,361 | 13,950 | 5 |
+| eQTL  | 844,442 | 3 | 2 |
+| pQTL  |  60,636 | 3 | 2 |
+
+2,257 of 5,761 splicing genes have more than one intron cluster. The
+`.cleaned` export this replaced was evidently pre-deduplicated, which is
+presumably what "cleaned" meant; on the shared tables the many-to-one guard in
+`coloc_model_input()` fired and stopped panels C and D from building.
+
+`posteriors()` now keeps the row with the largest `|posterior_mean|` per
+(variant, gene). Panels C/D regress cross-assay **effect sizes**, so the
+strongest signal is the faithful single representative of what a variant does to
+a gene; keeping both rows would double-count it and inflate the regression's N.
+
+Two deliberate scoping decisions:
+
+- The collapse happens at the **posterior join**, not in `susie_finemapping()`.
+  The full tables still feed `cs_list`, `gene_map` and the credible-set graph
+  behind panels A and B; dropping rows there would delete whole credible sets
+  from them.
+- The `relationship = "many-to-one"` guard is **retained**. It is no longer
+  reachable from a duplicated input row, but it now asserts the collapse did its
+  job. The tests that used to drive that error have been rewritten around the
+  new contract.

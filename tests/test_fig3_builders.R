@@ -158,43 +158,47 @@ ok("eQTL-pQTL posterior joins preserve row count",
 # inner join's error and mis-attribute it to the OTHER table's name. For each
 # of the three fine-mapping tables in turn, inject a duplicate (variant,
 # gene) row and confirm the error names THAT table -- and only that table.
+# Duplicates on the fine-mapping side are now COLLAPSED by posteriors() rather
+# than rejected: intron-level splicing ids make them a routine outcome, not a
+# defect (13,950 such pairs in the real sQTL table). The many-to-one guard on the
+# posterior join is retained as a cheap invariant -- it now asserts the collapse
+# did its job -- but it is no longer reachable from a duplicated input row, so
+# the tests that used to drive it have been rewritten around the new contract.
 dup_finemap_row <- function(key) {
   fx_dup <- make_fig3_fixture(file.path(tempdir(), paste0("fig3_fixture_dup_", key)))
   p <- fixture_path(fx_dup, key)
   d <- read.delim(p)
-  d <- rbind(d, d[1, ])   # duplicate row 1's (variant, gene) key
-  write.table(d, p, sep = "\t", row.names = FALSE, quote = FALSE)
+  dup <- d[1, ]
+  # A DIFFERENT posterior for the same (variant, gene): the collapse must keep
+  # the stronger of the two, so a weaker duplicate is not merely tolerated but
+  # demonstrably discarded.
+  dup$posterior_mean <- -0.01
+  write.table(rbind(d, dup), p, sep = "\t", row.names = FALSE, quote = FALSE)
   use_fig3_fixture(fx_dup)
   source("fig3/00_setup.R")
-  tryCatch({ coloc_model_input(refresh = TRUE); NULL },
-           error = conditionMessage)
+  list(err = tryCatch({ coloc_model_input(refresh = TRUE); NULL }, error = conditionMessage),
+       mi  = tryCatch(coloc_model_input(refresh = FALSE), error = function(e) NULL))
 }
 
-msg_eqtl <- dup_finemap_row("susie_eqtl")
-ok("eQTL duplicate is reported as an eQTL problem",
-   grepl("^eQTL fine-mapping table has duplicate", msg_eqtl))
-ok("eQTL duplicate is NOT blamed on sQTL or pQTL",
-   !grepl("sQTL fine-mapping table", msg_eqtl) && !grepl("pQTL fine-mapping table", msg_eqtl))
-ok("eQTL duplicate error shows an offending (variant, gene) pair",
-   grepl("variant = '.*', gene = '.*'", msg_eqtl))
-ok("a failed coloc_model_input build (eQTL) leaves no cache file behind",
-   !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
-
-msg_sqtl <- dup_finemap_row("susie_sqtl")
-ok("sQTL duplicate is reported as an sQTL problem",
-   grepl("^sQTL fine-mapping table has duplicate", msg_sqtl))
-ok("sQTL duplicate is NOT blamed on eQTL or pQTL",
-   !grepl("eQTL fine-mapping table", msg_sqtl) && !grepl("pQTL fine-mapping table", msg_sqtl))
-ok("a failed coloc_model_input build (sQTL) leaves no cache file behind",
-   !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
-
-msg_pqtl <- dup_finemap_row("susie_pqtl")
-ok("pQTL duplicate is reported as a pQTL problem",
-   grepl("^pQTL fine-mapping table has duplicate", msg_pqtl))
-ok("pQTL duplicate is NOT blamed on eQTL or sQTL",
-   !grepl("eQTL fine-mapping table", msg_pqtl) && !grepl("sQTL fine-mapping table", msg_pqtl))
-ok("a failed coloc_model_input build (pQTL) leaves no cache file behind",
-   !file.exists(file.path(DATA_DIR, "coloc_model_input.rds")))
+for (k in c("susie_eqtl", "susie_sqtl", "susie_pqtl")) {
+  r <- dup_finemap_row(k)
+  ok(paste0(k, ": a duplicate (variant, gene) row no longer fails the build"),
+     is.null(r$err))
+  if (!is.null(r$mi)) {
+    dupd <- vapply(r$mi, function(d)
+      if (is.null(d) || !nrow(d)) FALSE else any(duplicated(d[, c("SNP", "Gene")])),
+      logical(1))
+    ok(paste0(k, ": no (SNP, Gene) pair is duplicated in any pair's model input"),
+       !any(dupd))
+    weak <- vapply(r$mi, function(d)
+      if (is.null(d) || !nrow(d)) FALSE
+      else any(abs(d$posterior_mean.x) == 0.01, na.rm = TRUE) ||
+           any(abs(d$posterior_mean.y) == 0.01, na.rm = TRUE),
+      logical(1))
+    ok(paste0(k, ": the weaker duplicate posterior was discarded, not kept"),
+       !any(weak))
+  }
+}
 
 # Restore the original fixture so anything below (or a re-run) sees the
 # well-formed inputs, not the corrupted ones above.
@@ -275,4 +279,39 @@ ok("the error names EVERY missing column, not just the first",
    grepl("cs_id", msg2) && grepl("posterior_sd", msg2))
 ok("the error names the offending key and file",
    grepl("susie_eqtl", msg2) && grepl("annotated", msg2))
+
+# =============================================================================
+# Duplicate (variant, gene) keys from intron-level splicing ids
+# -----------------------------------------------------------------------------
+# Splicing molecular_trait_ids are per intron cluster and are collapsed to a
+# gene, so one variant can carry a credible set for several introns of the same
+# gene (13,950 such pairs in the real sQTL table). The posterior join keeps the
+# STRONGEST effect per (variant, gene); keeping both would double-count the
+# variant and inflate the regression's N behind panels C and D.
+# =============================================================================
+fx_dupint <- make_fig3_fixture(file.path(tempdir(), "fig3_fixture_dupint"))
+use_fig3_fixture(fx_dupint); source("fig3/00_setup.R")
+
+fm_di <- susie_finemapping(refresh = TRUE)
+dup_key <- fm_di$sQTL %>%
+  dplyr::count(variant, molecular_trait_id) %>%
+  dplyr::filter(n > 1)
+ok("the fixture really does carry a duplicate (variant, gene) sQTL key",
+   nrow(dup_key) >= 1L)
+ok("both intron clusters survive in the fine-mapping table (panels A/B need them)",
+   dplyr::n_distinct(fm_di$sQTL$cs_id[fm_di$sQTL$molecular_trait_id == "ENSG001"]) >= 2L)
+
+mi_di <- coloc_model_input(refresh = TRUE)
+ok("coloc_model_input() builds despite the duplicate key",
+   is.list(mi_di) && length(mi_di) == 3L)
+
+es <- mi_di[["eQTL-sQTL"]]
+ok("no (SNP, Gene) pair is duplicated after the posterior join",
+   !any(duplicated(es[, c("SNP", "Gene")])))
+# Only the DUPLICATED (variant, gene) pair should show the stronger posterior;
+# ENSG001's other variants keep their own, much smaller, effects.
+row <- es[es$SNP == "chr1_100_A_G" & es$Gene == "ENSG001", ]
+ok("the duplicated (variant, gene) pair appears exactly once", nrow(row) == 1L)
+ok("the STRONGEST of its two intron clusters is the one retained",
+   nrow(row) == 1L && isTRUE(abs(abs(row$posterior_mean.y[1]) - 0.95) < 1e-8))
 cat("test_fig3_builders.R: all assertions passed\n")

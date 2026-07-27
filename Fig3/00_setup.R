@@ -29,10 +29,12 @@ suppressPackageStartupMessages({
 INPUT    <- Sys.getenv("FIG3_INPUT",    ".")            # staging root (cwd)
 DATA_DIR <- Sys.getenv("FIG3_DATA",     "fig3/data")    # memoized derived tables
 OBJ_DIR  <- Sys.getenv("FIG3_OBJ",      "fig3/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG3_OUTDIR",   ".")            # final Figure3.pdf/png
+OUTDIR   <- Sys.getenv("FIG3_OUTDIR", "fig3")         # final Figure3.pdf/png
 MANIFEST <- Sys.getenv("FIG3_MANIFEST", "fig3/inputs.tsv")
 dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
+
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
 
@@ -205,11 +207,13 @@ add_fdr_threshold_label <- function(df, prob_col, control_level = 0.05,
 # =============================================================================
 # Derived-data cache
 # -----------------------------------------------------------------------------
-# Fig3's panels share a heavy upstream: the AoU annotation table (the largest
-# input in the repo) and three SuSiE tables. Under strict per-panel loading the
-# annotation join would run three times per build. Each builder below memoizes
-# its result to DATA_DIR/<name>.rds, so a panel still calls only the builders it
-# needs while the expensive work happens once.
+# Fig3's panels share a heavy upstream: the three SuSiE tables, which are also
+# the source of the per-variant allele frequencies (see .variant_af_map() below)
+# now that the standalone AoU annotation table is gone from the manifest. Under
+# strict per-panel loading those tables would be read, collapsed and joined once
+# per panel. Each builder below memoizes its result to DATA_DIR/<name>.rds, so a
+# panel still calls only the builders it needs while the expensive work happens
+# once.
 #
 # `expr` is a lazily-evaluated promise: on a cache hit it is never evaluated, so
 # a cached panel never reads its inputs at all.
@@ -508,8 +512,27 @@ coloc_model_input <- function(refresh = FALSE)
              log_maf = as.numeric(scale(-log10(max_af)))) %>%
       filter(Coloc == TRUE)
 
+    # One row per (variant, gene) for the posterior join. Splicing
+    # molecular_trait_ids are INTRON-level and collapsed to a gene above, so a
+    # variant sitting in credible sets for two introns of the same gene yields
+    # two rows -- 13,950 such pairs in the sQTL table, plus a handful in eQTL and
+    # pQTL. Panels C/D regress cross-assay EFFECT SIZES, so the strongest signal
+    # is the faithful single representative of what that variant does to that
+    # gene; keeping both would double-count it and inflate the regression's N,
+    # which is precisely what the many-to-one guard below refuses to allow.
+    #
+    # Collapsing happens HERE and not in susie_finemapping(): the full tables
+    # still feed cs_list / gene_map / the credible-set graph behind panels A and
+    # B, and dropping rows there would delete whole credible sets from them.
+    #
+    # arrange() + distinct() keeps the first row per key, which after sorting on
+    # descending |posterior_mean| is the strongest; it is far cheaper than a
+    # grouped slice_max() over ~840k groups and is deterministic.
     posteriors <- function(d)
-      d %>% select(variant, molecular_trait_id, posterior_mean, posterior_sd)
+      d %>%
+        select(variant, molecular_trait_id, posterior_mean, posterior_sd) %>%
+        arrange(desc(abs(posterior_mean))) %>%
+        distinct(variant, molecular_trait_id, .keep_all = TRUE)
 
     # relationship = "many-to-one" asserts (variant, gene) is unique on the
     # fine-mapping side -- nothing upstream guarantees this, and a variant
