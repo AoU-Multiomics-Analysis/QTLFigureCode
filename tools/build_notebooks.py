@@ -85,7 +85,7 @@ def setup_cell_code(fig_lower, fig_cap, env):
     return f'''## Locate the figure directory. Terra / Linux is case-sensitive, so match
 ## either "{fig_cap}" or "{fig_lower}" and point the pipeline's env-overridable
 ## paths at it before sourcing the shared setup.
-fig_dir <- list.files(".", pattern = "^[Ff]ig{fig_lower[3:]}$", include.dirs = TRUE)
+fig_dir <- list.files(".", pattern = "^({fig_cap}|{fig_lower})$", include.dirs = TRUE)
 stopifnot("Run this notebook from the repository root (the folder holding {fig_cap}/)." =
           length(fig_dir) == 1)
 {setenv}source(file.path(fig_dir, "00_setup.R"))
@@ -121,6 +121,11 @@ PANEL_NOTES = {
  ("Fig4","B"): "Histogram of the R² increase (%) that rare variants add to TWAS, computed as the difference in adjusted R² between allele-frequency thresholds 0 and 0.01 for genes with a significant fit — how much predictive signal rare variants contribute.",
  ("Fig4","C"): "Common and rare conditional-TWAS QQ plots over nine blood traits, comparing colocalized genes against **MatchIt propensity-matched** non-colocalized genes (\"Null\") — an inflation test that controls for expression, selection, rare-variant count and LD.",
  ("Fig4","D"): "Odds-ratio forest (logistic regression) for the enrichment of rare vs. common conditional-TWAS signal across four gene-set outcomes — Mendelian (any), Mendelian (immune/hematological), druggable, and approved drug target. Both continuous and binary predictor sets are fit; the panel plots the continuous rare/common terms (see `Fig4/NOTES.md`).",
+
+ ("SuppFig1","A"): "Protein-coding genes detected in either cohort: AoU-vs-GTEx log2(TPM+1) correlation (hex) beside counts of genes detected in only one cohort. Sub-plots are tagged A and B.",
+ ("SuppFig1","B"): "Top GO terms (by adjusted p) enriched among genes specific to each cohort, faceted AoU vs GTEx, with a -log10(FDR)=1.3 reference line. Tagged C.",
+ ("SuppFig1","C"): "Transcription-factor expression, AoU vs GTEx, as log2(TPM+1) boxplots, with an lm and a paired t-test reported in the run log. The TPMs are logged exactly once (the original logged twice). Tagged D.",
+ ("SuppFig1","D"): "lncRNA AoU-vs-GTEx log2(TPM+1) correlation (hex) beside cohort-specific detection counts. Sub-plots are tagged E and F.",
 }
 
 FIGURES = {
@@ -302,6 +307,51 @@ so clear that directory (or pass `refresh = TRUE`) after changing an input.
      ("assemble","Fig4/assemble.R",None,"Fig4"),
    ],
  },
+ "SuppFig1": {
+   "num": 0, "cap": "SuppFig1", "lower": "suppfig1", "obj_letters": list("ABCD"),
+   "title": "Supplemental Figure 1 — All of Us vs GTEx expression comparison",
+   "overview": """
+This notebook reproduces **Supplemental Figure 1**, comparing *All of Us* bulk
+RNA-seq to GTEx whole blood across gene types: coding-gene TPM correlation and
+cohort-specific detection, GO enrichment of cohort-specific genes, transcription-
+factor expression, and lncRNA expression. Additional per-gene-type comparisons
+are reproduced in the `extra/` sections at the end.
+
+`00_setup.R` provides memoized builders (`gene_annotations()`, `merged_tpms()`,
+`tf_list()`, `go_enrichment()`) cached to `SuppFig1/data/`.
+""",
+   "data_note": """
+### Inputs
+
+> **Controlled-access.** `aou_tpms` (and `go_annotations`) derive from *All of Us*
+> controlled-access data. The GTEx TPMs, GENCODE GTF and TF list are public and
+> self-stage from their `https://` URIs.
+
+Inputs are manifest-driven (`SuppFig1/inputs.tsv`); builders cache to
+`SuppFig1/data/` **by name**, so clear it after changing an input.
+
+> **Results differ from the pre-cleanup script.** Panel C's TF statistics are
+> logged once, not twice. See `SuppFig1/NOTES.md`.
+""",
+   "env": {"SUPPFIG1_MANIFEST": "inputs.tsv", "SUPPFIG1_OBJ": "objects",
+           "SUPPFIG1_DATA": "data"},
+   "steps": [
+     ("panel","SuppFig1/panels/panelA.R","A","protein_coding_comparison"),
+     ("panel","SuppFig1/panels/panelB.R","B","AoU_GTEx_enrichment_plot"),
+     ("panel","SuppFig1/panels/panelC.R","C","TF_gene_comparison"),
+     ("panel","SuppFig1/panels/panelD.R","D","lncRNA_comparison"),
+     ("assemble","SuppFig1/assemble.R",None,"SuppFig1"),
+     ("supp","SuppFig1/extra/gene_type_comparisons.R",None,None,
+        "**Extra — snRNA / miRNA comparisons.** Retained per-gene-type AoU-vs-GTEx "
+        "comparisons; not part of the assembled figure."),
+     ("supp","SuppFig1/extra/rrna_expression.R",None,None,
+        "**Extra — rRNA expression histogram.**"),
+     ("supp","SuppFig1/extra/hemoglobin_genes.R",None,None,
+        "**Extra — hemoglobin-gene scatter.**"),
+     ("supp","SuppFig1/extra/gene_type_detection.R",None,None,
+        "**Extra — genes detected per gene type.**"),
+   ],
+ },
 }
 
 # --- build -------------------------------------------------------------------
@@ -331,12 +381,12 @@ def build(figkey):
         + ("brings in the manifest loaders and the folded-in analysis / plot "
            "functions" if figkey != "Fig2" else "brings in the shared helper "
            "functions")
-        + (" plus the memoized derived-data builders" if figkey in ("Fig3", "Fig4") else "")
+        + (" plus the memoized derived-data builders" if figkey in ("Fig3", "Fig4", "SuppFig1") else "")
         + " — so the figure is self-contained."
     ))
     cells.append(code(setup_cell_code(lower, cap, F["env"])))
 
-    if figkey in ("Fig1", "Fig3", "Fig4"):
+    if figkey in ("Fig1", "Fig3", "Fig4", "SuppFig1"):
         cells.append(md(
             "### Panels\n\nEach panel below **loads only the inputs it needs** "
             "(staging them on demand), does its wrangling, builds one ggplot object, "

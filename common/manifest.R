@@ -8,8 +8,9 @@
 # COLUMN is metadata, attached by load_input() to the rows it returns, under its
 # own name. Empty or "-" is read as NA and never attached.
 #
-# Files are cached at INPUT/<local_subpath>. A gs_uri is copied down with
-# gsutil ONLY when the local copy is missing, so a pre-staged file is never re-fetched.
+# Files are cached at INPUT/<local_subpath>. A gs_uri is staged ONLY when the
+# local copy is missing (gs:// via gsutil; http(s):// or file:// via
+# download.file — see .stage_uri), so a pre-staged file is never re-fetched.
 # =============================================================================
 .MANIFEST_RESERVED <- c("key", "local_subpath", "gs_uri")
 
@@ -35,6 +36,23 @@ manifest_rows <- function(key) {
   rows
 }
 
+# Stage a single remote URI to a local destination, dispatching on scheme:
+#   gs://            -> gsutil cp   (needs the Google Cloud SDK)
+#   http(s):// file:// -> download.file
+# Errors (naming the URI) if the scheme is unsupported or the fetch fails.
+.stage_uri <- function(uri, dest) {
+  if (grepl("^gs://", uri)) {
+    status <- system2("gsutil", c("cp", uri, dest))
+    if (status != 0L || !file.exists(dest)) stop("gsutil cp failed for ", uri)
+  } else if (grepl("^(https?|file)://", uri)) {
+    ok <- tryCatch({ utils::download.file(uri, dest, mode = "wb", quiet = TRUE); TRUE },
+                   error = function(e) FALSE)
+    if (!isTRUE(ok) || !file.exists(dest)) stop("download.file failed for ", uri)
+  } else {
+    stop("Unsupported URI scheme for staging (key's gs_uri = '", uri, "').")
+  }
+}
+
 # Ensure every file for `key` exists locally (staging from gs_uri if needed) and
 # return the manifest rows plus a resolved local `path` column.
 input_files <- function(key) {
@@ -48,8 +66,7 @@ input_files <- function(key) {
       stop("Missing local input '", lp, "' and no gs_uri to stage it (key '", key, "').")
     dir.create(dirname(lp), showWarnings = FALSE, recursive = TRUE)
     message("  staging ", gs, " -> ", lp)
-    status <- system2("gsutil", c("cp", gs, lp))
-    if (status != 0L || !file.exists(lp)) stop("gsutil cp failed for ", gs)
+    .stage_uri(gs, lp)
   }
   rows$path <- paths
   tibble::as_tibble(rows)
