@@ -11,3 +11,4 @@ gene_exons	Fig5/reference/gene_exons.tsv	-
 gene_spans	Fig5/reference/gene_spans.tsv	-
 spr_bigwig	Fig5/inputs/SPR_bigwig	-
 spr_attr	Fig5/inputs/spr_attr.tsv	-
+gene_gtf	reference/gencode.v48.annotation.gtf.gz	-
