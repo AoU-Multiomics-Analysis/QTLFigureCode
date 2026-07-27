@@ -126,6 +126,14 @@ PANEL_NOTES = {
  ("SuppFig1","B"): "Top GO terms (by adjusted p) enriched among genes specific to each cohort, faceted AoU vs GTEx, with a -log10(FDR)=1.3 reference line. Tagged C.",
  ("SuppFig1","C"): "Transcription-factor expression, AoU vs GTEx, as log2(TPM+1) boxplots, with an lm and a paired t-test reported in the run log. The TPMs are logged exactly once (the original logged twice). Tagged D.",
  ("SuppFig1","D"): "lncRNA AoU-vs-GTEx log2(TPM+1) correlation (hex) beside cohort-specific detection counts. Sub-plots are tagged E and F.",
+
+ ("Fig5","A"): "Fine-mapped rare ClinGen variants by genetic ancestry, faceted AD vs AR (lighter = novel, darker = ClinVar-annotated), over a per-inheritance ClinVar-classification proportion bar. A 2-plot patchwork; tagged A.",
+ ("Fig5","B"): "|Average QTL effect| by variant-effect category (Control / AD / AR, split Aggregate / Decreasing / Increasing) with 95% CIs. Plots |posterior_mean| (the SuSiE effect), not log2 aFC. A gene curated under BOTH AD and AR is counted in both classes (preserved fan-out; see Fig5/NOTES.md). Tagged B.",
+ ("Fig5","C"): "log2 aFC of the strongest decreasing variant per gene, top 7 per AD/AR (HEXA and MLC1 forced in), optionally refined by the private no-homozygote list. Tagged C.",
+ ("Fig5","D"): "ACVRL1 eQTL fine-mapping: regional PIP with a zoom inset and an aligned gene-model track, ENCODE cCREs shaded. A patchwork wrapped as one tag leaf; tagged D.",
+ ("Fig5","E"): "ACVRL1 causal promoter variants — PromoterAI base-resolution effect on a signed-square axis, one window per causal variant; the focal chr12:51,912,316 C>T sits in an SP1 GC-box. Tagged E.",
+ ("Fig5","F"): "SPR eQTL fine-mapping: regional PIP + zoom inset + gene-model track. A patchwork wrapped as one tag leaf; tagged F.",
+ ("Fig5","G"): "SPR Borzoi multi-track allelic browser (reference vs alternate across 16 marks, broad→narrow zoom) with the CTCF base-resolution attribution logo. A cowplot object; tagged G.",
 }
 
 FIGURES = {
@@ -192,8 +200,9 @@ so the panels can run even without the raw inputs.)
 ### Inputs
 
 > **Controlled-access.** The raw inputs derive from *All of Us* controlled-access
-> data and are not in this repository. The prep step reads them from `FIG2_INPUT`
-> (default `input_data/`); the derived per-panel `Fig2/data/*.rds` are committed,
+> data and are not in this repository. The prep step reads them **by manifest key**
+> (`Fig2/inputs.tsv`) from the staging root `FIG2_INPUT` (default the cwd; the files
+> live under `input_data/`); the derived per-panel `Fig2/data/*.rds` are committed,
 > so the panel cells below run from those even if the raw inputs are absent.
 """,
    "env": {"FIG2_OBJ": "objects", "FIG2_DATA": "data"},
@@ -350,6 +359,48 @@ Inputs are manifest-driven (`SuppFig1/inputs.tsv`); builders cache to
         "**Extra — hemoglobin-gene scatter.**"),
      ("supp","SuppFig1/extra/gene_type_detection.R",None,None,
         "**Extra — genes detected per gene type.**"),
+   ],
+ },
+ "Fig5": {
+   "num": 5, "cap": "Fig5", "lower": "fig5", "obj_letters": list("ABCDEFG"),
+   "title": "Figure 5 — rare-variant eQTL constraint & sequence-model variant-effect dissection",
+   "overview": """
+This notebook reproduces **Figure 5**. The figure pairs a population / constraint
+view of fine-mapped **rare** eQTLs at ClinGen disease genes (A–C) with two worked
+sequence-model dissections of causal regulatory variants: the **ACVRL1** promoter
+(PromoterAI, D/E) and the **SPR** regulatory element (Borzoi allelic browser, F/G).
+
+It runs the modular pipeline in `Fig5/` step by step: a shared **setup** with
+memoized loaders (`get_reference()`, `get_eqtl()`, `get_variant_freq()`), one cell
+per **panel** (each builds a single *untagged* object), then **assembly**, where
+the panel tags A–G are applied. Additional AlphaGenome analyses and supplements
+live in `Fig5/extra/` and are not run here.
+""",
+   "data_note": """
+### Inputs
+
+> **Controlled-access.** The SuSiE eQTL table and the no-homozygote list derive
+> from *All of Us* controlled-access data and are not in this repository; the SPR
+> Borzoi bigWigs are large model-derived files. Public / derived reference tables
+> (ClinGen, PromoterAI, ENCODE cCREs, GENCODE gene models) are committed under
+> `Fig5/reference/`.
+
+Inputs are **manifest-driven** (`Fig5/inputs.tsv`). Panel C degrades gracefully
+when the private no-homozygote list is absent.
+
+> **Panel B/C note.** A gene curated under **both** AD and AR ClinGen inheritance
+> is counted under both classes (preserved from the original). See `Fig5/NOTES.md`.
+""",
+   "env": {"FIG5_MANIFEST": "inputs.tsv", "FIG5_OBJ": "objects", "FIG5_DATA": "data"},
+   "steps": [
+     ("panel","Fig5/panels/panelA.R","A","A"),
+     ("panel","Fig5/panels/panelB.R","B","B"),
+     ("panel","Fig5/panels/panelC.R","C","C"),
+     ("panel","Fig5/panels/panelD.R","D","D"),
+     ("panel","Fig5/panels/panelE.R","E","E"),
+     ("panel","Fig5/panels/panelF.R","F","F_panel"),
+     ("panel","Fig5/panels/panelG.R","G","G"),
+     ("assemble","Fig5/assemble.R",None,"Fig5"),
    ],
  },
 }
