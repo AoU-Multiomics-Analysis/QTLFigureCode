@@ -72,3 +72,55 @@ ok("normalize_variant_id collapses repeated separators",
    normalize_variant_id("chr1::100**A") == "chr1_100_A")
 
 cat("test_fig5_helpers.R passed.\n")
+
+# =============================================================================
+# Regional window + gene-model resolution (added with the GTF-backed gene track)
+# =============================================================================
+
+# regional_window_bp() is a pure seam; redefine nothing, just source the rule.
+# Positions: a wide tested cis window, with the causal variants clustered.
+pos    <- c(1e6, 1.4e6, 1.499e6, 1.5e6, 1.501e6, 1.6e6, 2e6)
+causal <- c(FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE)
+
+w <- regional_window_bp(pos, causal, zoom_center = 1.5e6, zoom_window_bp = 200,
+                        flank_bp = 5000)
+ok("window is driven by the causal variants, not the tested range",
+   w[1] >= 1.49e6 && w[2] <= 1.51e6)
+ok("window is far tighter than the full tested span",
+   diff(w) < diff(range(pos)) / 10)
+ok("flank is applied around the causal span",
+   isTRUE(all.equal(w, c(1.499e6 - 5000, 1.501e6 + 5000))))
+
+# The zoom region must stay inside the panel, or the inset callout is orphaned.
+wz <- regional_window_bp(pos, causal, zoom_center = 1.5e6, zoom_window_bp = 50000,
+                         flank_bp = 100)
+ok("window widens to contain the zoom region",
+   wz[1] <= 1.5e6 - 50000 && wz[2] >= 1.5e6 + 50000)
+
+# Never draw axis beyond what was actually tested.
+wc <- regional_window_bp(c(1e6, 1.1e6), c(TRUE, TRUE), zoom_center = 1.05e6,
+                         zoom_window_bp = 10, flank_bp = 5e6)
+ok("window is clamped to the tested range",
+   wc[1] == 1e6 && wc[2] == 1.1e6)
+
+# No variant reaching the PIP threshold must not produce an empty/NA window.
+wn <- regional_window_bp(pos, rep(FALSE, length(pos)), zoom_center = 1.5e6,
+                         zoom_window_bp = 200, flank_bp = 5000)
+ok("falls back to all tested variants when nothing is causal",
+   all(is.finite(wn)) && diff(wn) > 0)
+
+# --- gene-model resolution --------------------------------------------------
+# Genes must be selected by chromosome AND coordinate. Before this change the
+# track filtered on coordinate alone, which only worked because the two
+# published loci do not overlap numerically.
+gm <- gene_models_for_window("chr12", 51888000, 51930000)
+ok("chr12 window resolves ANKRD33 + ACVRL1",
+   setequal(gm$spans$gene, c("ANKRD33", "ACVRL1")))
+ok("exons are restricted to the resolved genes",
+   all(gm$exons$gene %in% gm$spans$gene))
+
+spr_range <- gene_models_for_window("chr12", 72887408, 72892158)
+ok("SPR's coordinates on the WRONG chromosome resolve to nothing",
+   nrow(spr_range$spans) == 0)
+ok("SPR resolves on its own chromosome",
+   identical(gene_models_for_window("chr2", 72887408, 72892158)$spans$gene, "SPR"))

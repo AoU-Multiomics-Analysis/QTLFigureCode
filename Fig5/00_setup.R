@@ -35,6 +35,7 @@ dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
+source("common/gene_models.R")   # GTF-backed gene models for the browser tracks
 
 # --- Font: Inter via Google if reachable, else default sans -----------------
 FONT <- "sans"
@@ -350,8 +351,45 @@ build_panelA <- function(eqtl, clingen) {
 # the regional-PIP + zoom-inset plotter. Returned objects are UNTAGGED; tags are
 # applied in fig5/assemble.R.
 # =============================================================================
-.gene_exons_all <- fread(input_path("gene_exons"), col.names = c("gene", "chrom", "start", "end", "strand"))
-.gene_spans_all <- fread(input_path("gene_spans"), col.names = c("gene", "chrom", "start", "end", "strand"))
+GENE_MODEL_COLS <- c("gene", "chrom", "start", "end", "strand")
+
+# Committed fallback tables, read lazily so a GTF-backed run never touches them.
+.gene_tables <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache))
+      cache <<- list(
+        spans = as_tibble(fread(input_path("gene_spans"), col.names = GENE_MODEL_COLS)),
+        exons = as_tibble(fread(input_path("gene_exons"), col.names = GENE_MODEL_COLS)))
+    cache
+  }
+})
+
+# `gene_gtf` is an OPTIONAL manifest key: absent (or declared but not staged)
+# means fall back to the committed tables, so the tests, the notebook and anyone
+# without a 1.5 GB GENCODE file still build the figure.
+.gene_gtf_path <- function()
+  tryCatch({ p <- input_path("gene_gtf"); if (file.exists(p)) p else NA_character_ },
+           error = function(e) NA_character_)
+
+# Genes overlapping a window, for the gene-model track. From GENCODE when a GTF
+# is staged (so a new locus needs no hand-curated table), otherwise from the
+# committed tables filtered to the same window.
+#
+# Argument names deliberately avoid `chrom`/`start`/`end`: those are column names
+# in these tables, and a filter argument sharing a column's name is the
+# data-masking trap that bit the Fig1 manifest loader.
+gene_models_for_window <- function(chr, win_start, win_end) {
+  gtf <- .gene_gtf_path()
+  if (!is.na(gtf))
+    return(extract_gene_models(gtf, chrom = chr, start = win_start, end = win_end))
+
+  tb <- .gene_tables()
+  spans <- tb$spans %>% filter(chrom == chr, start <= win_end, end >= win_start)
+  list(spans = spans,
+       exons = tb$exons %>% filter(chrom == chr, gene %in% spans$gene,
+                                   start <= win_end, end >= win_start))
+}
 
 # ENCODE cCRE shading: keep only cCREs overlapping a fine-mapped variant. Light
 # fill + crisp vertical edges only, so adjacent elements stay distinct.
@@ -372,27 +410,41 @@ ccre_bands <- function(ccre, scale = 1e6, alpha = 0.16, vars = NULL) {
 }
 
 # gene-model track sharing x limits with the PIP panel above it
-gene_model_track <- function(xlim_mb, scale = 1e6, exon_h = 0.34, label_size = 3.4,
-                             exons = .gene_exons_all, spans = .gene_spans_all,
+gene_model_track <- function(xlim_mb, chrom, scale = 1e6, exon_h = 0.34, label_size = 3.4,
+                             models = NULL,
                              expand = expansion(mult = 0), x_title = "Genomic position (Mb)",
                              x_labeller = waiver(), right_strip = TRUE) {
   win <- xlim_mb * scale
-  sp  <- spans |> filter(start < win[2], end > win[1])
-  ex  <- exons |> filter(gene %in% sp$gene, start < win[2], end > win[1])
+  # Genes are selected by chromosome AND coordinate. Coordinate alone used to be
+  # enough only because the two published loci (chr12 ~51.9 Mb, chr2 ~72.9 Mb)
+  # happen not to overlap numerically; with genes pulled from a whole-genome GTF
+  # that assumption breaks and every chromosome's genes land in the window.
+  if (is.null(models)) models <- gene_models_for_window(chrom, win[1], win[2])
+  sp  <- models$spans
+  ex  <- models$exons |> filter(gene %in% sp$gene)
+
+  # A window drawn tight around the fine-mapped variants can exclude a gene's
+  # TSS. Placing the label at the raw TSS would then push it outside the scale
+  # limits and ggplot would silently drop it, leaving an unlabelled gene. Clamp
+  # the label into the panel, and draw the TSS tick + direction arrow only when
+  # the TSS itself is actually in view.
   lab <- sp |> mutate(tss = if_else(strand == "+", start, end),
-                      arr = if_else(strand == "+", 1, -1) * diff(win) * 0.045)
+                      arr = if_else(strand == "+", 1, -1) * diff(win) * 0.045,
+                      tss_in = tss >= win[1] & tss <= win[2],
+                      tss_x  = pmin(pmax(tss, win[1]), win[2]))
+  tss_lab <- lab |> filter(tss_in)
   p <- ggplot() +
     geom_segment(data = sp, aes(x = pmax(start / scale, xlim_mb[1]),
                                 xend = pmin(end / scale, xlim_mb[2]), y = 0, yend = 0),
                  colour = "grey45", linewidth = 0.5) +
     geom_rect(data = ex, aes(xmin = start / scale, xmax = end / scale,
                              ymin = -exon_h, ymax = exon_h), fill = "grey35") +
-    geom_segment(data = lab, aes(x = tss / scale, xend = tss / scale,
+    geom_segment(data = tss_lab, aes(x = tss / scale, xend = tss / scale,
                                  y = 0, yend = exon_h * 2.2), colour = "grey45", linewidth = 0.5) +
-    geom_segment(data = lab, aes(x = tss / scale, xend = (tss + arr) / scale,
+    geom_segment(data = tss_lab, aes(x = tss / scale, xend = (tss + arr) / scale,
                                  y = exon_h * 2.2, yend = exon_h * 2.2), colour = "grey45",
                  linewidth = 0.5, arrow = arrow(length = unit(3.5, "pt"), type = "closed")) +
-    geom_text(data = lab, aes(x = tss / scale, y = 0, label = gene),
+    geom_text(data = lab, aes(x = tss_x / scale, y = 0, label = gene),
               size = label_size, fontface = "italic", hjust = 1,
               nudge_x = -diff(xlim_mb) * 0.012) +
     scale_x_continuous(limits = xlim_mb, expand = expand, labels = x_labeller) +
@@ -413,12 +465,33 @@ gene_model_track <- function(xlim_mb, scale = 1e6, exon_h = 0.34, label_size = 3
   p
 }
 
+# Regional window (bp) for the PIP panel -- a pure seam so the rule is testable
+# without building a plot.
+#
+# The window tracks the FINE-MAPPED variants plus a flank, NOT the full tested
+# cis window: the locus worth showing is where the credible-set variants sit,
+# and the tested range is ~1 Mb of mostly empty axis. It is then widened to
+# contain the zoom region (otherwise the inset's callout box is drawn outside
+# the panel it points into) and clamped to the tested range (so the axis never
+# implies data where none was assessed).
+regional_window_bp <- function(position, causal, zoom_center, zoom_window_bp,
+                               flank_bp = 5000) {
+  focal <- position[causal & !is.na(position)]
+  if (!length(focal)) focal <- position          # nothing reached the threshold
+  win <- range(focal, na.rm = TRUE) + c(-1, 1) * flank_bp
+  win <- c(min(win[1], zoom_center - zoom_window_bp),
+           max(win[2], zoom_center + zoom_window_bp))
+  tested <- range(position, na.rm = TRUE)
+  c(max(win[1], tested[1]), min(win[2], tested[2]))
+}
+
 # regional PIP plot with a zoom inset and an aligned gene-model track (untagged)
 plot_finemapping_with_inset <- function(finemapping_df, pip_thresh = 0.9,
     zoom_center, zoom_window_bp = 500,
     inset_left = 0.24, inset_bottom = 0.05, inset_right = 0.96, inset_top = 0.76,
     box_padding_bp = 1000, box_padding_pip = 0.05, cs_colors,
-    panel_title = NULL, ccre = NULL, x_limits = NULL) {
+    panel_title = NULL, ccre = NULL, x_limits = NULL,
+    chrom = NULL, regional_flank_bp = 5000) {
 
   plot_df <- finemapping_df %>%
     filter(!is.na(position), !is.na(pip)) %>%
@@ -428,9 +501,19 @@ plot_finemapping_with_inset <- function(finemapping_df, pip_thresh = 0.9,
   iz_causal <- plot_df$position[plot_df$causal &  plot_df$in_zoom]
   oz_causal <- plot_df$position[plot_df$causal & !plot_df$in_zoom]
 
-  regional_x_range  <- range(plot_df$position / 1e6, na.rm = TRUE)
-  regional_x_pad    <- max(diff(regional_x_range) * 0.02, 0.001)
-  regional_x_limits <- if (is.null(x_limits)) regional_x_range + c(-1, 1) * regional_x_pad else x_limits
+  regional_x_limits <- if (is.null(x_limits))
+    regional_window_bp(plot_df$position, plot_df$causal, zoom_center,
+                       zoom_window_bp, regional_flank_bp) / 1e6 else x_limits
+
+  # The gene track selects genes by chromosome, so it must be unambiguous.
+  if (is.null(chrom)) {
+    if (!"chrom" %in% names(plot_df))
+      stop("plot_finemapping_with_inset(): pass chrom= (or supply a `chrom` ",
+           "column) -- the gene-model track needs a chromosome to select genes.")
+    chrom <- unique(plot_df$chrom)
+    if (length(chrom) != 1L)
+      stop("expected one chromosome, got: ", paste(chrom, collapse = ", "))
+  }
   regional_y_limits <- c(0, 1.08)
 
   boxed <- zoom_df %>% filter(causal); if (nrow(boxed) == 0) boxed <- zoom_df
@@ -502,7 +585,7 @@ plot_finemapping_with_inset <- function(finemapping_df, pip_thresh = 0.9,
     inset_element(zoom_plot, left = inset_left, bottom = inset_bottom,
                   right = inset_right, top = inset_top, align_to = "panel",
                   on_top = TRUE, ignore_tag = TRUE)
-  gtrack <- gene_model_track(regional_x_limits, expand = expansion(mult = 0))
+  gtrack <- gene_model_track(regional_x_limits, chrom = chrom, expand = expansion(mult = 0))
   main / gtrack + plot_layout(heights = c(1, 0.17))
 }
 
@@ -643,7 +726,7 @@ build_panelD <- function(eqtl) {
   plot_finemapping_with_inset(
     qtl %>% mutate(type = "Expression"),
     pip_thresh = 0.9, zoom_center = ACVRL1_FOCAL, zoom_window_bp = 500,
-    cs_colors = cs_palette(qtl$cs_id),
+    cs_colors = cs_palette(qtl$cs_id), chrom = "chr12",
     panel_title = "ACVRL1 eQTL fine-mapping", ccre = fread(input_path("acvrl1_ccre")))
 }
 
@@ -831,7 +914,7 @@ build_panelF <- function(eqtl) {
     mutate(causal = pip > 0.9, cs_id = as.character(cs_id), type = "Expression")
   plot_finemapping_with_inset(
     spr_region, pip_thresh = 0.9,
-    zoom_center = 72887978, zoom_window_bp = 200, x_limits = c(72.8817, 72.8934),
+    zoom_center = 72887978, zoom_window_bp = 200, chrom = "chr2",
     cs_colors = cs_palette(spr_region$cs_id),
     panel_title = "SPR eQTL fine-mapping", ccre = fread(input_path("spr_ccre")))
 }
