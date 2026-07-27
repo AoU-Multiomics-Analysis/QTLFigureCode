@@ -2,10 +2,10 @@
 
 Code to generate **Figure 4** for the manuscript. The figure connects molecular
 QTL colocalization with GWAS traits to downstream rare-variant signal: how many
-genes colocalize per trait category and at what credible-set rate, the R² that
-rare variants add to TWAS, whether colocalized genes carry inflated conditional
-TWAS signal versus matched controls, and whether that signal enriches in
-clinically important gene sets.
+genes colocalize per trait category and at what lenient credible-set rate, the R²
+that rare variants add to TWAS, whether colocalized genes carry inflated
+conditional TWAS signal versus matched controls, and whether that signal enriches
+in clinically important gene sets.
 
 > **Data note.** The inputs derive from *All of Us* **controlled-access** data
 > and are **not** in this repository. Run this on the Researcher Workbench.
@@ -14,10 +14,31 @@ clinically important gene sets.
 
 | Panel | Content | Source |
 |-------|---------|--------|
-| **A** | Colocalizing-gene counts + credible-set coloc rate, by trait category | `harmonized_coloc.gene.tsv.gz` + `coloc_rate_by_trait.tsv` |
-| **B** | Histogram of the R² increase (%) contributed by rare variants | `R2_TWAS_combined.tsv` |
+| **A** | Colocalizing-gene counts + **lenient** credible-set coloc rate, by trait category (traits with > 5 colocalizing genes; top 10 per category; two categories dropped) | `harmonized_coloc.gene.tsv.gz` + `coloc_rate_by_trait.tsv` |
+| **B** | Histogram of the R² increase (%) contributed by rare variants (x truncated to −20…40 %) | `R2_TWAS_combined.tsv` |
 | **C** | Common/rare conditional-TWAS QQ, colocalized vs. matched non-colocalized (blood traits) | `ConditionalTWAS.cleaned.tsv.gz` |
 | **D** | Odds-ratio forest: rare/common TWAS-signal enrichment across gene sets | conditional TWAS + ClinGen + drug interactions |
+
+### Panel A — which rate, and what is filtered out
+
+The lollipop is the **lenient** union credible-set coloc rate
+(`pct_lenient_union`): `coloc_by_trait()` in `00_setup.R` calls
+`build_plot_data(..., rate_type = "lenient")`. Note that `build_plot_data()`'s own
+default is `rate_type = "stringent"` (`pct_stringent_union`) — anything else that
+calls the helper directly gets the *stringent* rate unless it asks for lenient.
+
+`panels/panelA.R` then trims the table before plotting: it drops the
+`neuropsychiatric` and `renal_urological` categories, keeps **traits** with
+`count > 5` colocalizing genes, and keeps the top ten **traits within each
+category** by count. The "top 10" is therefore per category, not a global top-10
+of categories.
+
+### Panel B — truncated axis
+
+`panels/panelB.R` sets `xlim(-20, 40)` on the histogram. That is a scale limit,
+not a zoom: genes whose R² increase falls outside −20…40 % are **removed** from
+the data before binning rather than piling up at the edge, so the plotted gene
+count is smaller than the number of genes passing `Pval < 1e-5`.
 
 ## Repository layout, running, tests
 

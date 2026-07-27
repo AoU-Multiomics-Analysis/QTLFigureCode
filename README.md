@@ -23,10 +23,11 @@ input data lives.
 | Dir | Figure | What it shows | Status |
 |-----|--------|---------------|--------|
 | [`Fig1/`](Fig1/README.md) | **1** | cis-QTL discovery across the three assays and ancestry groups: cohort composition, proportion of genes with a significant QTL by sample size, novelty vs. prior consortia, and SuSiE fine-mapping architecture | Modular pipeline + manifest |
-| [`Fig2/`](Fig2/README.md) | **2** | properties of fine-mapped causal variants (SuSiE, PIP > 0.9): allele-frequency spectrum, ancestry enrichment, molecular effect sizes, and links to expression-outlier / dosage phenotypes | Modular pipeline (pre-manifest) |
+| [`Fig2/`](Fig2/README.md) | **2** | properties of fine-mapped causal variants (SuSiE, PIP > 0.9): allele-frequency spectrum, ancestry enrichment, molecular effect sizes, and links to expression-outlier / dosage phenotypes | Modular pipeline + manifest |
 | [`Fig3/`](Fig3/README.md) | **3** | how often a signal is **shared between molecular layers** — FastENLOC colocalization between each assay pair at gene, credible-set and variant level, and whether sharing depends on allele frequency | Modular pipeline + manifest |
-| `Fig4/` | **4** | colocalization of molecular QTLs with GWAS traits, grouped by trait category | Flat script — not yet cleaned |
-| `Fig5/` | **5** | — | Empty (planned) |
+| [`Fig4/`](Fig4/README.md) | **4** | colocalization of molecular QTLs with GWAS traits, grouped by trait category | Modular pipeline + manifest |
+| [`Fig5/`](Fig5/README.md) | **5** | fine-mapped **rare** (MAF < 1%) expression QTLs at ClinGen disease genes, by ancestry group and mode of inheritance, plus sequence-model dissection of two causal regulatory alleles (PromoterAI at *ACVRL1*, Borzoi at *SPR*) | Modular pipeline + manifest |
+| [`SuppFig1/`](SuppFig1/README.md) | **S1** | concordance of *All of Us* bulk RNA-seq expression with GTEx v10 whole blood: protein-coding and lncRNA mean-TPM agreement with cohort-specific detection counts, GO enrichment of the cohort-specific genes, and a transcription-factor expression comparison | Modular pipeline + manifest |
 
 Each figure directory has its own `README.md` (and, where relevant, a `NOTES.md`
 recording deferred analyses and any way the cleaned code deliberately differs
@@ -58,8 +59,9 @@ git-ignored locations (see [`.gitignore`](.gitignore) and each figure's own
 
 ## Shared conventions
 
-Figures that have been cleaned up (**Fig1** and **Fig3**) follow one template —
-Fig2 established its shape, and Fig1/Fig3 extended it with the manifest system:
+Every figure directory (**Fig1**–**Fig5** and **SuppFig1**) follows one template —
+Fig2 established its shape, and the later cleanups extended it with the manifest
+system:
 
 - **`00_setup.R`** — libraries, env-overridable paths, the `showtext` font and a
   single `DPI` constant, a `theme_set`/`theme_update` design system with `SZ_*`
@@ -73,15 +75,14 @@ Fig2 established its shape, and Fig1/Fig3 extended it with the manifest system:
 - **`run_all.R`** — panels → assemble, end to end.
 - **`supp_*.R`** — standalone supplemental figures.
 
-**Manifest-driven inputs** (`common/manifest.R`, used by Fig1 and Fig3). Each
+**Manifest-driven inputs** (`common/manifest.R`, used by every figure). Each
 figure's `inputs.tsv` maps a logical `key` to one or more files: a
 `local_subpath` (relative to a staging root that defaults to the working
 directory) and, where known, a `gs://` origin. A file is fetched with `gsutil`
 **only when the local copy is missing**, so pre-staged inputs skip the copy.
 Panels reach inputs through `input_path(key)`, `load_input(key)` and
 `input_files(key)`, and each panel declares only what it needs. To add or
-re-point an input you edit `inputs.tsv` — no script changes. (Fig2 predates this
-and reads its inputs directly; it has no `inputs.tsv`.)
+re-point an input you edit `inputs.tsv` — no script changes.
 
 **Rendering.** Text uses the **Inter** font, fetched from Google Fonts at runtime
 via [showtext](https://cran.r-project.org/package=showtext), with an automatic

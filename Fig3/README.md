@@ -21,7 +21,7 @@ variant level, and whether that sharing depends on allele frequency.
 |-------|---------|--------|
 | **A** | Percent of genes by number of colocalized molecular layers (0–3), among genes fine-mapped in all three assays | gene-level FastENLOC + SuSiE |
 | **B** | Percent of genes by number of colocalized signals, inset with per-assay credible-set colocalization rate | signal-level FastENLOC + SuSiE |
-| **C** | Effect of −log(MAF) on cross-assay effect-size correlation, per assay pair | variant-level FastENLOC + SuSiE |
+| **C** | Interaction coefficient (95% CI) between one assay's effect size and standardized −log10(MAF), per assay pair | variant-level FastENLOC + SuSiE |
 | **D** | eQTL vs pQTL posterior effect size, faceted by MAF bin | variant-level FastENLOC + SuSiE |
 | **E** | *Reserved slot — content undecided (see [`NOTES.md`](NOTES.md))* | — |
 
@@ -51,7 +51,8 @@ variant level, and whether that sharing depends on allele frequency.
 │   ├── NOTES.md                 #   deferred analyses, open questions, behaviour changes
 │   ├── data/                    #   memoized derived tables (.rds)  [git-ignored]
 │   └── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
-├── enloc/ finemapping/ annotated/ reference/   # inputs staged here [git-ignored]
+├── Fig3Data/ reference/         # inputs staged here (SuSiE tables sit at the
+│                                #   staging root) [git-ignored]
 └── Figure3.pdf / Figure3.png
 ```
 
@@ -179,11 +180,19 @@ applicable), `local_subpath` (relative to the staging root, overridable via
 
 | Manifest key | Files | Used by |
 |---|---|---|
-| `susie_eqtl` / `susie_sqtl` / `susie_pqtl` | `finemapping/coloc/{e,s,p}QTL_susie.COMB.annotated.cleaned.tsv.gz` | A, B, C, D |
-| `enloc_gene` | `enloc/*.enloc.gene.out` (3 pairs) | A, S1, S2 |
-| `enloc_cs` | `enloc/*.enloc.sig.out` (3 pairs) | B, S1 |
-| `enloc_variant` | `enloc/*.enloc.snp.out` (3 pairs) | C, D, S1 |
-| `protein_lod` / `median_tpm` / `genebayes_shet` | `reference/…` | *(deferred — see NOTES.md)* |
+| `susie_eqtl` / `susie_sqtl` / `susie_pqtl` | `COMB.{expression,splicing,proteomics}_SusieMerged.annotated.ancestry_skew.tsv.gz` | A, B, C, D |
+| `enloc_gene` | `Fig3Data/*.enloc.gene.out` (3 pairs) | A, S1, S2 |
+| `enloc_cs` | `Fig3Data/*.enloc.sig.out` (3 pairs) | B, S1 |
+| `enloc_variant` | `Fig3Data/*.enloc.snp.out` (3 pairs) | C, D, S1 |
+| `protein_lod` / `median_tpm` / `genebayes_shet` | `reference/…`, `41588_2024_1820_MOESM4_ESM.xlsx` | *(deferred — see NOTES.md)* |
+
+**The three SuSiE tables are shared, not Fig3-specific.** They are the same
+combined-ancestry `SusieMerged` exports that Figures 1 and 2 read; Fig3 was
+repointed at them from its own
+`finemapping/coloc/{e,s,p}QTL_susie.COMB.annotated.cleaned.tsv.gz` copies. One
+consequence is visible in the pipeline: the shared splicing table is
+intron-level and not pre-deduplicated, so `posteriors()` collapses duplicate
+(variant, gene) rows — see [`NOTES.md`](NOTES.md).
 
 **Only `protein_lod` currently carries a `gs://` URI.** The
 rest are local-only and must be pre-staged; a missing one fails with a
@@ -192,6 +201,27 @@ list.
 
 The nine FastENLOC outputs are treated as **inputs**, not pipeline products —
 this figure does not run FastENLOC.
+
+### Where allele frequencies come from
+
+There is **no standalone annotation input**. Fig3 used to stage the genome-wide
+AoU annotation table for exactly one thing — the seven per-ancestry
+allele-frequency columns — and that key has been removed from `inputs.tsv`
+entirely. The same seven columns ride along on the annotated SuSiE tables, so
+`.variant_af_map()` (`00_setup.R`) pools the three assay tables, reduces them to
+one row per variant, and `coloc_variant_level()` joins frequencies from there.
+`max_af` (and hence `rare`, `log_maf` and panel D's MAF bins) is still the
+`pmax()` over the seven **folded** frequencies, unchanged.
+
+> **This affects interpretation.** Allele-frequency coverage is no longer
+> genome-wide. A colocalized variant that appears in the FastENLOC `.snp.out`
+> output but in **none** of the three SuSiE tables now gets no frequency and is
+> dropped from **panels C and D** by their `max_af` NA filters.
+> `coloc_variant_level()` reports how many rows this affects as a `note:` line
+> at build time — read it on the first real rebuild. Panel C is affected twice
+> over, because `log_maf` is standardised across the pooled set before
+> filtering, so a coverage change shifts the centring for every variant. See
+> [`NOTES.md`](NOTES.md).
 
 To add or re-point an input, edit `fig3/inputs.tsv`; no script changes
 needed.

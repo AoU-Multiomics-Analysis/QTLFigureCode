@@ -38,8 +38,9 @@ pt-vs-mm sizes, tagging only in `assemble.R` + a rendered-tag test, the notebook
 generator), a **defect checklist** distilled from real bugs the earlier cleanups
 found, and the stacked-branch merge logistics.
 
-Fig1, Fig3, Fig4 and SuppFig1 are worked examples; Fig2 was already the template.
-Fig5 is empty — the next candidate. Read the most recent
+Every figure has now been cleaned up: Fig2 was the original template, and Fig1,
+Fig3, Fig4, Fig5 and SuppFig1 are worked examples that extended it with the
+manifest system. Read the most recent
 `docs/superpowers/specs/*-cleanup-design.md` and `docs/superpowers/plans/*.md`
 before starting a new one.
 
