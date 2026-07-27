@@ -1,0 +1,13 @@
+key	local_subpath	gs_uri
+susie	Fig5/inputs/susie.tsv.gz	-
+genebayes	Fig5/inputs/genebayes.xlsx	-
+promoterai	Fig5/inputs/promoterai_tss500.tsv.gz	-
+nohom	Fig5/inputs/NoHomozygoteVariants.txt	-
+clingen	Fig5/reference/clingen_gene_validity.csv	-
+acvrl1_promoterai	Fig5/reference/acvrl1_promoterAI.tsv	-
+acvrl1_ccre	Fig5/reference/acvrl1_ccre_region.tsv	-
+spr_ccre	Fig5/reference/spr_ccre_region.tsv	-
+gene_exons	Fig5/reference/gene_exons.tsv	-
+gene_spans	Fig5/reference/gene_spans.tsv	-
+spr_bigwig	Fig5/inputs/SPR_bigwig	-
+spr_attr	Fig5/inputs/spr_attr.tsv	-
