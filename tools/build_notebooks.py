@@ -79,6 +79,18 @@ def script_header(relpath):
     # drop banner rules like ==========
     return [l for l in out if not set(l.strip()) <= {"=", "-"} and l.strip()]
 
+# Inline display size (inches) for each assembled figure, keeping the aspect of
+# the ggsave() call in that figure's assemble.R but scaled down to fit a
+# notebook. Rendered at repr.plot.res = DPI, so these also set the pixel size.
+FIG_DISPLAY = {
+    "Fig1":     (11.1, 12.0),   # ggsave 25 x 27 (portrait)
+    "Fig2":     (12.0,  7.2),   # ggsave 40 x 24
+    "Fig3":     (12.0,  8.0),   # ggsave 18 x 12
+    "Fig4":     (12.0,  8.0),   # ggsave 15 x 10
+    "Fig5":     (12.0, 10.7),   # ggsave 18 x 16
+    "SuppFig1": (12.0,  7.9),   # ggsave 35 x 23
+}
+
 def setup_cell_code(fig_lower, fig_cap, env):
     envs = ",\n           ".join(f'{k} = file.path(fig_dir, "{v}")' for k, v in env.items())
     setenv = f"Sys.setenv({envs})\n" if env else ""
@@ -89,6 +101,12 @@ fig_dir <- list.files(".", pattern = "^({fig_cap}|{fig_lower})$", include.dirs =
 stopifnot("Run this notebook from the repository root (the folder holding {fig_cap}/)." =
           length(fig_dir) == 1)
 {setenv}source(file.path(fig_dir, "00_setup.R"))
+
+## Inline rendering. The canvas resolution is matched to DPI because 00_setup.R
+## pins showtext to it (showtext_opts(dpi = DPI)); if the two disagree, every
+## label renders at the wrong size. Panels display at a readable default, and
+## the assemble cell overrides these with the composed figure's true aspect.
+options(repr.plot.width = 7.5, repr.plot.height = 5, repr.plot.res = DPI)
 cat("Setup loaded from", fig_dir, "\\n")'''
 
 # --- per-figure authored content --------------------------------------------
@@ -475,7 +493,10 @@ def build(figkey):
                 "here and only here**. Writes the PDF plus a PNG preview, and renders "
                 "the assembled figure inline."
             ))
-            cells.append(code(read_script(path, lower, display=display)))
+            fw, fh = FIG_DISPLAY.get(cap, (12.0, 8.0))
+            asm_display = (f"options(repr.plot.width = {fw}, repr.plot.height = {fh})\n"
+                           f"{display}") if display else None
+            cells.append(code(read_script(path, lower, display=asm_display)))
 
         elif kind == "supp":
             cells.append(md("## " + extra_md))

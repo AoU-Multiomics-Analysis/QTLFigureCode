@@ -66,3 +66,6 @@
 # MetaSoft intermediates
 /*_wide_metasoft_input.tsv
 /*.metasoft.tsv
+# ...and when OUTDIR is the figure's own directory, which is now the default.
+/Fig?/*_wide_metasoft_input.tsv
+/Fig?/*.metasoft.tsv
