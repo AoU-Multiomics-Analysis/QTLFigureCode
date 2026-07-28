@@ -127,9 +127,16 @@ saveit(cumulative_effects, "D")
 saveit(read_qtl("burden_enrichment"), "E")
 
 ## ---- Panel F: median genes per individual ---------------------------------
+# MedianKOSummary.tsv labels the central bin "(-10,-10)" -- a degenerate
+# interval. It sits exactly between "(-25,-10]" and "[10,25)", so it is the
+# -10% to +10% bin and the upper bound lost its sign upstream. Relabelled here
+# rather than editing the staged input. `lower` still extracts -10, so the bin
+# ordering is unchanged; only the printed label differs. See NOTES.md.
 median_pc <- read_qtl("median_ko") %>%
   filter(gene_type == "protein_coding") %>%
-  mutate(gene_type = "Protein Coding",
+  mutate(pct_bin = if_else(as.character(pct_bin) == "(-10,-10)", "(-10,10)",
+                           as.character(pct_bin)),
+         gene_type = "Protein Coding",
          lower = as.numeric(str_extract(as.character(pct_bin), "-?[0-9]+\\.?[0-9]*")))
 saveit(median_pc, "F")
 

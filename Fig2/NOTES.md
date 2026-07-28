@@ -63,3 +63,38 @@ have links or scripts pointing at `Fig2.pdf`, they need updating.
 - **No `gs://` origins.** All six inputs are locally-derived and carry
   `gs_uri = -`, so they must be pre-staged; the pipeline cannot self-stage them
   on the Workbench. Fig4 and Fig5 have the same gap.
+
+---
+
+## Panel F — the central percent-change bin was mislabelled
+
+**This changes a printed label, not a number.** `Fig2Data/MedianKOSummary.tsv`
+labels its central bin `(-10,-10)` — a degenerate interval, since no value can
+be both greater than and less than -10. It sits between `(-25,-10]` and
+`[10,25)` in the ordering, so it is the **-10% to +10%** bin and the upper
+bound lost its sign upstream.
+
+Relabelled to `(-10,10)` in `01_prep_data.R` rather than editing the staged
+input, which is controlled-access. `lower` still extracts `-10` from the
+string, so the bin's position in `reorder(pct_bin, lower)` is unchanged; only
+the axis text differs. The bar itself (median 7,991 genes per individual — the
+tallest in the panel) was always plotted correctly.
+
+The underlying generator of `MedianKOSummary.tsv` should be fixed at source;
+until then this rename is load-bearing and must not be dropped.
+
+## Panel G — legend moved to the bottom-right corner
+
+The manual legend was anchored at hard-coded `x = 1850 / 2000`, roughly the
+middle of the axis. It is now placed at 86% / 89.5% of the data maximum, so it
+sits in the bottom-right corner, and the right-hand scale expansion widened
+from 0.18 to 0.34 so "Duplication-like" clears the panel edge. The anchors are
+computed from the data, so the legend stays in the corner if the counts change.
+
+## Panels E and F — tag spacing
+
+E and F share a narrow middle column, and their tags landed against both the
+panel content above them and panel D to the left. The `E / F` composite now
+carries `plot.margin = margin(t = 34, r = 10, b = 6, l = 70)` applied with `&`
+so it reaches both sub-plots; patchwork draws each tag inside the plot margin,
+so widening top and left is what gives the letters room.

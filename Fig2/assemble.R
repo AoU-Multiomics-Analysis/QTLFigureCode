@@ -9,7 +9,12 @@ P <- setNames(lapply(LETTERS[1:7], function(x) readRDS(file.path(OBJ_DIR, paste0
               LETTERS[1:7])
 
 # E over F form the QTL-burden column.
-QTLBurden <- P$E / P$F + plot_layout(heights = c(1, 3))
+# E and F sit in a narrow middle column, so their tags landed against both the
+# panel content above them and panel D to the left. `&` applies the margin to
+# BOTH sub-plots; patchwork places each tag inside the plot margin, so widening
+# top and left is what gives the letters room.
+QTLBurden <- (P$E / P$F + plot_layout(heights = c(1, 3))) &
+  theme(plot.margin = margin(t = 34, r = 10, b = 6, l = 70))
 
 top_row <- P$A + (P$B + theme(plot.margin = margin(l = 100))) + P$C +
   plot_layout(widths = c(1, 2.5, 1))
