@@ -22,21 +22,26 @@ ok("allele frequencies survive the widening",
 
 # --- feature matrix ---------------------------------------------------------
 fmx <- build_feature_matrix(data.frame(
-  variant     = paste0("v", 1:3),
-  consequence = c("missense_variant", "intron_variant", "."),
-  phylop      = c(3.5, 0.2, 1.0),
-  distTSS     = c(500, 50000, -100),
-  gene_type   = c("protein_coding", "lncRNA", "protein_coding"),
-  max_af      = c(0.001, 0.20, 0.05),
-  PLS         = c(TRUE, FALSE, TRUE),
+  variant     = paste0("v", 1:4),
+  consequence = c("missense_variant", "intron_variant", ".", "."),
+  phylop      = c(3.5, 0.2, 1.0, 0.5),
+  # Row 3 (-100) and row 4 (-50000) both cover the sign-agnostic claim: a
+  # small-magnitude negative offset should still count as proximal, and a
+  # large-magnitude negative offset should not. Row 3 alone cannot falsify an
+  # implementation missing abs() -- (-100 < 2000) is TRUE either way -- but
+  # row 4's (-50000 < 2000) would wrongly be TRUE without abs().
+  distTSS     = c(500, 50000, -100, -50000),
+  gene_type   = c("protein_coding", "lncRNA", "protein_coding", "protein_coding"),
+  max_af      = c(0.001, 0.20, 0.05, 0.30),
+  PLS         = c(TRUE, FALSE, TRUE, FALSE),
   stringsAsFactors = FALSE))
 
-ok("rare uses MAF < 0.01",        identical(fmx$rare, c(TRUE, FALSE, FALSE)))
-ok("conserved uses phyloP > 2",   identical(fmx$conserved, c(TRUE, FALSE, FALSE)))
+ok("rare uses MAF < 0.01",        identical(fmx$rare, c(TRUE, FALSE, FALSE, FALSE)))
+ok("conserved uses phyloP > 2",   identical(fmx$conserved, c(TRUE, FALSE, FALSE, FALSE)))
 ok("tss_proximal uses |distTSS| < 2000 and is sign-agnostic",
-   identical(fmx$tss_proximal, c(TRUE, FALSE, TRUE)))
+   identical(fmx$tss_proximal, c(TRUE, FALSE, TRUE, FALSE)))
 ok("protein_coding reads gene_type",
-   identical(fmx$protein_coding, c(TRUE, FALSE, TRUE)))
+   identical(fmx$protein_coding, c(TRUE, FALSE, TRUE, TRUE)))
 ok("VEP terms are expanded into the matrix", "missense_variant" %in% names(fmx))
 ok("feature_names() returns only logical columns",
    all(vapply(fmx[feature_names(fmx)], is.logical, logical(1))))
