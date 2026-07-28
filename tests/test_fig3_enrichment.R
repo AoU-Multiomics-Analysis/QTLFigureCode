@@ -12,13 +12,129 @@ map <- .variant_feature_map(fm)
 
 ok("one row per variant", !any(duplicated(map$variant)))
 ok("carries the cCRE flags", all(FEATURE_CCRE_COLS %in% names(map)))
-ok("carries the annotation columns",
-   all(c("consequence", "phylop", "distTSS", "gene_type") %in% names(map)))
+ok("carries the genuinely variant-level annotation columns",
+   all(c("consequence", "phylop") %in% names(map)))
+ok("does NOT carry the gene-relative columns -- those are variant x gene, not variant-level",
+   !any(c("distTSS", "gene_type") %in% names(map)))
 ok("carries a per-variant median credible-set size", "cs_size_med" %in% names(map))
 ok("cs_size_med is numeric and positive",
    is.numeric(map$cs_size_med) && all(map$cs_size_med > 0, na.rm = TRUE))
 ok("allele frequencies survive the widening",
    all(AF_POP_COLS %in% names(map)))
+
+# --- gene-relative feature map: keyed on (variant, gene), not variant alone -
+# The fixture adds a second fine-mapped occurrence of variant 5
+# (snps[5] = "chr1_500_A_G") under ENSG002, with a DIFFERENT gene-relative
+# annotation (distTSS = 50000, gene_type = "lncRNA") than it carries for
+# ENSG001 (distTSS = 500, gene_type = "protein_coding") -- see
+# tests/fixtures.R. Building .variant_gene_feature_map() must not error (the
+# defect this task fixes: the ORIGINAL all-columns guard hard-errored on
+# exactly this shape) and must keep both rows, one per gene.
+gmap <- .variant_gene_feature_map(fm)
+
+ok(".variant_gene_feature_map() does not error on a variant shared by two genes with differing gene-relative values",
+   is.data.frame(gmap))
+ok("one row per (variant, gene) pair, not per variant",
+   !any(duplicated(gmap[c("variant", "gene")])))
+
+dual_rows <- gmap[gmap$variant == "chr1_500_A_G", ]
+ok("the shared variant appears under BOTH genes",
+   setequal(dual_rows$gene, c("ENSG001", "ENSG002")))
+ok("distTSS differs PER GENE for the shared variant",
+   dual_rows$distTSS[dual_rows$gene == "ENSG001"] == 500 &&
+   dual_rows$distTSS[dual_rows$gene == "ENSG002"] == 50000)
+ok("gene_type differs PER GENE for the shared variant",
+   dual_rows$gene_type[dual_rows$gene == "ENSG001"] == "protein_coding" &&
+   dual_rows$gene_type[dual_rows$gene == "ENSG002"] == "lncRNA")
+
+# --- tss_proximal / protein_coding are computed PER GENE via coloc_variant_level() ---
+# This is the assertion that proves the fix is real rather than just a
+# suppressed guard: the SAME variant, joined against two different Gene
+# rows in the enloc variant-level table, must come out TSS-proximal +
+# protein-coding for one gene and neither for the other.
+vlevel <- coloc_variant_level(refresh = TRUE)
+# Restricted to the eQTL-pQTL pair, the only one carrying an ENSG002 row for
+# this variant (see the dual_gene_row appended to that pair's enloc_variant
+# fixture above) -- the other two pairs only ever see it under ENSG001, so
+# without this filter there would be three ENSG001 rows to one ENSG002 row.
+dual_vlevel <- vlevel[vlevel$SNP == "chr1_500_A_G" & vlevel$type == "eQTL-pQTL" &
+                        vlevel$Gene %in% c("ENSG001", "ENSG002"), ]
+
+ok("coloc_variant_level() carries both (variant, gene) rows for the shared variant",
+   setequal(dual_vlevel$Gene, c("ENSG001", "ENSG002")))
+
+# build_feature_matrix() needs max_af, which coloc_feature_enrichment() folds
+# in before calling it (see Fig3/00_setup.R); replicate that fold here rather
+# than pull the memoized coloc_feature_enrichment() builder, so this stays a
+# direct, minimal exercise of build_feature_matrix() on the two dual-gene rows.
+dual_folded <- dual_vlevel[AF_POP_COLS]
+dual_folded[] <- lapply(dual_folded, function(x) ifelse(x > .5, 1 - x, x))
+dual_vlevel$max_af <- do.call(pmax, as.list(dual_folded))
+
+dual_feat <- build_feature_matrix(dual_vlevel)
+ok("tss_proximal is TRUE for ENSG001 and FALSE for ENSG002, for the SAME variant",
+   isTRUE(dual_feat$tss_proximal[dual_feat$Gene == "ENSG001"]) &&
+   isFALSE(dual_feat$tss_proximal[dual_feat$Gene == "ENSG002"]))
+ok("protein_coding is TRUE for ENSG001 and FALSE for ENSG002, for the SAME variant",
+   isTRUE(dual_feat$protein_coding[dual_feat$Gene == "ENSG001"]) &&
+   isFALSE(dual_feat$protein_coding[dual_feat$Gene == "ENSG002"]))
+
+# --- the variant-level guard still fires on a genuinely variant-level conflict ---
+# A disagreement in an AF column (variant-level, not gene-relative) across
+# assay tables must still hard-error -- this is the guard
+# tests/test_fig3_builders.R already exercises for coloc_variant_level(); this
+# repeats it directly against .variant_feature_map() so it stays pinned next
+# to the gene-relative split above.
+fx_dup_af <- make_fig3_fixture(file.path(tempdir(), "fig3_enrich_dup_af"))
+sq_dup_path <- fixture_path(fx_dup_af, "susie_sqtl")
+sq_dup <- read.delim(sq_dup_path)
+sq_dup$gvs_afr_af[1] <- sq_dup$gvs_afr_af[1] + 0.321   # disagree with eQTL/pQTL
+write.table(sq_dup, sq_dup_path, sep = "\t", row.names = FALSE, quote = FALSE)
+use_fig3_fixture(fx_dup_af)
+source("fig3/00_setup.R")
+expect_error("a genuinely variant-level column (AF) disagreeing across assays still errors .variant_feature_map()",
+             .variant_feature_map(susie_finemapping(refresh = TRUE)))
+
+# --- intra-table (variant, gene) duplicates are collapsed, cross-table ones still error ---
+# Real-data finding (see NOTES.md's "Duplicate (variant, gene) keys are
+# collapsed, not rejected"): a SINGLE SuSiE table can itself carry two rows
+# for the same (variant, gene) -- an upstream ENCODE dual-cCRE-match
+# artifact -- that disagree on a variant-level cCRE flag. Collapsing those
+# (first row wins) must not also swallow a genuine disagreement BETWEEN two
+# DIFFERENT assay tables about the same (variant, gene), which is exactly
+# what the guard exists to catch. In-memory frames built by hand (not via
+# the file-based fixture) so this stays a minimal, direct exercise of
+# .variant_feature_map() itself.
+mk_af_row <- function(variant, molecular_trait_id, ctcf_bound, af = 0.05) {
+  af_row    <- stats::setNames(as.list(rep(af, length(AF_POP_COLS))), AF_POP_COLS)
+  ccre_row  <- stats::setNames(as.list(rep(FALSE, length(FEATURE_CCRE_COLS))), FEATURE_CCRE_COLS)
+  ccre_row[["CTCF.bound"]] <- ctcf_bound
+  tibble::as_tibble(c(
+    list(variant = variant, molecular_trait_id = molecular_trait_id),
+    af_row, ccre_row,
+    list(consequence = "intron_variant", phylop = 1.0, cs_size = 3L)))
+}
+empty_af_table <- mk_af_row("chrZ_0_A_G", "ENSGZ", ctcf_bound = FALSE)[0, ]
+
+intratab <- dplyr::bind_rows(
+  mk_af_row("chrX_1_A_G", "ENSGX", ctcf_bound = TRUE),
+  mk_af_row("chrX_1_A_G", "ENSGX", ctcf_bound = FALSE))    # same table, same (variant, gene)
+fm_intratab <- list(eQTL = intratab, sQTL = empty_af_table, pQTL = empty_af_table)
+map_intratab <- tryCatch(.variant_feature_map(fm_intratab), error = function(e) e)
+ok("an intra-table duplicate (variant, gene) row is collapsed (first row wins), not rejected",
+   !inherits(map_intratab, "error") && nrow(map_intratab) == 1L)
+
+fm_crosstab <- list(
+  eQTL = mk_af_row("chrX_2_A_G", "ENSGX", ctcf_bound = TRUE),
+  sQTL = mk_af_row("chrX_2_A_G", "ENSGX", ctcf_bound = FALSE),  # DIFFERENT table, same (variant, gene)
+  pQTL = empty_af_table)
+err_crosstab <- tryCatch({ .variant_feature_map(fm_crosstab); NULL }, error = conditionMessage)
+ok("the SAME disagreement BETWEEN two different assay tables still errors -- the collapse is scoped within one table only",
+   !is.null(err_crosstab))
+
+# Restore the original enrichment fixture for anything appended below.
+use_fig3_fixture(fx)
+source("fig3/00_setup.R")
 
 # --- feature matrix ---------------------------------------------------------
 fmx <- build_feature_matrix(data.frame(

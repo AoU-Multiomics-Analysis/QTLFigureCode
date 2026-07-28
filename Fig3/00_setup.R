@@ -90,8 +90,28 @@ AF_POP_COLS <- c("gvs_afr_af", "gvs_amr_af", "gvs_eas_af", "gvs_eur_af",
 # SuSiE tables.
 FEATURE_CCRE_COLS <- c("PLS", "pELS", "dELS", "CTCF.bound", "CTCF.only",
                        "DNase.H3K4me3", "FANTOM5")
-# Extra columns the enrichment needs beyond the base fine-mapping fields.
-FEATURE_EXTRA_COLS <- c("consequence", "phylop", "distTSS", "gene_type", "cs_size")
+
+# Genuinely VARIANT-level extra columns: confirmed empirically (100,000-variant
+# sample of the real staged data) to carry exactly one distinct value per
+# variant across all three SuSiE tables. Folded into .variant_feature_map()'s
+# one-row-per-variant map, which enforces that with a hard guard.
+FEATURE_VARIANT_COLS <- c("consequence", "phylop")
+
+# GENE-RELATIVE extra columns: these are properties of a variant WITH RESPECT
+# TO A PARTICULAR GENE, not the variant alone -- the same variant sits at a
+# different distance from different genes' TSSs, and can annotate a
+# protein-coding gene under one credible set and a lncRNA under another (on
+# the same 100,000-variant sample: 33,435 variants had >1 distinct distTSS,
+# 26,030 had >1 distinct gene_type). Folding these into the variant-level map
+# is what made its conflict guard fire on real data even though every row was
+# individually correct. Joined separately, keyed on (variant, gene), by
+# .variant_gene_feature_map().
+FEATURE_GENE_REL_COLS <- c("distTSS", "gene_type")
+
+# Union used only for pulling columns out of the raw SuSiE tables (see
+# susie_finemapping()); cs_size rides along too for .variant_feature_map()'s
+# per-variant median (cs_size_med).
+FEATURE_EXTRA_COLS <- c(FEATURE_VARIANT_COLS, FEATURE_GENE_REL_COLS, "cs_size")
 
 # =============================================================================
 # FastENLOC output readers
@@ -379,17 +399,41 @@ coloc_cs_level <- function(refresh = FALSE)
              cs_2 = str_remove(cs_2, "^ENSG[0-9]+:"))
   })
 
-# One row per variant, carrying allele frequencies AND the annotation features
-# panel E's enrichment needs.
+# One row per variant, carrying allele frequencies AND the genuinely
+# VARIANT-level annotation features panel E's enrichment needs. distTSS and
+# gene_type are deliberately EXCLUDED here -- they are properties of a variant
+# relative to a particular gene (a variant can sit near one gene's TSS and far
+# from another's), not the variant alone, so folding them into a one-row-per-
+# variant map made the guard below fire on real, non-conflicting data. They
+# are joined separately, keyed on (variant, gene), by
+# .variant_gene_feature_map().
 #
 # cs_size is a property of a CREDIBLE SET and one variant can sit in several
 # across genes and assays, so the map carries the median over that variant's
 # rows. Keeping exactly one row per variant is what the many-to-one join guard
 # in coloc_variant_level() relies on.
 .variant_feature_map <- function(fm) {
-  keep <- c("variant", AF_POP_COLS, FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS)
-  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL),
-                          function(d) dplyr::select(d, any_of(keep)))) %>%
+  keep <- c("variant", "molecular_trait_id", AF_POP_COLS, FEATURE_CCRE_COLS,
+           FEATURE_VARIANT_COLS, "cs_size")
+
+  # Collapse the tiny number of duplicate (variant, gene) rows a SINGLE SuSiE
+  # table can itself carry -- see NOTES.md's "Duplicate (variant, gene) keys
+  # are collapsed, not rejected": 3 in eQTL, 3 in pQTL (out of 800k+ rows),
+  # an upstream annotation-join artifact (e.g. a variant overlapping two
+  # distinct ENCODE cCRE records, which can disagree on a cCRE flag like
+  # CTCF.bound even though every other variant-level column agrees). "First
+  # row wins" is an arbitrary but DETERMINISTIC tie-break, the same policy
+  # NOTES.md already documents for this exact duplicate class in
+  # coloc_model_input()'s posteriors(). Scoping the collapse to WITHIN one
+  # table, before bind_rows(), is essential: it must never swallow a genuine
+  # disagreement BETWEEN two DIFFERENT assay tables about the same (variant,
+  # gene) -- that is exactly what the guard below exists to catch.
+  per_table <- function(d)
+    dplyr::select(d, any_of(keep)) %>%
+      dplyr::distinct(variant, molecular_trait_id, .keep_all = TRUE)
+
+  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL), per_table)) %>%
+    select(-any_of("molecular_trait_id")) %>%
     # The eQTL reader already repairs "chrchr"; normalise all three here so a
     # stray prefix cannot split one variant into two rows.
     mutate(variant = str_replace(variant, "chrchr", "chr"),
@@ -405,7 +449,9 @@ coloc_cs_level <- function(refresh = FALSE)
 
   # A duplicate here means two SuSiE tables disagree about the same variant's
   # variant-level annotations, which is a genuine upstream inconsistency rather
-  # than something to silently pick a winner for.
+  # than something to silently pick a winner for. (Not FEATURE_GENE_REL_COLS --
+  # those are excluded above precisely because they are gene-relative, not
+  # variant-level, and disagree legitimately across a variant's genes.)
   dup <- unique(af$variant[duplicated(af$variant)])
   if (length(dup))
     stop(length(dup), " variant(s) carry CONFLICTING variant-level values ",
@@ -413,6 +459,45 @@ coloc_cs_level <- function(refresh = FALSE)
          "'. These are properties of the variant alone; resolve the ",
          "disagreement upstream.", call. = FALSE)
   left_join(af, size, by = "variant")
+}
+
+# One row per (variant, gene) pair, carrying the GENE-RELATIVE annotation
+# features panel E's enrichment needs (distTSS, gene_type). These are
+# properties of a variant WITH RESPECT TO a particular gene -- the same
+# variant can be TSS-proximal for one gene and distant from another's, or
+# annotate a protein-coding gene under one credible set and a lncRNA under
+# another -- so they are kept out of .variant_feature_map()'s one-row-per-
+# variant map and joined here instead, keyed on (variant, gene).
+#
+# The gene id is each SuSiE table's `molecular_trait_id`, which
+# susie_finemapping() has already version-stripped to a bare ENSG id for
+# eQTL, sQTL and pQTL alike -- matching coloc_variant_level()'s `Gene`
+# column, itself a bare ENSG id stripped from the enloc Signal (confirmed
+# against the real staged tables; see NOTES.md).
+.variant_gene_feature_map <- function(fm) {
+  keep <- c("variant", "molecular_trait_id", FEATURE_GENE_REL_COLS)
+  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL),
+                          function(d) dplyr::select(d, any_of(keep)))) %>%
+    mutate(variant = str_replace(variant, "chrchr", "chr")) %>%
+    dplyr::rename(gene = molecular_trait_id)
+
+  raw <- raw[rowSums(!is.na(raw[FEATURE_GENE_REL_COLS])) > 0, , drop = FALSE] %>%
+    distinct()
+
+  # A duplicate here means two SuSiE tables disagree about the same
+  # (variant, gene) pair's gene-relative annotations -- a genuine upstream
+  # inconsistency, not something to silently pick a winner for. Keyed on the
+  # PAIR (not just the variant), mirroring the style of the posterior-join
+  # guard in coloc_model_input()'s join_posteriors().
+  key <- raw[c("variant", "gene")]
+  dup  <- raw[duplicated(key) | duplicated(key, fromLast = TRUE), , drop = FALSE]
+  if (nrow(dup))
+    stop(sum(duplicated(key)), " (variant, gene) pair(s) carry CONFLICTING ",
+         "gene-relative values across the SuSiE fine-mapping tables -- e.g. ",
+         "variant '", dup$variant[1], "', gene '", dup$gene[1], "'. These are ",
+         "properties of the variant RELATIVE TO THAT GENE; resolve the ",
+         "disagreement upstream.", call. = FALSE)
+  raw
 }
 
 # Cut-points for the binarized covariates. Conventional defaults, NOT tuned --
@@ -513,7 +598,9 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
 
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
-    af <- .variant_feature_map(susie_finemapping())
+    fm  <- susie_finemapping()
+    af  <- .variant_feature_map(fm)
+    gaf <- .variant_gene_feature_map(fm)
 
     variants <- load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
       .label_by_pair("SCP", "variant level") %>%
@@ -531,6 +618,20 @@ coloc_variant_level <- function(refresh = FALSE)
              conditionMessage(e), call. = FALSE)
     )
 
+    # Second join for the GENE-RELATIVE features (distTSS, gene_type), keyed
+    # on (variant, gene) rather than variant alone -- see
+    # .variant_gene_feature_map() above for why. relationship = "many-to-one"
+    # is the same belt-and-braces guard as the join above, asserting
+    # (variant, gene) is unique in `gaf`.
+    joined <- tryCatch(
+      left_join(joined, gaf, by = c("SNP" = "variant", "Gene" = "gene"),
+                relationship = "many-to-one"),
+      error = function(e)
+        stop("SuSiE-derived gene-relative feature table has duplicate ",
+             "(variant, gene) keys, violating the expected many-to-one ",
+             "gene-relative join: ", conditionMessage(e), call. = FALSE)
+    )
+
     # Coverage is no longer guaranteed the way it was with the genome-wide
     # annotation table: an enloc variant absent from every SuSiE table now gets
     # no AF and is dropped downstream by the max_af NA filters in panels C/D.
@@ -539,6 +640,12 @@ coloc_variant_level <- function(refresh = FALSE)
     if (n_missing)
       message("  note: ", n_missing, " of ", nrow(joined), " variant-level rows ",
               "have no allele frequency in the SuSiE tables (dropped downstream).")
+
+    n_missing_gene <- sum(is.na(joined$distTSS))
+    if (n_missing_gene)
+      message("  note: ", n_missing_gene, " of ", nrow(joined), " variant-level ",
+              "rows have no gene-relative feature (distTSS/gene_type) for their ",
+              "(SNP, Gene) pair in the SuSiE tables.")
 
     joined
   })

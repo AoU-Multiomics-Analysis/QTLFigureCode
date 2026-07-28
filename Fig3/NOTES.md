@@ -207,6 +207,42 @@ Limitations carried deliberately:
 - **`max_af` NA behaviour is inherited** from `coloc_model_input()` — a variant
   missing any one per-ancestry frequency drops out.
 
+### `distTSS` / `gene_type` are gene-relative, not variant-level — split out of `.variant_feature_map()`
+
+`.variant_feature_map()` originally folded `distTSS` and `gene_type` into its
+one-row-per-variant map alongside genuinely variant-level columns (allele
+frequencies, the cCRE flags, `consequence`, `phylop`), on the premise that all
+of them are "properties of the variant alone". That premise is false for
+these two: a variant's distance to a TSS and the type of gene it annotates
+are properties of the variant **relative to a particular gene** — the same
+variant can sit 14,508 bp from one gene's TSS and 13,376 bp from another's,
+or annotate a protein-coding gene under one credible set and a lncRNA under
+another. On the real staged data this hard-errored the whole variant-level
+build: 180,211 variants carried "conflicting" values, all of them actually
+correct per-gene rows collapsed into one map that could only hold one.
+
+Diagnosed over a 100,000-variant sample of the real data: `gvs_*_af`, `PLS`
+(and the rest of `FEATURE_CCRE_COLS`), `phylop`, `consequence` never carried
+more than one distinct value per variant; `distTSS` did for 33,435 variants,
+`gene_type` for 26,030.
+
+Fix: `distTSS`/`gene_type` (`FEATURE_GENE_REL_COLS`) moved to a new
+`.variant_gene_feature_map()`, one row per **(variant, gene)**, joined into
+`coloc_variant_level()` on `c("SNP" = "variant", "Gene" = "gene")` — `Gene`
+being the same bare-ENSG column `coloc_variant_level()` already derives from
+the enloc `Signal`. This makes `tss_proximal`/`protein_coding` mean
+"...for the gene this colocalization is about", which is what the analysis
+intends; before the fix a shared variant could only ever get one arbitrary
+gene's answer (when the guard didn't just abort the whole build).
+`.variant_feature_map()`'s original guard is otherwise **unchanged** and
+still fires on a genuine variant-level disagreement.
+
+Verified against the real staged data: rebuilding `coloc_variant_level()`
+now succeeds (0 variant-level conflicts, down from 180,211), with 268,437
+variant-level rows and only 197 (0.07%) missing a gene-relative feature —
+confirming the (variant, gene) join key is correct, not silently matching
+nothing.
+
 ## Colocalization covariate analysis (dropped from the pipeline)
 
 The original built a per-gene table named `coloc_summary` that was never
@@ -363,3 +399,23 @@ Two deliberate scoping decisions:
   reachable from a duplicated input row, but it now asserts the collapse did its
   job. The tests that used to drive that error have been rewritten around the
   new contract.
+
+**The 3 eQTL / 3 pQTL duplicates above are not all harmless.** Discovered
+while verifying the `distTSS`/`gene_type` fix above against real data: for 5
+of these 6 rows the duplicate copies agree on every variant-level column, so
+`.variant_feature_map()`'s own `distinct()` silently collapses them for
+free. For exactly one --
+`chr3_23947795_C_CT` / `ENSG00000224074` in the eQTL table -- the two copies
+disagree on `CTCF.bound` (`TRUE` vs `FALSE`) because they matched two
+different ENCODE cCRE records (`ENCODE_ID_1`/`ENCODE_ID_2` differ between the
+copies). Left alone this tripped `.variant_feature_map()`'s variant-level
+guard on real data even after the gene-relative split, on a row that has
+nothing to do with genes at all.
+
+`.variant_feature_map()` now collapses duplicate `(variant, molecular_trait_id)`
+rows **within each single SuSiE table**, first-row-wins, before binding the
+three tables together -- the same "collapsed, not rejected" policy as
+`posteriors()` above, applied to the same upstream duplicate-row class. The
+collapse is scoped to within one table specifically so it can never absorb a
+*genuine* disagreement between two *different* assay tables about the same
+(variant, gene), which remains exactly what the guard exists to catch.

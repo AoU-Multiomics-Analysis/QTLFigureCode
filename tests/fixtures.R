@@ -122,6 +122,41 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id = "E_ENSG003_L1", gene_name = "GENE_ENSG003",
     af_cols[NA_integer_, , drop = FALSE],
     annot_for(1L)[1, ]))
+
+  # A variant fine-mapped for TWO different genes with DIFFERENT gene-relative
+  # annotations -- the exact real-data shape (33,435 variants over 100,000
+  # sampled) that broke .variant_feature_map()'s original all-columns guard.
+  # Reuses variant 5 (snps[5] = "chr1_500_A_G", already a credible-set member
+  # of ENSG001 above with distTSS = 500 / gene_type = "protein_coding, i.e.
+  # TSS-proximal + protein-coding -- deliberately NOT variant 1/snps[1], which
+  # a separate test below (test_fig3_builders.R's "same variant, different
+  # genes" case) independently duplicates under ENSG002 with distTSS/gene_type
+  # left UNCHANGED; reusing snps[1] here too would make that duplication and
+  # this one disagree about the same (variant, gene) pair and trip the very
+  # guard both are meant to demonstrate does NOT fire spuriously), now ALSO
+  # fine-mapped for ENSG002 with a DIFFERENT gene-relative annotation
+  # (distTSS = 50000 / gene_type = "lncRNA", i.e. TSS-distal + not
+  # protein-coding). Its variant-level values (AF, consequence, phylop) are
+  # left IDENTICAL to what it already carries for ENSG001 -- af_for() looks
+  # them up by variant, and dual_gene_annot only overrides distTSS/gene_type --
+  # so the variant-level guard in .variant_feature_map() stays silent and only
+  # the gene-relative map (.variant_gene_feature_map()) sees the two differing
+  # rows.
+  dual_gene_variant <- snps[5]
+  # NOTE: annot_for() indexes by seq_along(v), so annot_for(5L) would give row
+  # 1's annotation again (seq_along of a length-1 vector is always 1), not row
+  # 5's -- pull row 5 straight out of the already-annotated `eqtl` frame
+  # (still un-shifted at this point: the ENSG003 row above was appended, not
+  # inserted, so row 5 is still variant 5's original annotation) instead.
+  dual_gene_annot <- eqtl[5, names(annot_for(1L)), drop = FALSE]
+  dual_gene_annot$distTSS   <- 50000L
+  dual_gene_annot$gene_type <- "lncRNA"
+  eqtl <- rbind(eqtl, data.frame(
+    molecular_trait_id = "ENSG002.1", variant = dual_gene_variant, pip = 0.5,
+    cs_index = "L2", posterior_mean = 0.4, posterior_sd = 0.1,
+    cs_id = "E_ENSG002_L2", gene_name = "GENE_ENSG002",
+    af_for(dual_gene_variant),
+    dual_gene_annot))
   wtsv(eqtl, mp("susie_eqtl"))
 
   # NOTE: splicing ids are INTRON-level. `sqtl_extra` below adds a SECOND intron
@@ -191,10 +226,17 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
           c("0.99", "0.01"))
 
   # --- FastENLOC variant level ---------------------------------------------
-  snp_out <- function(p, cs) writeLines(c(
+  # `extra` appends additional, hand-written rows (same whitespace-aligned
+  # shape) after the per-variant ones -- used below to give the shared
+  # dual_gene_variant a SECOND (SNP, Gene) row under ENSG002, so
+  # coloc_variant_level()'s gene-relative join has something real to match
+  # against end-to-end, not just .variant_gene_feature_map() in isolation.
+  snp_out <- function(p, cs, extra = character()) writeLines(c(
     "Signal SNP PIP_qtl PIP_gwas_marginal PIP_gwas_qtl_prior SCP",
-    sprintf("%s:%s %s 0.9 0.1 0.8 0.99", genes, cs, snps)), p)
-  snp_out(mp("enloc_variant", "eQTL-pQTL"), e_cs)
+    sprintf("%s:%s %s 0.9 0.1 0.8 0.99", genes, cs, snps),
+    extra), p)
+  dual_gene_row <- sprintf("ENSG002:E_ENSG002_L2 %s 0.9 0.1 0.8 0.99", dual_gene_variant)
+  snp_out(mp("enloc_variant", "eQTL-pQTL"), e_cs, extra = dual_gene_row)
   snp_out(mp("enloc_variant", "sQTL-pQTL"), s_cs)
   snp_out(mp("enloc_variant", "eQTL-sQTL"), e_cs)
 
