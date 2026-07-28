@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
 # permutations/eqtl/…). Set FIG1_INPUT to keep inputs in a separate folder.
 INPUT    <- Sys.getenv("FIG1_INPUT",    ".")            # staging root (cwd)
 OBJ_DIR  <- Sys.getenv("FIG1_OBJ",      "fig1/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG1_OUTDIR",   ".")            # final Figure1.pdf/png
+OUTDIR   <- Sys.getenv("FIG1_OUTDIR", "fig1")         # final Figure1.pdf/png
 MANIFEST <- Sys.getenv("FIG1_MANIFEST", "fig1/inputs.tsv")
 dir.create(OBJ_DIR, showWarnings = FALSE, recursive = TRUE)
 
@@ -79,7 +79,10 @@ AncestryColorPalette <- data.frame(
 # metadata attached to the rows returned by load_input(). Each script loads only
 # the keys it needs (see the panel scripts).
 # =============================================================================
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
+
 source("common/manifest.R")
+source("common/vep.R")
 
 # =============================================================================
 # Folded-in functions (from QTLAnalysisUtils, bug-fixed)
@@ -122,8 +125,10 @@ LoadTopmedeQTL <- function(path) {
     mutate(study = "Topmed")
 }
 
-# UKBB pQTL reference. Currently deferred (no input file); kept for the
-# novel-pGene comparison once the reference is supplied. See NOTES.md.
+# UKBB-PPP cis-pQTL reference for the novel-pGene comparison in Panel D.
+# Reads sheet 10 (ST9) of the Nature 2023 supplementary workbook, skipping the
+# 4 header rows, keeps the cis associations and exposes the Ensembl gene ID as
+# `gene_id`. See NOTES.md.
 LoadUKBBpQTL <- function(path) {
   read_xlsx(path, sheet = 10, skip = 4) %>%
     filter(`cis/trans` == "cis") %>%
@@ -192,6 +197,7 @@ ComputeCredibleSetCDF <- function(cs_count_data) {
 ComputeFinemappingAnnotationEnrichment <- function(AnnotatedFinemapping) {
   VariantAnnotationsLong <- AnnotatedFinemapping %>%
     filter(pip > .9 | pip < .01) %>%
+    expand_vep_consequences() %>%
     select(variant, where(is.logical), pip) %>%
     group_by(variant) %>%
     filter(pip == max(pip)) %>%
@@ -312,8 +318,11 @@ PlotFinemappingEnrichment <- function(MergedEnrichmentData, variant_functional_g
     inframe_deletion        = "Inframe deletion",
     PLS                     = "Promoter",
     dELS                    = "Distal enhancer",
-    `5_prime_utr_variant`   = "5' UTR",
-    `3_prime_utr_variant`   = "3' UTR",
+    # VEP spells these with a capital UTR. The lowercase form silently failed
+    # the `name %in% names(annotation_labels)` filter below, dropping both UTR
+    # bars from the panel even though their enrichments were computed fine.
+    `5_prime_UTR_variant`   = "5' UTR",
+    `3_prime_UTR_variant`   = "3' UTR",
     pELS                    = "Proximal enhancer",
     splice_region_variant   = "Splice region"
   )
@@ -330,6 +339,7 @@ PlotFinemappingEnrichment <- function(MergedEnrichmentData, variant_functional_g
   shade_df <- plot_data %>%
     distinct(functional_group, annotation_clean, row) %>%
     filter(row %% 2 == 0)
+
   xmax_rect <- max(plot_data$conf.high, na.rm = TRUE)
   xmin_rect <- min(1, min(plot_data$conf.low, na.rm = TRUE) / 1.5)
   xmax_rect <- xmax_rect * 1.5

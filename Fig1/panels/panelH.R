@@ -9,11 +9,14 @@ QTLFinemappingEnrichments <- purrr::pmap_dfr(
   function(p, ty) fread(p) %>% ComputeFinemappingAnnotationEnrichment() %>% mutate(type = ty)
 )
 
+# Names must match VEP's own spelling exactly (3_prime_UTR_variant, not
+# _utr_): these are matched by an equality join, so a casing difference
+# silently drops the annotation rather than erroring.
 variant_functional_groups <- tibble::tribble(
   ~name, ~functional_group,
   # UTR
-  "3_prime_utr_variant", "Regulatory Annotation",
-  "5_prime_utr_variant", "Regulatory Annotation",
+  "3_prime_UTR_variant", "Regulatory Annotation",
+  "5_prime_UTR_variant", "Regulatory Annotation",
   # Regulatory elements
   "CTCF.bound", "Regulatory Annotation",
   "DNase.H3K4me3", "Regulatory Annotation",
@@ -42,7 +45,7 @@ variant_functional_groups <- tibble::tribble(
   # Noncoding RNA
   "non_coding_transcript_exon_variant", "Noncoding RNA",
   "non_coding_transcript_variant", "Noncoding RNA",
-  "mature_mirna_variant", "Noncoding RNA",
+  "mature_miRNA_variant", "Noncoding RNA",
   # Gene proximity / background
   "downstream_gene_variant", "Intronic/Intergenic",
   "upstream_gene_variant", "Intronic/Intergenic",

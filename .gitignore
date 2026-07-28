@@ -4,6 +4,14 @@
 # Controlled-access QTL inputs staged into the working dir (never commit).
 # Figure scripts gsutil-cache inputs under the cwd in these subdirs, or set
 # FIG*_INPUT to relocate them.
+#
+# Current per-figure staging roots, as declared in each Fig<N>/inputs.tsv.
+/Fig1Data/
+/Fig2Data/
+/Fig3Data/
+/Fig4Data/
+/Fig5Data/
+# Legacy staging roots kept so older working copies stay covered.
 /permutations/
 /finemapping/
 /annotated/
@@ -18,7 +26,27 @@
 /data/
 /susie_local/
 
-# Figure outputs
+# Inputs whose manifest local_subpath is a bare filename, so they stage at the
+# repo root rather than under a directory. The SuSiE tables are shared by Fig1,
+# Fig2 and Fig3; the ancestry predictions are per-participant.
+/COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz
+/COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz
+/COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz
+/echo_v4_r2.ancestry_preds.tsv
+/gencode.v*.annotation.gtf.gz
+/interactions.tsv
+/41588_2024_1820_MOESM4_ESM.xlsx
+
+# Figure outputs. Each figure's assemble.R writes into its OWN directory
+# (FIG<N>_OUTDIR, default fig<n>/), so the outputs are ignored there. The
+# bare-root entries are kept as well: FIG<N>_OUTDIR can still be pointed at the
+# repo root, and older runs left files there.
+/Fig?/*.pdf
+/Fig?/*.png
+/SuppFig?/*.pdf
+/SuppFig?/*.png
+
+# Same outputs when OUTDIR is pointed at the repo root instead.
 /Figure1.pdf
 /Figure1.png
 /xGeneMetasoftSummary.pdf

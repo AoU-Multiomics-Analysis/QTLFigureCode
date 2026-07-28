@@ -31,6 +31,17 @@ Panel D fits enrichment for two predictor sets — `continuous`
 `max_common` terms. Both are computed (`ENRICH_PREDICTORS` in `00_setup.R`); the
 binary fits are available for inspection.
 
+## Open issue: Panel C's "Null" series falls off the colour scale
+
+`panels/panelC.R` renames the matched control group to `"Null"`
+(`case_when(str_detect(group, "Matched") ~ "Null", ...)`) *before* calling
+`plot_qq()`, whose `scale_colour_manual` only maps
+`"Matched non-colocalized genes"` → `#2B2B2B` and `"Colocalized genes"` →
+`#275D8E`. `"Null"` therefore matches no level and renders in ggplot2's default
+grey `na.value` instead of the intended `#2B2B2B`. The legend is switched off in
+this panel, so the mismatch is not otherwise visible. Left as-is for now —
+fixing it changes the rendered colour of the null series.
+
 ## Hand-curated heme/immune keyword list
 
 The heme/immune gene set is defined by a regex of disease-name keywords

@@ -117,8 +117,8 @@ PANEL_NOTES = {
  ("Fig3","D"): "eQTL vs. pQTL fine-mapped effect sizes, faceted by MAF bin (Common / Low-Freq / Rare), with a per-bin slope and N — how expression and protein effects relate across the frequency spectrum.",
  ("Fig3","E"): "A reserved slot in the bottom row; its content is undecided, so the code renders a blank to keep the layout stable (see `Fig3/NOTES.md`).",
 
- ("Fig4","A"): "For each trait category, the number of colocalizing genes (intensity-shaded bars) beside the credible-set colocalization rate (lollipop, with a dashed median reference) — restricted to the top-10 categories with more than five colocalizing genes.",
- ("Fig4","B"): "Histogram of the R² increase (%) that rare variants add to TWAS, computed as the difference in adjusted R² between allele-frequency thresholds 0 and 0.01 for genes with a significant fit — how much predictive signal rare variants contribute.",
+ ("Fig4","A"): "For each trait category, the number of colocalizing genes (intensity-shaded bars) beside the credible-set colocalization rate (lollipop, with a dashed median reference). The rate plotted is the **lenient** union rate (`pct_lenient_union`): `coloc_by_trait()` calls `build_plot_data(rate_type = \"lenient\")`, even though that function's own default is `\"stringent\"` — a caller reusing it gets the stringent rate unless it asks otherwise. The panel keeps **traits** with more than five colocalizing genes, then the top ten traits *within each category*, and drops the `neuropsychiatric` and `renal_urological` categories.",
+ ("Fig4","B"): "Histogram of the R² increase (%) that rare variants add to TWAS, computed as the difference in adjusted R² between allele-frequency thresholds 0 and 0.01 for genes with a significant fit — how much predictive signal rare variants contribute. Note the axis is truncated with `xlim(-20, 40)`, so genes whose R² increase falls outside that window are dropped from the histogram rather than shown at the edge.",
  ("Fig4","C"): "Common and rare conditional-TWAS QQ plots over nine blood traits, comparing colocalized genes against **MatchIt propensity-matched** non-colocalized genes (\"Null\") — an inflation test that controls for expression, selection, rare-variant count and LD.",
  ("Fig4","D"): "Odds-ratio forest (logistic regression) for the enrichment of rare vs. common conditional-TWAS signal across four gene-set outcomes — Mendelian (any), Mendelian (immune/hematological), druggable, and approved drug target. Both continuous and binary predictor sets are fit; the panel plots the continuous rare/common terms (see `Fig4/NOTES.md`).",
 
@@ -280,8 +280,8 @@ changing an input.
    "overview": """
 This notebook reproduces **Figure 4**. The figure connects molecular QTL
 colocalization with GWAS traits to downstream rare-variant signal: how many genes
-colocalize per trait category and at what credible-set rate, the R² that rare
-variants add to TWAS, whether colocalized genes carry inflated conditional-TWAS
+colocalize per trait category and at what lenient credible-set rate, the R² that
+rare variants add to TWAS, whether colocalized genes carry inflated conditional-TWAS
 signal versus matched controls, and whether that signal enriches in clinically
 important gene sets.
 

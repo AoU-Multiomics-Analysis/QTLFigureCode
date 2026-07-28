@@ -23,14 +23,15 @@ fine-mapping (SuSiE) architecture of causal variants.
 | **A** | Study-design schematic (placeholder slot; diagram added externally) | — |
 | **B** | Participant counts per genetic-ancestry group | ancestry predictions + COMB sample list |
 | **C** | Proportion of genes with a significant QTL vs. sample size (expression \| splicing + protein) | QTL permutations (all assays × ancestries) |
-| **D** | Novel eGene / sGene counts vs. external consortia, by gene type | QTL permutations (COMB) + GTEx / INTERVAL / TOPMed |
+| **D** | Novel eGene / sGene / pGene counts vs. external consortia, by gene type | QTL permutations (COMB) + GTEx / INTERVAL / TOPMed (e/sGenes) + UKBB-PPP (pGenes) |
 | **E** | CDF of credible sets per eGene (≥ k credible sets) | eQTL SuSiE fine-mapping (COMB) |
 | **F** | Credible-set sizes across pQTL ancestry groups, with a UKBB reference point | pQTL SuSiE fine-mapping |
 | **G** | Proportion of credible sets with a single causal variant, by assay | e/s/pQTL SuSiE fine-mapping (COMB) |
 | **H** | Fine-mapping functional enrichment of causal variants, by assay | annotated SuSiE tables (COMB) |
 
-The novel-**pGene** bar in Panel D is deferred pending a UKBB pQTL reference — see
-[`NOTES.md`](NOTES.md).
+The novel-**pGene** bar in Panel D is compared against the UK Biobank Pharma
+Proteomics Project (UKBB-PPP) cis-pQTL reference; lncRNA is excluded from that
+comparison because the proteomic assay cannot measure it (`panels/panelD.R`).
 
 **Supplemental figure** (`xGeneMetasoftSummary.pdf`): cross-ancestry meta-analysis
 (MetaSoft) M-value summary — the proportion of genes by number of ancestry groups
@@ -50,9 +51,16 @@ Standalone; requires the MetaSoft Java tool.
 │   ├── assemble.R               #   composes panels -> Figure1.pdf / Figure1.png
 │   ├── run_all.R                #   panels -> assemble (end-to-end)
 │   ├── supp_metasoft.R          #   supplemental MetaSoft figure (standalone)
-│   ├── NOTES.md                 #   deferred analyses (novel pGene) + notes
+│   ├── NOTES.md                 #   result-changing notes (novel pGene, panel H)
 │   └── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
-├── permutations/ finemapping/ … # inputs staged here under the cwd (controlled access, NOT committed)
+├── Fig1Data/                    # most inputs stage here under the cwd (controlled access, NOT committed)
+│   ├── eQTL/ pQTL/ sQTL/        #   permutation results, one file per ancestry
+│   ├── PopulationLevelFinemapping/{eQTL,pQTL,sQTL}/   #   SuSiE fine-mapping
+│   └── …                        #   external references (GTEx / INTERVAL / TOPMed / UKBB-PPP)
+├── reference/                   # COMB_eQTL_9k_sample_list.tsv only
+├── gencode.v48.annotation.gtf.gz          # staged at the root, not under Fig1Data/
+├── echo_v4_r2.ancestry_preds.tsv          #   "
+├── COMB.*_SusieMerged.annotated.ancestry_skew.tsv.gz  # panel H; shared with Fig2/Fig3
 └── Figure1.pdf / Figure1.png    # main figure outputs
 ```
 
@@ -70,9 +78,11 @@ helpers in `00_setup.R`:
 When a file is absent locally and the manifest has a `gs://` URI, the loader
 copies it down with `gsutil` **once**, into `<cwd>/<local_subpath>` (the local
 copy then acts as the cache); pre-staged files skip the copy entirely. Staged
-inputs therefore appear under the working directory in `permutations/`,
-`finemapping/`, etc. — keeping their subpaths (rather than a flat dump) so the
-eQTL and sQTL permutation files, which share basenames, don't collide. The
+inputs therefore appear under the working directory, mostly beneath `Fig1Data/`
+— keeping their subpaths (rather than a flat dump) so the eQTL and sQTL
+permutation files, which share basenames, don't collide. A few keys resolve to
+bare filenames at the staging root instead (the GENCODE GTF, the ancestry
+predictions, and the three annotated SuSiE tables). The
 per-panel **ggplot objects** are cached in `objects/`, so `assemble.R` never
 rebuilds them — rebuild a single panel and re-assemble without touching the others.
 
@@ -145,22 +155,26 @@ are staged under the cwd on demand; pre-stage them at `<cwd>/<local_subpath>`
 
 | Manifest key | Files | Used by |
 |--------------|-------|---------|
-| `gene_gtf` | `reference/gencode.v48.annotation.gtf.gz` | D (gene types) |
-| `ancestry_preds` | `reference/echo_v4_r2.ancestry_preds.tsv` | B, C |
+| `gene_gtf` | `gencode.v48.annotation.gtf.gz` (staging root) | D (gene types) |
+| `ancestry_preds` | `echo_v4_r2.ancestry_preds.tsv` (staging root) | B, C |
 | `comb_sample_list` | `reference/COMB_eQTL_9k_sample_list.tsv` | B |
-| `perm` | `permutations/{eqtl,sqtl,pqtl}/*.cis_qtl.txt.gz` (7 ancestries × 3 assays) | C, D |
-| `finemap_eqtl` | `finemapping/eqtl/AoU_*_9k_eQTL_SusieMerged.tsv.gz` (7) | E, G |
-| `finemap_sqtl` | `finemapping/sqtl/AoU_*_9k_sQTL_SusieMerged.annotated.tsv` (7) | G |
-| `finemap_pqtl` | `finemapping/pqtl/pQTL_fm_data_10k.tsv` | F, G |
-| `annot` | `annotated/AoU_COMB_9k_{e,s}QTL_SusieMerged.annotated.tsv`, `annotated/pQTL_susie_annotated.tsv` | H |
-| `gtex_egenes` / `gtex_sgenes` | `external/Whole_Blood.v10.{e,s}Genes.txt.gz` (GTEx) | D |
-| `interval_eqtl` / `interval_sqtl` | `external/INTERVAL_{eQTL,cis_sQTL}_summary.xlsx` | D |
-| `topmed_eqtl` | `external/Whole_blood.maf0001.100.permutations.txt` (TOPMed) | D |
-| *(deferred)* | UKBB pQTL reference | D (novel pGene — see NOTES.md) |
+| `perm` | `Fig1Data/{eQTL,sQTL,pQTL}/*.cis_qtl.txt.gz` (7 ancestries × 3 assays) | C, D |
+| `finemap_eqtl` | `Fig1Data/PopulationLevelFinemapping/eQTL/AoU_*_9k_eQTL_SusieMerged.tsv.gz` (7) | E, G |
+| `finemap_sqtl` | `Fig1Data/PopulationLevelFinemapping/sQTL/AoU_*_9k_sQTL_SusieMerged.annotated.tsv` (7) | G |
+| `finemap_pqtl` | `Fig1Data/PopulationLevelFinemapping/pQTL/pQTL_fm_data_10k.tsv` | F, G |
+| `annot` | `COMB.{expression,splicing,proteomics}_SusieMerged.annotated.ancestry_skew.tsv.gz` (staging root; shared with Fig2/Fig3) | H |
+| `gtex_egenes` / `gtex_sgenes` | `Fig1Data/Whole_Blood.v10.{e,s}Genes.txt.gz` (GTEx) | D |
+| `interval_eqtl` / `interval_sqtl` | `Fig1Data/INTERVAL_{eQTL,cis_sQTL}_summary.xlsx` | D |
+| `topmed_eqtl` | `Fig1Data/Whole_blood.maf0001.100.permutations.txt` (TOPMed) | D |
+| `ukbb_pqtl` | `Fig1Data/41586_2023_6592_MOESM3_ESM.xlsx` (UKBB-PPP, Nature 2023 supplement) | D (novel pGene) |
 
 > **Note.** eQTL and sQTL permutation files share basenames
 > (`AFR.cis_qtl.txt.gz`, …); the manifest keeps them in separate
-> `permutations/eqtl/` and `permutations/sqtl/` subdirectories so they don't collide.
+> `Fig1Data/eQTL/` and `Fig1Data/sQTL/` subdirectories so they don't collide.
+
+> **Note.** The three `annot` tables are the same SuSiE exports Figures 2 and 3
+> read, so all three figures share one fine-mapping provenance chain; they are
+> not Fig1-specific files.
 
 To add or re-point an input, edit `fig1/inputs.tsv` — no script changes needed.
 

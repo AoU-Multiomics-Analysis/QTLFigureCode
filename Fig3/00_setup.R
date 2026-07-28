@@ -29,12 +29,15 @@ suppressPackageStartupMessages({
 INPUT    <- Sys.getenv("FIG3_INPUT",    ".")            # staging root (cwd)
 DATA_DIR <- Sys.getenv("FIG3_DATA",     "fig3/data")    # memoized derived tables
 OBJ_DIR  <- Sys.getenv("FIG3_OBJ",      "fig3/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG3_OUTDIR",   ".")            # final Figure3.pdf/png
+OUTDIR   <- Sys.getenv("FIG3_OUTDIR", "fig3")         # final Figure3.pdf/png
 MANIFEST <- Sys.getenv("FIG3_MANIFEST", "fig3/inputs.tsv")
 dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
 
+dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
+
 source("common/manifest.R")
+source("common/vep.R")
 
 # --- Font: Inter via Google if reachable, else default sans -----------------
 FONT <- "sans"
@@ -82,6 +85,13 @@ SIGNAL_FILL <- c("0" = "#E9DCDC", "1" = "#D8BBBB", "2" = "#C89A9A", "3" = "#B379
 # which columns are folded.
 AF_POP_COLS <- c("gvs_afr_af", "gvs_amr_af", "gvs_eas_af", "gvs_eur_af",
                  "gvs_mid_af", "gvs_sas_af", "gvs_oth_af")
+
+# cCRE flags carried through for the panel E enrichment. Already logical in the
+# SuSiE tables.
+FEATURE_CCRE_COLS <- c("PLS", "pELS", "dELS", "CTCF.bound", "CTCF.only",
+                       "DNase.H3K4me3", "FANTOM5")
+# Extra columns the enrichment needs beyond the base fine-mapping fields.
+FEATURE_EXTRA_COLS <- c("consequence", "phylop", "distTSS", "gene_type", "cs_size")
 
 # =============================================================================
 # FastENLOC output readers
@@ -205,11 +215,13 @@ add_fdr_threshold_label <- function(df, prob_col, control_level = 0.05,
 # =============================================================================
 # Derived-data cache
 # -----------------------------------------------------------------------------
-# Fig3's panels share a heavy upstream: the AoU annotation table (the largest
-# input in the repo) and three SuSiE tables. Under strict per-panel loading the
-# annotation join would run three times per build. Each builder below memoizes
-# its result to DATA_DIR/<name>.rds, so a panel still calls only the builders it
-# needs while the expensive work happens once.
+# Fig3's panels share a heavy upstream: the three SuSiE tables, which are also
+# the source of the per-variant allele frequencies (see .variant_feature_map()
+# below) now that the standalone AoU annotation table is gone from the manifest. Under
+# strict per-panel loading those tables would be read, collapsed and joined once
+# per panel. Each builder below memoizes its result to DATA_DIR/<name>.rds, so a
+# panel still calls only the builders it needs while the expensive work happens
+# once.
 #
 # `expr` is a lazily-evaluated promise: on a cache hit it is never evaluated, so
 # a cached panel never reads its inputs at all.
@@ -237,7 +249,7 @@ build_or_cache <- function(name, expr, refresh = FALSE) {
 }
 
 # Columns every SuSiE table must supply. AF_POP_COLS are carried through so
-# .variant_af_map() can source allele frequencies here instead of from a
+# .variant_feature_map() can source allele frequencies here instead of from a
 # separate annotation table.
 SUSIE_BASE_COLS <- c("molecular_trait_id", "variant", "pip", "cs_index",
                      "posterior_mean", "cs_id", "posterior_sd")
@@ -272,19 +284,22 @@ SUSIE_BASE_COLS <- c("molecular_trait_id", "variant", "pip", "cs_index",
 susie_finemapping <- function(refresh = FALSE)
   build_or_cache("susie_finemapping", refresh = refresh, {
     eQTL <- .read_susie_table("susie_eqtl", "gene_name") %>%
-      select(all_of(SUSIE_BASE_COLS), gene_name, all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), gene_name, all_of(AF_POP_COLS),
+             any_of(c(FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS))) %>%
       mutate(molecular_trait_id = str_remove(molecular_trait_id, "\\..*"),
              variant = str_replace(variant, "chrchr", "chr")) %>%
       .add_cs_stats()
 
     sQTL <- .read_susie_table("susie_sqtl") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
-      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS),
+             any_of(c(FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS))) %>%
       .add_cs_stats()
 
     pQTL <- .read_susie_table("susie_pqtl") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
-      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS),
+             any_of(c(FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS))) %>%
       .add_cs_stats()
 
     cs_list <- bind_rows(
@@ -364,45 +379,147 @@ coloc_cs_level <- function(refresh = FALSE)
              cs_2 = str_remove(cs_2, "^ENSG[0-9]+:"))
   })
 
-# Allele frequency is a property of the VARIANT, not of an assay, so the three
-# SuSiE tables are pooled and reduced to one row per variant. Rows whose AF
-# columns are entirely NA carry no information and are dropped before the
-# uniqueness check, so a table that simply lacks a variant cannot manufacture a
-# spurious conflict with one that has it.
-.variant_af_map <- function(fm) {
-  af <- bind_rows(
-      fm$eQTL %>% select(variant, all_of(AF_POP_COLS)),
-      fm$sQTL %>% select(variant, all_of(AF_POP_COLS)),
-      fm$pQTL %>% select(variant, all_of(AF_POP_COLS))
-    ) %>%
-    mutate(across(all_of(AF_POP_COLS), as.numeric),
-           # The eQTL reader already repairs "chrchr"; normalise all three here
-           # so a stray prefix cannot split one variant into two AF rows.
-           variant = str_replace(variant, "chrchr", "chr"))
+# One row per variant, carrying allele frequencies AND the annotation features
+# panel E's enrichment needs.
+#
+# cs_size is a property of a CREDIBLE SET and one variant can sit in several
+# across genes and assays, so the map carries the median over that variant's
+# rows. Keeping exactly one row per variant is what the many-to-one join guard
+# in coloc_variant_level() relies on.
+.variant_feature_map <- function(fm) {
+  keep <- c("variant", AF_POP_COLS, FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS)
+  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL),
+                          function(d) dplyr::select(d, any_of(keep)))) %>%
+    # The eQTL reader already repairs "chrchr"; normalise all three here so a
+    # stray prefix cannot split one variant into two rows.
+    mutate(variant = str_replace(variant, "chrchr", "chr"),
+           across(all_of(AF_POP_COLS), as.numeric))
+
+  size <- raw %>%
+    group_by(variant) %>%
+    summarise(cs_size_med = stats::median(as.numeric(cs_size), na.rm = TRUE),
+              .groups = "drop")
+
+  af <- raw %>% select(-any_of("cs_size"))
   af <- af[rowSums(!is.na(af[AF_POP_COLS])) > 0, , drop = FALSE] %>% distinct()
 
-  # One AF row per variant, or the variant-level join below fans out. A
-  # duplicate here means two SuSiE tables disagree about the same variant's
-  # allele frequencies, which is a genuine upstream inconsistency rather than
-  # something to silently pick a winner for.
+  # A duplicate here means two SuSiE tables disagree about the same variant's
+  # variant-level annotations, which is a genuine upstream inconsistency rather
+  # than something to silently pick a winner for.
   dup <- unique(af$variant[duplicated(af$variant)])
   if (length(dup))
-    stop(length(dup), " variant(s) carry CONFLICTING per-ancestry allele ",
-         "frequencies across the SuSiE fine-mapping tables -- e.g. '", dup[1],
-         "'. Allele frequency is a property of the variant alone; resolve the ",
+    stop(length(dup), " variant(s) carry CONFLICTING variant-level values ",
+         "across the SuSiE fine-mapping tables -- e.g. '", dup[1],
+         "'. These are properties of the variant alone; resolve the ",
          "disagreement upstream.", call. = FALSE)
-  af
+  left_join(af, size, by = "variant")
+}
+
+# Cut-points for the binarized covariates. Conventional defaults, NOT tuned --
+# if a result turns on the exact value that is a finding about fragility and
+# belongs in NOTES.md.
+PHYLOP_CONSERVED <- 2
+TSS_PROXIMAL_BP  <- 2000
+
+# Columns that are logical but are NOT features (outcomes or bookkeeping).
+NON_FEATURE_LOGICAL <- c("Coloc", "coloc", "flagged")
+
+# Turn the raw annotation columns into the binary feature set: four binarized
+# covariates plus one logical column per VEP consequence term.
+build_feature_matrix <- function(d) {
+  d %>%
+    mutate(
+      rare           = !is.na(max_af)    & max_af   <  0.01,
+      conserved      = !is.na(phylop)    & phylop   >  PHYLOP_CONSERVED,
+      # Sign-agnostic: distTSS is signed by strand, proximity is not.
+      tss_proximal   = !is.na(distTSS)   & abs(distTSS) < TSS_PROXIMAL_BP,
+      protein_coding = !is.na(gene_type) & gene_type == "protein_coding") %>%
+    expand_vep_consequences()
+}
+
+# Logical columns eligible as enrichment features.
+feature_names <- function(d)
+  setdiff(names(d)[vapply(d, is.logical, logical(1))], NON_FEATURE_LOGICAL)
+
+# Adjusted enrichment of each feature on a binary outcome.
+#
+# The PIP + log10(cs_size) adjustment is the point of the design: colocalization
+# requires good fine-mapping in BOTH layers, so an unadjusted test conflates
+# biology with detectability.
+#
+# A feature is fitted only with at least `min_carriers` observations in the
+# SMALLER of its two groups. Below that, glm returns separated or wildly
+# unstable estimates -- the infinite odds ratios that silently vanished from
+# Fig1 panel H. Dropped features are named in a message rather than disappearing.
+fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
+  empty <- tibble::tibble(feature = character(), odds_ratio = numeric(),
+                          conf.low = numeric(), conf.high = numeric(),
+                          p.value = numeric(), n_carriers = integer())
+  y <- as.logical(d[[outcome]])
+  keep <- character(0); dropped <- character(0)
+  for (f in features) {
+    x <- as.logical(d[[f]])
+    tab <- table(x, y)
+    if (nrow(tab) == 2L && ncol(tab) == 2L && min(tab) >= min_carriers)
+      keep <- c(keep, f) else dropped <- c(dropped, f)
+  }
+  if (length(dropped))
+    message("  ", length(dropped), " feature(s) below the ", min_carriers,
+            "-carrier floor, not tested: ", paste(dropped, collapse = ", "))
+  if (!length(keep)) return(empty)
+
+  # A feature clearing the carrier floor can still be a hard failure: e.g.
+  # complete/quasi-separation makes stats::confint() error ("need at least
+  # two non-NA values to interpolate") rather than return an unstable-but-
+  # finite CI. Fitting each surviving feature is therefore wrapped in its own
+  # tryCatch so ONE such feature cannot abort every other feature in `keep`
+  # (an unguarded error inside map_dfr would). On failure the feature is
+  # dropped and named in a message -- worded differently from the below-floor
+  # case above, so the two reasons a feature is missing from the result are
+  # distinguishable in the log -- rather than silently returning a row of NAs,
+  # which would render cleanly while being wrong.
+  purrr::map_dfr(keep, function(f) {
+    tryCatch({
+      form <- stats::as.formula(
+        sprintf("%s ~ `%s` + PIP_qtl + log10(cs_size_med)", outcome, f))
+      fit <- stats::glm(form, data = d, family = stats::binomial())
+      ci  <- suppressMessages(stats::confint(fit))
+      co  <- summary(fit)$coefficients
+      # R's model.matrix names a logical predictor's coefficient
+      # `<variable name>TRUE`, with any backticks used to make an
+      # irregular name syntactic in the formula stripped by the parser --
+      # never `` `<name>`TRUE ``. Match that exact name; a substring
+      # grep() fallback previously "worked" only by the accident of the
+      # feature's row preceding the covariates' rows in this formula's
+      # term order, which is untested and not a real invariant.
+      row <- paste0(f, "TRUE")
+      if (!row %in% rownames(co))
+        stop("coefficient row '", row, "' not found among: ",
+             paste(rownames(co), collapse = ", "))
+      tibble::tibble(
+        feature    = f,
+        odds_ratio = unname(exp(stats::coef(fit)[row])),
+        conf.low   = unname(exp(ci[row, 1])),
+        conf.high  = unname(exp(ci[row, 2])),
+        p.value    = unname(co[row, 4]),
+        n_carriers = sum(as.logical(d[[f]]), na.rm = TRUE))
+    }, error = function(e) {
+      message("  feature '", f, "' failed to fit/profile, not tested: ",
+              conditionMessage(e))
+      empty
+    })
+  })
 }
 
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
-    af <- .variant_af_map(susie_finemapping())
+    af <- .variant_feature_map(susie_finemapping())
 
     variants <- load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
       .label_by_pair("SCP", "variant level") %>%
       mutate(Gene = str_remove(Signal, ":.*"))
 
-    # relationship = "many-to-one" asserts SNP is unique in `af`. .variant_af_map()
+    # relationship = "many-to-one" asserts SNP is unique in `af`. .variant_feature_map()
     # already enforces that, so this is a belt-and-braces guard: without it a
     # duplicated key would silently multiply rows (dplyr's default only warns)
     # and build_or_cache would cache the inflated result on this very run.
@@ -508,8 +625,27 @@ coloc_model_input <- function(refresh = FALSE)
              log_maf = as.numeric(scale(-log10(max_af)))) %>%
       filter(Coloc == TRUE)
 
+    # One row per (variant, gene) for the posterior join. Splicing
+    # molecular_trait_ids are INTRON-level and collapsed to a gene above, so a
+    # variant sitting in credible sets for two introns of the same gene yields
+    # two rows -- 13,950 such pairs in the sQTL table, plus a handful in eQTL and
+    # pQTL. Panels C/D regress cross-assay EFFECT SIZES, so the strongest signal
+    # is the faithful single representative of what that variant does to that
+    # gene; keeping both would double-count it and inflate the regression's N,
+    # which is precisely what the many-to-one guard below refuses to allow.
+    #
+    # Collapsing happens HERE and not in susie_finemapping(): the full tables
+    # still feed cs_list / gene_map / the credible-set graph behind panels A and
+    # B, and dropping rows there would delete whole credible sets from them.
+    #
+    # arrange() + distinct() keeps the first row per key, which after sorting on
+    # descending |posterior_mean| is the strongest; it is far cheaper than a
+    # grouped slice_max() over ~840k groups and is deterministic.
     posteriors <- function(d)
-      d %>% select(variant, molecular_trait_id, posterior_mean, posterior_sd)
+      d %>%
+        select(variant, molecular_trait_id, posterior_mean, posterior_sd) %>%
+        arrange(desc(abs(posterior_mean))) %>%
+        distinct(variant, molecular_trait_id, .keep_all = TRUE)
 
     # relationship = "many-to-one" asserts (variant, gene) is unique on the
     # fine-mapping side -- nothing upstream guarantees this, and a variant
@@ -556,4 +692,75 @@ coloc_model_input <- function(refresh = FALSE)
       `eQTL-pQTL` = pair_input("eQTL-pQTL", fm$eQTL, "eQTL", fm$pQTL, "pQTL"),
       `sQTL-pQTL` = pair_input("sQTL-pQTL", fm$sQTL, "sQTL", fm$pQTL, "pQTL")
     )
+  })
+
+# =============================================================================
+# Panel E — colocalization feature enrichment
+# =============================================================================
+# A pair is flagged underpowered for an analysis when fewer than this fraction
+# of its candidate features clear the carrier floor.
+UNDERPOWERED_FRAC <- 0.5
+
+# Adjusted feature enrichment for both analyses, per assay pair.
+#
+#   A  what makes a variant shared    coloc vs non-coloc, within pair
+#   B  what makes a shared variant rare   rare vs common, within Coloc == TRUE
+#
+# Analysis B is attempted for every pair; where a pair has too few rare
+# colocalizing variants the carrier floor empties it and the underpowered flag
+# fires on its own. The criterion decides -- nothing is excluded a priori.
+coloc_feature_enrichment <- function(refresh = FALSE)
+  build_or_cache("coloc_feature_enrichment", refresh = refresh, {
+    vl <- coloc_variant_level()
+    # Fold ALT-allele frequencies to MAF, then take the per-variant maximum
+    # across ancestries. Two steps, matching coloc_model_input() exactly --
+    # inlining across() into do.call(pmax, ...) does not evaluate the way it
+    # reads.
+    folded <- vl %>%
+      select(all_of(AF_POP_COLS)) %>%
+      mutate(across(everything(), ~ ifelse(. > .5, 1 - ., .)))
+    v <- vl %>%
+      mutate(max_af = do.call(pmax, as.list(folded))) %>%
+      build_feature_matrix()
+
+    feats <- feature_names(v)
+    message("  ", length(feats), " candidate features")
+
+    specs <- tidyr::expand_grid(analysis = c("A", "B"), pair = unique(v$type))
+
+    # The documented shape, kept even when NO (analysis, pair) combination
+    # survives the carrier floor (a real outcome on a small fixture/cohort,
+    # not an error): bind_rows() against this schema is what keeps the
+    # result a well-formed zero-row tibble instead of the columnless 0x0
+    # frame purrr::pmap_dfr() returns when every iteration answers NULL.
+    empty <- tibble::tibble(
+      analysis = character(), pair = character(), feature = character(),
+      odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
+      p.value = numeric(), padj = numeric(), n_carriers = integer(),
+      flagged = logical())
+
+    out <- purrr::pmap_dfr(specs, function(analysis, pair) {
+      d <- v %>% filter(type == pair)
+      if (analysis == "A") {
+        d$.outcome <- as.logical(d$Coloc)
+      } else {
+        d <- d %>% filter(Coloc == TRUE)
+        d$.outcome <- as.logical(d$rare)
+      }
+      # `rare` is a tested FEATURE in A but the OUTCOME in B. Regressing a
+      # variable on itself is meaningless, so it is dropped from B only.
+      use <- if (analysis == "A") feats else setdiff(feats, "rare")
+      message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
+      res <- fit_feature_enrichment(d, ".outcome", use)
+      # Coverage assertion: a shrinking feature set must not look like a clean run.
+      n_expected <- length(use)
+      if (nrow(res) < n_expected)
+        message("    ", nrow(res), "/", n_expected, " features tested")
+      if (!nrow(res)) return(NULL)
+      res %>%
+        mutate(analysis = analysis, pair = pair,
+               padj = stats::p.adjust(p.value, method = "fdr"),
+               flagged = nrow(res) < UNDERPOWERED_FRAC * n_expected)
+    })
+    dplyr::bind_rows(empty, out)
   })

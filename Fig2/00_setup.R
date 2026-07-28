@@ -26,9 +26,9 @@ suppressPackageStartupMessages({
 INPUT    <- Sys.getenv("FIG2_INPUT",    ".")            # staging root (cwd); inputs live under input_data/
 DATA_DIR <- Sys.getenv("FIG2_DATA",     "fig2/data")    # per-panel data (01_prep)
 OBJ_DIR  <- Sys.getenv("FIG2_OBJ",      "fig2/objects") # per-panel ggplot objects
-OUTDIR   <- Sys.getenv("FIG2_OUTDIR",   ".")            # final Figure2.pdf/png
+OUTDIR   <- Sys.getenv("FIG2_OUTDIR",   "fig2")         # final Figure2.pdf/png
 MANIFEST <- Sys.getenv("FIG2_MANIFEST", "fig2/inputs.tsv")
-for (d in c(DATA_DIR, OBJ_DIR)) dir.create(d, showWarnings = FALSE, recursive = TRUE)
+for (d in c(DATA_DIR, OBJ_DIR, OUTDIR)) dir.create(d, showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
 

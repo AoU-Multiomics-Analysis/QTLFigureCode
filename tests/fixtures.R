@@ -72,6 +72,29 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   # is what .variant_af_map()'s conflict guard exists to catch.
   af_for <- function(v) af_cols[match(v, snps), , drop = FALSE]
 
+  # Annotation columns for the enrichment feature set. Deterministic from the
+  # variant index so assertions can target specific rows. Variant 1 is PLS +
+  # missense + conserved + TSS-proximal; variant 2 carries two VEP terms.
+  annot_for <- function(v) {
+    i <- seq_along(v)
+    data.frame(
+      PLS             = i %% 2 == 1,
+      pELS            = i %% 3 == 0,
+      dELS            = i %% 4 == 0,
+      `CTCF.bound`    = i %% 5 == 0,
+      `CTCF.only`     = FALSE,
+      `DNase.H3K4me3` = i %% 6 == 0,
+      FANTOM5         = i %% 7 == 0,
+      consequence     = ifelse(i == 1, "missense_variant",
+                        ifelse(i == 2, "intron_variant,NMD_transcript_variant",
+                               "intron_variant")),
+      phylop          = ifelse(i %% 2 == 1, 3.5, 0.2),
+      distTSS         = ifelse(i %% 2 == 1, 500L, 50000L),
+      gene_type       = ifelse(i %% 3 == 0, "lncRNA", "protein_coding"),
+      cs_size         = 2L + (i %% 4),
+      check.names     = FALSE, stringsAsFactors = FALSE)
+  }
+
   # --- SuSiE fine-mapping ---------------------------------------------------
   eqtl <- data.frame(
     molecular_trait_id = paste0(genes, ".1"),        # version suffix is stripped
@@ -84,6 +107,12 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     gene_name      = paste0("GENE_", genes)
   )
   eqtl <- cbind(eqtl, af_for(eqtl$variant))
+  # annot_for() is index-based (not variant-matched like af_for()), so it must
+  # be applied here -- before the ENSG003 row below -- and NOT recomputed
+  # after further rows are appended, or a variant repeated at a different row
+  # position (e.g. sqtl_extra below) would pick up a different annotation and
+  # spuriously trip the conflicting-values guard.
+  eqtl <- cbind(eqtl, annot_for(eqtl$variant))
   # An eQTL-only gene, so genes_all_three_assays is a strict subset. Its variant
   # appears in no other table and carries NA frequencies, exercising the
   # all-NA drop in .variant_af_map().
@@ -91,9 +120,13 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     molecular_trait_id = "ENSG003.1", variant = "chr3_100_G_A", pip = 0.6,
     cs_index = "L1", posterior_mean = 0.3, posterior_sd = 0.1,
     cs_id = "E_ENSG003_L1", gene_name = "GENE_ENSG003",
-    af_cols[NA_integer_, , drop = FALSE]))
+    af_cols[NA_integer_, , drop = FALSE],
+    annot_for(1L)[1, ]))
   wtsv(eqtl, mp("susie_eqtl"))
 
+  # NOTE: splicing ids are INTRON-level. `sqtl_extra` below adds a SECOND intron
+  # cluster for ENSG001 that shares a variant with the first, reproducing the
+  # duplicate (variant, gene) key that appears once these ids collapse to a gene.
   sqtl <- data.frame(
     molecular_trait_id = paste0(genes, ":clu_1"),    # gene is extracted from this
     variant        = snps,
@@ -104,6 +137,20 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id          = s_cs
   )
   sqtl <- cbind(sqtl, af_for(sqtl$variant))
+  # As with eqtl above, annot_for() must be applied before sqtl_extra is
+  # derived: sqtl_extra copies row 1 wholesale (including its already-computed
+  # annotation values), so the shared variant keeps ONE consistent annotation
+  # instead of picking up a second, index-shifted one after the rbind below.
+  sqtl <- cbind(sqtl, annot_for(sqtl$variant))
+  # A second intron cluster of ENSG001, sharing variant 1 with clu_1 but with a
+  # LARGER |posterior_mean|, so the "keep the strongest effect" collapse has a
+  # determinate winner to assert on.
+  sqtl_extra <- sqtl[1, ]
+  sqtl_extra$molecular_trait_id <- "ENSG001:clu_2"
+  sqtl_extra$cs_id              <- "S_ENSG001_L2"
+  sqtl_extra$cs_index           <- "L2"
+  sqtl_extra$posterior_mean     <- 0.95            # strongest for this (variant, gene)
+  sqtl <- rbind(sqtl, sqtl_extra)
   wtsv(sqtl, mp("susie_sqtl"))
 
   pqtl <- data.frame(
@@ -117,6 +164,7 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     group          = "COMB.proteomics"   # real tables carry the per-assay value
   )
   pqtl <- cbind(pqtl, af_for(pqtl$variant))
+  pqtl <- cbind(pqtl, annot_for(pqtl$variant))
   wtsv(pqtl, mp("susie_pqtl"))
 
   # --- FastENLOC gene level (a normal TSV) ----------------------------------
