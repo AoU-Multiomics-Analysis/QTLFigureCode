@@ -49,7 +49,7 @@ showtext_auto()
 # --- Design system: uniform text sizes --------------------------------------
 # element_text() sizes are in pt; geom_text()/annotate() sizes are in mm.
 SZ_AXIS_TITLE <- 25; SZ_AXIS_TEXT <- 20; SZ_STRIP <- 20
-SZ_LEG_TEXT   <- 15; SZ_LEG_TITLE <- 17; SZ_TAG   <- 30
+SZ_LEG_TEXT   <- 15; SZ_LEG_TITLE <- 17; SZ_TAG   <- 31
 
 theme_set(theme_classic())
 theme_update(

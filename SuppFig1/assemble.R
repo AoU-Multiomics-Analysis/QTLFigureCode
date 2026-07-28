@@ -18,7 +18,7 @@ bottom_row <- P$C | P$D
 
 SuppFig1 <- top_row / bottom_row +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = SZ_TAG, face = "bold"))
+  theme(plot.tag = element_text(size = SZ_TAG, face = "bold", family = FONT))
 
 ggsave(file.path(OUTDIR, "SupplementalFig1.pdf"), SuppFig1,
        width = 35, height = 23, dpi = DPI, limitsize = FALSE)

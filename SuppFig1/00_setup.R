@@ -52,7 +52,7 @@ showtext_auto()
 # element_text() sizes are in pt; geom_text()/annotate() are in mm. This figure
 # uses bordered panels (folded in from the original's theme_update).
 SZ_AXIS_TITLE <- 20; SZ_AXIS_TEXT <- 15; SZ_STRIP <- 20
-SZ_LEG_TEXT   <- 12; SZ_LEG_TITLE <- 14; SZ_TAG   <- 25
+SZ_LEG_TEXT   <- 12; SZ_LEG_TITLE <- 14; SZ_TAG   <- 33
 
 theme_set(theme_classic())
 theme_update(

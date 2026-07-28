@@ -54,7 +54,7 @@ showtext_auto()
 # element_text() sizes are in pt; geom_text()/geom_label()/annotate() are in mm.
 # Figure 3 is an 18x12" canvas, so these are much smaller than Figure 1's.
 SZ_AXIS_TITLE <- 11; SZ_AXIS_TEXT <- 9;  SZ_STRIP  <- 12
-SZ_LEG_TEXT   <- 9;  SZ_LEG_TITLE <- 10; SZ_TAG    <- 14
+SZ_LEG_TEXT   <- 9;  SZ_LEG_TITLE <- 10; SZ_TAG    <- 17
 SZ_TITLE      <- 11
 SZ_ANNOT      <- 2.7           # mm — geom_label()/annotate() only
 

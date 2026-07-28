@@ -16,7 +16,7 @@ top_row <- P$A + (P$B + theme(plot.margin = margin(l = 100))) + P$C +
 
 Fig2 <- top_row / (P$D | QTLBurden | P$G) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = SZ_TAG))
+  theme(plot.tag = element_text(size = SZ_TAG, face = "bold", family = FONT))
 
 ggsave(file.path(OUTDIR, "Figure2.pdf"), Fig2, width = 40, height = 24, dpi = DPI, limitsize = FALSE)
 # Raster preview: full physical size at lower DPI (showtext DPI matched).

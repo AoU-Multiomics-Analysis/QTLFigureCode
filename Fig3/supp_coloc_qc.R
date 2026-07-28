@@ -63,7 +63,7 @@ discovery_plot <- discovery_by_type %>%
 
 SuppColocQC <- posterior_dists / discovery_plot +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = SZ_TAG, face = "bold"))
+  theme(plot.tag = element_text(size = SZ_TAG, face = "bold", family = FONT))
 
 ggsave(file.path(OUTDIR, "FigS_CrossQTLColocQC.pdf"), SuppColocQC,
        height = 7, width = 10, dpi = DPI)

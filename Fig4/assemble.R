@@ -25,7 +25,8 @@ Fig4 <- ((P$A + labs(tag = "A") +
                   strip.text.y.left = element_text(angle = 0, hjust = 1, size = 13))) |
            right_side) +
   plot_layout(widths = c(7, 8)) &
-  theme(plot.tag = element_text(size = SZ_TAG), plot.tag.position = c(0, 1))
+  theme(plot.tag = element_text(size = SZ_TAG, face = "bold", family = FONT),
+        plot.tag.position = c(0, 1))
 
 ggsave(file.path(OUTDIR, "Figure4.pdf"), Fig4, width = 15, height = 10, dpi = DPI)
 showtext_opts(dpi = 100)
