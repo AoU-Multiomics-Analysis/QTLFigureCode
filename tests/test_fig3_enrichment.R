@@ -315,9 +315,17 @@ mk_enrich_pair <- function(pair, n_half, minority, sparse) {
     dud3 <- rep(TRUE,  2 * n_half)
     rare <- rep(FALSE, 2 * n_half)
   }
+  # Analysis B now regresses log10(max_af) directly rather than the binary
+  # `rare` outcome, so the synthetic matrix needs a continuous, strictly
+  # positive max_af. A smooth deterministic ramp (independent of `rare`,
+  # which keeps its own hand-crafted pattern above for analysis A's floor/
+  # sparse behaviour) gives every feature's fit real variation to work with
+  # without introducing randomness into an otherwise fully deterministic
+  # fixture.
+  max_af <- rep(seq(0.01, 0.35, length.out = n_half), 2)
   tibble::tibble(
     type = pair, Coloc = Coloc, hit = hit, dud1 = dud1, dud2 = dud2, dud3 = dud3,
-    rare = rare,
+    rare = rare, max_af = max_af,
     PIP_qtl     = rep(seq(0.1, 0.9, length.out = n_half), 2),
     cs_size_med = rep(2:(n_half + 1), 2)[seq_len(2 * n_half)])
 }
@@ -480,5 +488,36 @@ p_a_populated <- try(
   silent = TRUE)
 ok("the non-empty half still builds as a real faceted forest plot, not a placeholder",
    !inherits(p_a_populated, "try-error"))
+
+# --- analysis B is continuous log MAF ---------------------------------------
+# Build a matrix where `hi_maf` carriers are systematically COMMONER and
+# `lo_maf` carriers systematically RARER among colocalizing variants.
+set.seed(4242)
+nB <- 400
+mB <- data.frame(
+  type        = "eQTL-pQTL",
+  Coloc       = TRUE,
+  PIP_qtl     = runif(nB, .1, .9),
+  cs_size_med = sample(2:30, nB, replace = TRUE),
+  hi_maf      = rep(c(TRUE, FALSE), each = nB / 2),
+  lo_maf      = rep(c(FALSE, TRUE), each = nB / 2))
+# carriers of hi_maf sit near MAF 30%, non-carriers near 3%
+mB$max_af <- ifelse(mB$hi_maf, runif(nB, .2, .45), runif(nB, .01, .05))
+mB$rare   <- mB$max_af < .01
+
+resB <- .enrich_pairs(mB, min_carriers = 10)
+b <- resB[resB$analysis == "B", ]
+
+ok("analysis B returns rows on a continuous outcome", nrow(b) > 0L)
+ok("analysis B is labelled as a MAF fold change",
+   all(b$estimate_type[b$analysis == "B"] == "maf_fold_change"))
+ok("analysis A is still an odds ratio",
+   all(resB$estimate_type[resB$analysis == "A"] == "odds_ratio"))
+ok("a feature whose carriers are COMMONER gives fold-change < 1",
+   b$odds_ratio[b$feature == "hi_maf"] < 1)
+ok("a feature whose carriers are RARER gives fold-change > 1",
+   b$odds_ratio[b$feature == "lo_maf"] > 1)
+ok("the CI brackets the estimate on the same scale",
+   all(b$conf.low < b$odds_ratio & b$odds_ratio < b$conf.high, na.rm = TRUE))
 
 cat("test_fig3_enrichment.R: all assertions passed\n")

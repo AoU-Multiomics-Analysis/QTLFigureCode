@@ -536,17 +536,39 @@ feature_names <- function(d)
 # SMALLER of its two groups. Below that, glm returns separated or wildly
 # unstable estimates -- the infinite odds ratios that silently vanished from
 # Fig1 panel H. Dropped features are named in a message rather than disappearing.
-fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
+#
+# `family` selects the outcome model:
+#   "binomial" (default) -- outcome is logical, estimate is an odds ratio.
+#     The carrier floor requires min_carriers in EVERY cell of table(feature,
+#     outcome) (a 2x2 table).
+#   "gaussian" -- outcome is continuous (analysis B's log10 MAF), estimate is
+#     a fold change. There is no outcome-side 2x2 table to floor on, so the
+#     carrier floor instead requires min_carriers observations on BOTH sides
+#     of the feature itself (table(feature)).
+# In both cases the estimate/CI reported is for the feature's own coefficient,
+# adjusted for PIP_qtl + log10(cs_size_med).
+fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10,
+                                   family = c("binomial", "gaussian")) {
+  family <- match.arg(family)
   empty <- tibble::tibble(feature = character(), odds_ratio = numeric(),
                           conf.low = numeric(), conf.high = numeric(),
                           p.value = numeric(), n_carriers = integer())
-  y <- as.logical(d[[outcome]])
   keep <- character(0); dropped <- character(0)
-  for (f in features) {
-    x <- as.logical(d[[f]])
-    tab <- table(x, y)
-    if (nrow(tab) == 2L && ncol(tab) == 2L && min(tab) >= min_carriers)
-      keep <- c(keep, f) else dropped <- c(dropped, f)
+  if (family == "binomial") {
+    y <- as.logical(d[[outcome]])
+    for (f in features) {
+      x <- as.logical(d[[f]])
+      tab <- table(x, y)
+      if (nrow(tab) == 2L && ncol(tab) == 2L && min(tab) >= min_carriers)
+        keep <- c(keep, f) else dropped <- c(dropped, f)
+    }
+  } else {
+    for (f in features) {
+      x   <- as.logical(d[[f]])
+      tab <- table(x)
+      if (length(tab) == 2L && min(tab) >= min_carriers)
+        keep <- c(keep, f) else dropped <- c(dropped, f)
+    }
   }
   if (length(dropped))
     message("  ", length(dropped), " feature(s) below the ", min_carriers,
@@ -567,7 +589,10 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
     tryCatch({
       form <- stats::as.formula(
         sprintf("%s ~ `%s` + PIP_qtl + log10(cs_size_med)", outcome, f))
-      fit <- stats::glm(form, data = d, family = stats::binomial())
+      fit <- if (family == "binomial")
+        stats::glm(form, data = d, family = stats::binomial())
+      else
+        stats::lm(form, data = d)
       ci  <- suppressMessages(stats::confint(fit))
       co  <- summary(fit)$coefficients
       # R's model.matrix names a logical predictor's coefficient
@@ -581,11 +606,31 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
       if (!row %in% rownames(co))
         stop("coefficient row '", row, "' not found among: ",
              paste(rownames(co), collapse = ", "))
+
+      if (family == "binomial") {
+        est <- unname(exp(stats::coef(fit)[row]))
+        lo  <- unname(exp(ci[row, 1]))
+        hi  <- unname(exp(ci[row, 2]))
+      } else {
+        # Analysis B's coefficient is on log10(MAF): negative means carriers
+        # sit at LOWER MAF, i.e. rarer. Transform by 10^(-x) so "carriers are
+        # rarer" reports a value ABOVE 1, matching analysis A's "enriched
+        # among colocalizing variants" direction -- both analyses then read
+        # the same way on a log axis with a reference line at 1. Negating
+        # SWAPS which raw bound is smaller, so the transformed CI bounds are
+        # explicitly re-sorted rather than assumed to keep their order.
+        raw_lo <- unname(ci[row, 1]); raw_hi <- unname(ci[row, 2])
+        est <- 10^(-unname(stats::coef(fit)[row]))
+        transformed <- 10^(-c(raw_lo, raw_hi))
+        lo <- min(transformed)
+        hi <- max(transformed)
+      }
+
       tibble::tibble(
         feature    = f,
-        odds_ratio = unname(exp(stats::coef(fit)[row])),
-        conf.low   = unname(exp(ci[row, 1])),
-        conf.high  = unname(exp(ci[row, 2])),
+        odds_ratio = est,
+        conf.low   = lo,
+        conf.high  = hi,
         p.value    = unname(co[row, 4]),
         n_carriers = sum(as.logical(d[[f]]), na.rm = TRUE))
     }, error = function(e) {
@@ -841,28 +886,44 @@ UNDERPOWERED_FRAC <- 0.5
     analysis = character(), pair = character(), feature = character(),
     odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
     p.value = numeric(), padj = numeric(), n_carriers = integer(),
-    flagged = logical())
+    flagged = logical(), estimate_type = character())
 
   out <- purrr::pmap_dfr(specs, function(analysis, pair) {
     d <- v %>% filter(type == pair)
     if (analysis == "A") {
       d$.outcome <- as.logical(d$Coloc)
+      family <- "binomial"
+      estimate_type <- "odds_ratio"
+      # `rare` is a tested FEATURE in A.
+      use <- feats
     } else {
       d <- d %>% filter(Coloc == TRUE)
-      d$.outcome <- as.logical(d$rare)
+      # log10(0) is -Inf and cannot be fit; drop those rows and report the
+      # count rather than let -Inf silently poison the model.
+      n_bad <- sum(is.na(d$max_af) | d$max_af <= 0)
+      if (n_bad)
+        message("  analysis B / ", pair, ": dropping ", n_bad,
+                " row(s) with missing or non-positive max_af before log10")
+      d <- d %>% filter(!is.na(max_af), max_af > 0)
+      d$.outcome <- log10(d$max_af)
+      family <- "gaussian"
+      estimate_type <- "maf_fold_change"
+      # `rare` is B's OUTCOME (it is derived from the same max_af this
+      # continuous model now regresses on); regressing a variable on itself
+      # is meaningless, so it is dropped from B only. `rare` stays a tested
+      # FEATURE in A.
+      use <- setdiff(feats, "rare")
     }
-    # `rare` is a tested FEATURE in A but the OUTCOME in B. Regressing a
-    # variable on itself is meaningless, so it is dropped from B only.
-    use <- if (analysis == "A") feats else setdiff(feats, "rare")
     message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
-    res <- fit_feature_enrichment(d, ".outcome", use, min_carriers = min_carriers)
+    res <- fit_feature_enrichment(d, ".outcome", use, min_carriers = min_carriers,
+                                  family = family)
     # Coverage assertion: a shrinking feature set must not look like a clean run.
     n_expected <- length(use)
     if (nrow(res) < n_expected)
       message("    ", nrow(res), "/", n_expected, " features tested")
     if (!nrow(res)) return(NULL)
     res %>%
-      mutate(analysis = analysis, pair = pair,
+      mutate(analysis = analysis, pair = pair, estimate_type = estimate_type,
              padj = stats::p.adjust(p.value, method = "fdr"),
              flagged = nrow(res) < UNDERPOWERED_FRAC * n_expected)
   })
@@ -963,6 +1024,20 @@ enrichment_forest_panel <- function(d, title) {
         theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
     )
   }
+  # Analysis A's estimate is an odds ratio ("enriched among colocalizing
+  # variants"); analysis B's is a MAF fold change ("carriers are rarer") --
+  # see fit_feature_enrichment()'s gaussian branch. Both are transformed onto
+  # the same ">1 reads as enriched/rarer" convention and share the log10 axis
+  # with the reference line at 1, but the axis label must say which is which.
+  # `d` is already filtered to one analysis by the caller, so this is a
+  # constant lookup, not a per-row distinction; a frame without an
+  # `estimate_type` column (e.g. a hand-built test fixture) falls back to the
+  # odds-ratio label.
+  x_lab <- if ("estimate_type" %in% names(d) && all(d$estimate_type == "maf_fold_change"))
+    "MAF fold change (carriers rarer →)"
+  else
+    "Adjusted odds ratio"
+
   ggplot(d, aes(x = odds_ratio, y = reorder(feature, odds_ratio),
                 colour = flagged)) +
     geom_vline(xintercept = 1, linetype = "dashed", colour = "grey60") +
@@ -972,6 +1047,6 @@ enrichment_forest_panel <- function(d, title) {
     # Grey = the pair was flagged underpowered for this analysis.
     scale_colour_manual(values = c(`FALSE` = "#364B63", `TRUE` = "grey70"),
                         guide = "none") +
-    labs(x = "Adjusted odds ratio", y = NULL, title = title) +
+    labs(x = x_lab, y = NULL, title = title) +
     theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
 }

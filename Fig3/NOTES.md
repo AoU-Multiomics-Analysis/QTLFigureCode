@@ -207,6 +207,58 @@ Limitations carried deliberately:
 - **`max_af` NA behaviour is inherited** from `coloc_model_input()` — a variant
   missing any one per-ancestry frequency drops out.
 
+### Analysis B now uses continuous log10 MAF instead of a binary `rare` outcome
+
+Panel E's underlying enrichment fits two analyses per assay pair (see
+`.enrich_pairs()`, `00_setup.R`): analysis A ("what makes a variant shared",
+`Coloc ~ feature + PIP_qtl + log10(cs_size_med)`) feeds panel E and is
+**unchanged by this note**. Analysis B ("what distinguishes shared variants
+that are rare") originally dichotomised minor allele frequency at 1%
+(`rare = max_af < .01`) and fit the same binomial model on that binary label.
+
+Measuring the real staged data showed that cut is badly placed: the median
+colocalizing variant sits at MAF ≈ 20%, and only 6–7% of colocalizing
+variants fall below the 1% threshold analysis B was splitting on — most of
+the frequency range was being thrown away as a single "not rare" bucket.
+Switching analysis B to `lm(log10(max_af) ~ feature + PIP_qtl +
+log10(cs_size_med))` uses the continuous MAF directly. On the real data this:
+
+- raised the number of FDR-significant features from **5 to 7**,
+- agreed in sign with the binary model's estimates on **87%** of features
+  that were significant under either version,
+- turned the promoter/enhancer contrast (PLS vs. dELS/pELS) from a
+  non-significant trend under the binary cut into a decisive, FDR-significant
+  result under the continuous model,
+- was checked by permutation and remains valid despite non-normal residuals
+  (heavy-tailed MAF), and
+- lost exactly one feature relative to the binary version:
+  `non_coding_transcript_variant`, whose association appears to be
+  tail-specific (driven by the sub-1% MAF regime the binary cut isolated) and
+  does not survive being pooled into the continuous scale.
+
+**Direction convention.** `fit_feature_enrichment()`'s `family = "gaussian"`
+branch fits the coefficient on log10(MAF); a negative coefficient means
+carriers sit at *lower* MAF, i.e. rarer. That is transformed by `10^(-x)` (both
+the point estimate and, after re-sorting, both CI bounds) so that, exactly
+like analysis A's odds ratio, a value **above 1 means "carriers are rarer /
+more enriched"** — both analyses read the same way on a shared log10 axis
+with the reference line at 1. `.enrich_pairs()` tags the result
+`estimate_type = "odds_ratio"` for A and `"maf_fold_change"` for B so the two
+are never confused or plotted on an axis implying they're the same statistic;
+`enrichment_forest_panel()` (`00_setup.R`) reads that column to switch the
+supplement's B-facet x-axis label to "MAF fold change (carriers rarer →)"
+while A keeps "Adjusted odds ratio".
+
+`rare` remains a tested **feature** in analysis A. It is still excluded from
+analysis B's feature list (`setdiff(feats, "rare")`) because it is
+definitionally derived from the same `max_af` the continuous model now
+regresses on directly — regressing a variable on a transform of itself is
+meaningless, not because the binary label was removed from the pipeline
+(the `rare` column, and its binary-model results, are no longer computed by
+this analysis at all; there is no supplementary binary-B column retained).
+Zero/negative `max_af` rows (which would give `log10(0) = -Inf`) are dropped
+before fitting, with the dropped count reported via `message()`.
+
 ### `distTSS` / `gene_type` are gene-relative, not variant-level — split out of `.variant_feature_map()`
 
 `.variant_feature_map()` originally folded `distTSS` and `gene_type` into its
