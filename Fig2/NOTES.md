@@ -114,3 +114,21 @@ changed from `"lightgrey"` to `"grey40"` so it matches
 **The general trap:** a `geom_*` given constant parameters but no `data =`
 inherits the plot's data and draws one copy per row. It is invisible for opaque
 fills and compounds for transparent ones.
+
+## Panel G — count labels crowded their points
+
+The labels used `hjust = 1.35` / `hjust = -0.5`, which offsets text by a
+fraction of its OWN WIDTH. Short labels therefore sat closer to their point
+than long ones: "444" crowded its dot while "1,676" cleared it. Compounding
+this, `size = 10` points are several hundred data units wide on this axis, so a
+width-proportional gap never reliably cleared the dot's radius.
+
+Both sides now use a constant offset of 6% of the x range, applied as data
+columns (`UnderLabelX` / `OverLabelX`) with `hjust = 1` / `0`. Every label has
+the same clearance regardless of digit count.
+
+**The offsets are baked into the data on purpose.** Referencing the `LabelPad`
+script local from inside `aes()` leaves it lazy: the saved `.rds` keeps only
+the symbol and a fresh `assemble.R` session dies with
+"object 'LabelPad' not found" — the same trap `panelF.R` documents for
+`DelBoxStart` / `DupBoxStart`, and one this change hit before being corrected.

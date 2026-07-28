@@ -7,6 +7,22 @@ outlier_pal2 <- c("Expression Underlier" = "#D44D5CFF", "Expression Overlier" = 
 # are baked into the saved object -- assemble.R never needs them (see panelF.R
 # for the lazy-aes() trap this avoids).
 XMax     <- max(outliers_df$`Expression Overlier`)
+# Constant gap between a count label and its point, in DATA units. hjust = 1.35
+# offset the text by a fraction of its own WIDTH, so "444" ended up closer to
+# its point than "1,676" did -- the short labels were the ones crowding.
+XRange   <- diff(range(c(outliers_df$`Expression Underlier`,
+                         outliers_df$`Expression Overlier`)))
+# 6% of the x range. The points are size = 10, which is several hundred data
+# units wide on this axis, so the gap has to clear the dot's own radius before
+# any daylight shows.
+LabelPad <- XRange * 0.060
+
+# Baked into the data as columns, NOT referenced from aes(): a script local
+# inside aes() stays lazy, the saved .rds keeps only the symbol, and a fresh
+# assemble.R session dies with "object 'LabelPad' not found". Same trap
+# panelF.R documents for DelBoxStart / DupBoxStart.
+outliers_df$UnderLabelX <- outliers_df$`Expression Underlier` - LabelPad
+outliers_df$OverLabelX  <- outliers_df$`Expression Overlier`  + LabelPad
 LegX     <- XMax * 0.86
 LegTextX <- XMax * 0.895
 
@@ -16,10 +32,10 @@ pG <- ggplot(outliers_df, aes(y = label)) +
                color = "grey65", linewidth = 2) +
   geom_point(aes(x = `Expression Underlier`), color = outlier_pal2["Expression Underlier"], size = 10) +
   geom_point(aes(x = `Expression Overlier`),  color = outlier_pal2["Expression Overlier"],  size = 10) +
-  geom_text(aes(x = `Expression Underlier`, label = scales::comma(`Expression Underlier`)),
-            hjust = 1.35, size = ANN_MD) +
-  geom_text(aes(x = `Expression Overlier`, label = scales::comma(`Expression Overlier`)),
-            hjust = -0.5, size = ANN_MD) +
+  geom_text(aes(x = UnderLabelX, label = scales::comma(`Expression Underlier`)),
+            hjust = 1, size = ANN_MD) +
+  geom_text(aes(x = OverLabelX, label = scales::comma(`Expression Overlier`)),
+            hjust = 0, size = ANN_MD) +
   scale_x_continuous(labels = scales::comma, expand = expansion(mult = c(0.08, 0.34))) +
   # Legend sits in the bottom-right corner: y < 1 is below the lowest category,
   # so the band is empty across the full width. Anchored to the data range
