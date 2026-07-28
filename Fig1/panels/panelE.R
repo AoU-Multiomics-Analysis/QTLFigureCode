@@ -13,7 +13,12 @@ pE <- ccdf %>%
     geom_step(color = "#CF597E", lwd = 3.5) +
     geom_point(shape = 21, size = 10, fill = "#CF597E") +
     scale_x_continuous(breaks = 1:5, labels = c("1", "2", "3", "4", "5+")) +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
+    # The curve never falls below ~50%, so a fixed 0-100% axis spent half the
+    # panel on empty space. Let the axis follow the data and pad it enough that
+    # the size-10 points at either end are not clipped.
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                       breaks = seq(0.5, 1, by = 0.1),
+                       expand = expansion(mult = 0.1)) +
     theme(
       plot.margin = margin(b = 20, unit = "pt"),
       axis.line.x = element_blank(),

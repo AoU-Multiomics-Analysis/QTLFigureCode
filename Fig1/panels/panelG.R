@@ -25,7 +25,7 @@ pG <- summary_data %>%
   mutate(Assay = factor(Assay, levels = c("Expression", "Protein", "Splicing"))) %>%
   ggplot(aes(x = Assay, y = proportion_single, fill = Assay)) +
     geom_col(show.legend = FALSE, width = 0.75, lwd = .2) +
-    paletteer::scale_fill_paletteer_d("ltc::minou") +
+    scale_fill_manual(values = AssayColors) +
     xlab("Assay") +
     theme(legend.position = "none",
           axis.ticks.x = element_blank(),

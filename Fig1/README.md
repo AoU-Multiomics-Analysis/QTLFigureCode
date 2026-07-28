@@ -51,6 +51,8 @@ Standalone; requires the MetaSoft Java tool.
 │   ├── assemble.R               #   composes panels -> Figure1.pdf / Figure1.png
 │   ├── run_all.R                #   panels -> assemble (end-to-end)
 │   ├── supp_metasoft.R          #   supplemental MetaSoft figure (standalone)
+│   ├── enrichment_glm.R         #   alternative enrichment: glm(annotated ~ PIP) (standalone)
+│   ├── enrichment_glm_plot.R    #     its figure; sourced by the above, or run alone
 │   ├── NOTES.md                 #   result-changing notes (novel pGene, panel H)
 │   └── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
 ├── Fig1Data/                    # most inputs stage here under the cwd (controlled access, NOT committed)
@@ -101,6 +103,10 @@ Rscript fig1/run_all.R
 
 # Supplemental MetaSoft figure (requires METASOFT_JAR)
 METASOFT_JAR=/path/to/Metasoft.jar Rscript fig1/supp_metasoft.R
+
+# Alternative annotation enrichment: logistic regression on PIP, standalone
+# figure. Needs the three annot tables; takes a few minutes on the eQTL table.
+Rscript fig1/enrichment_glm.R
 ```
 
 Rebuild a single panel after editing it (it re-stages/reads only its own inputs):
@@ -115,6 +121,8 @@ Rscript fig1/assemble.R        # recompose the figure from cached objects
 - `Figure1.pdf` — 25×27″ vector figure (primary deliverable)
 - `Figure1.png` — full-size raster preview
 - `xGeneMetasoftSummary.pdf` — supplemental figure
+- `Figure1_enrichment_glm.pdf` / `.png` — standalone PIP-regression enrichment,
+  with its fitted slopes in `fig1/objects/enrichment_glm.tsv`
 
 ---
 
