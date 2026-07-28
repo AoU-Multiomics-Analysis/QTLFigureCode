@@ -18,10 +18,10 @@ Fig2 <- top_row / (P$D | QTLBurden | P$G) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = SZ_TAG))
 
-ggsave(file.path(OUTDIR, "Fig2.pdf"), Fig2, width = 40, height = 24, dpi = DPI, limitsize = FALSE)
+ggsave(file.path(OUTDIR, "Figure2.pdf"), Fig2, width = 40, height = 24, dpi = DPI, limitsize = FALSE)
 # Raster preview: full physical size at lower DPI (showtext DPI matched).
 showtext_opts(dpi = 100)
-ggsave(file.path(OUTDIR, "Fig2.png"), Fig2, width = 40, height = 24, dpi = 100, limitsize = FALSE)
+ggsave(file.path(OUTDIR, "Figure2.png"), Fig2, width = 40, height = 24, dpi = 100, limitsize = FALSE)
 showtext_opts(dpi = DPI)
 
-message("Assembled: ", file.path(OUTDIR, "Fig2.pdf"), " and Fig2.png")
+message("Assembled: ", file.path(OUTDIR, "Figure2.pdf"), " and Figure2.png")

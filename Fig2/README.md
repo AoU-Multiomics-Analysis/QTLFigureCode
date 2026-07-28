@@ -17,7 +17,7 @@ restrict to the PIP > 0.9 subset; see
 
 ## The figure
 
-**Main figure** (`Fig2.pdf` / `Fig2.png`), composed of seven panels (A–G):
+**Main figure** (`Figure2.pdf` / `Figure2.png`), composed of seven panels (A–G):
 
 | Panel | Content | Source |
 |-------|---------|--------|
@@ -57,27 +57,30 @@ documented here as-is.
 ```
 .
 ├── common/manifest.R            # shared input manifest + gsutil staging (all figures)
-├── fig2/
-│   ├── 00_setup.R               #   libraries, paths, font, theme, uniform text sizes, shared helpers
+├── fig2/                        # modular pipeline (one directory per figure)
+│   ├── 00_setup.R               #   libraries, font, theme, uniform text sizes, manifest loaders, shared helpers
 │   ├── inputs.tsv               #   input manifest: key, Assay, local_subpath, gs_uri
 │   ├── 01_prep_data.R           #   reads raw inputs ONCE (by manifest key) -> fig2/data/<A-G>.rds
-│   ├── panels/panelA.R … panelG.R  #  each builds one panel -> fig2/objects/<X>.rds
-│   ├── assemble.R               #   composes panels -> fig2/Fig2.pdf / .png
+│   ├── panels/panelA.R … panelG.R  #   each builds one panel -> fig2/objects/<X>.rds
+│   ├── assemble.R               #   composes panels -> fig2/Figure2.pdf / .png
 │   ├── run_all.R                #   prep -> panels -> assemble (end-to-end)
 │   ├── supp_ancestry_stacked.R  #   supplemental figure (standalone)
+│   ├── NOTES.md                 #   behaviour changes + deferred work
+│   ├── Fig2.ipynb               #   generated notebook (tools/build_notebooks.py)
 │   ├── data/                    #   per-panel data frames (.rds)   [git-ignored]
 │   ├── objects/                 #   per-panel ggplot objects (.rds) [git-ignored]
-│   ├── Fig2.pdf / Fig2.png      #   main figure outputs            [git-ignored]
+│   ├── Figure2.pdf / Figure2.png   # main figure outputs           [git-ignored]
 │   └── FigS_AncestryStacked.*   #   supplemental figure outputs    [git-ignored]
 ├── COMB.*_SusieMerged.annotated.ancestry_skew.tsv.gz   # staged SuSiE inputs [not committed]
 └── Fig2Data/                    # staged burden inputs (controlled access) [not committed]
 ```
 
-There is one pipeline, not two. The large expression table is read **once** in
-`01_prep_data.R`; each panel is built and cached independently, then
-`assemble.R` composes them, so a single panel can be iterated on without
+There is one pipeline, not two. The large SuSiE tables are read **once** in
+`01_prep_data.R`; each panel is then built and cached independently, and
+`assemble.R` composes them — so you can iterate on a single panel without
 re-reading the raw data. Per-panel **data** and **ggplot objects** are both
-saved, so a downstream assembly/re-plot script can consume either.
+cached, so a downstream assembly/re-plot script can consume either. Both caches
+are participant-derived and git-ignored.
 
 Note that the directory on disk is `Fig2/`, but the scripts self-reference as
 lowercase `fig2/` — as everywhere else in this repo.
@@ -114,8 +117,8 @@ rm -rf fig2/data fig2/objects && Rscript fig2/run_all.R
 
 Written into `fig2/` by default (`FIG2_OUTDIR`):
 
-- `Fig2.pdf` — 40×24″ vector figure (primary deliverable)
-- `Fig2.png` — full-size raster preview
+- `Figure2.pdf` — 40×24″ vector figure (primary deliverable)
+- `Figure2.png` — full-size raster preview
 - `FigS_AncestryStacked.pdf` / `.png` — supplemental figure
 
 ---

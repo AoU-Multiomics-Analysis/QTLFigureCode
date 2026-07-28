@@ -38,11 +38,16 @@ pt-vs-mm sizes, tagging only in `assemble.R` + a rendered-tag test, the notebook
 generator), a **defect checklist** distilled from real bugs the earlier cleanups
 found, and the stacked-branch merge logistics.
 
-Every figure has now been cleaned up: Fig2 was the original template, and Fig1,
-Fig3, Fig4, Fig5 and SuppFig1 are worked examples that extended it with the
-manifest system. Read the most recent
-`docs/superpowers/specs/*-cleanup-design.md` and `docs/superpowers/plans/*.md`
-before starting a new one.
+**All six figures (Fig1–Fig5, SuppFig1) are now cleaned** and follow the
+template, so the playbook applies to *new* figures or to reworking an existing
+one. Fig1, Fig3, Fig4, Fig5 and SuppFig1 are the worked examples; Fig2
+established the original shape and adopted the manifest last. Read the most
+recent `docs/superpowers/specs/*-cleanup-design.md` and
+`docs/superpowers/plans/*.md` before starting a new one.
+
+Known gaps, if you are looking for work: Fig1 and Fig2 have no tests, and Fig2,
+Fig4 and Fig5 have no `gs://` origins in their manifests (their inputs must be
+pre-staged by hand). Each figure's `NOTES.md` lists its own deferred items.
 
 ## Conventions at a glance
 
