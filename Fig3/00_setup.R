@@ -85,6 +85,13 @@ SIGNAL_FILL <- c("0" = "#E9DCDC", "1" = "#D8BBBB", "2" = "#C89A9A", "3" = "#B379
 AF_POP_COLS <- c("gvs_afr_af", "gvs_amr_af", "gvs_eas_af", "gvs_eur_af",
                  "gvs_mid_af", "gvs_sas_af", "gvs_oth_af")
 
+# cCRE flags carried through for the panel E enrichment. Already logical in the
+# SuSiE tables.
+FEATURE_CCRE_COLS <- c("PLS", "pELS", "dELS", "CTCF.bound", "CTCF.only",
+                       "DNase.H3K4me3", "FANTOM5")
+# Extra columns the enrichment needs beyond the base fine-mapping fields.
+FEATURE_EXTRA_COLS <- c("consequence", "phylop", "distTSS", "gene_type", "cs_size")
+
 # =============================================================================
 # FastENLOC output readers
 # -----------------------------------------------------------------------------
@@ -208,8 +215,8 @@ add_fdr_threshold_label <- function(df, prob_col, control_level = 0.05,
 # Derived-data cache
 # -----------------------------------------------------------------------------
 # Fig3's panels share a heavy upstream: the three SuSiE tables, which are also
-# the source of the per-variant allele frequencies (see .variant_af_map() below)
-# now that the standalone AoU annotation table is gone from the manifest. Under
+# the source of the per-variant allele frequencies (see .variant_feature_map()
+# below) now that the standalone AoU annotation table is gone from the manifest. Under
 # strict per-panel loading those tables would be read, collapsed and joined once
 # per panel. Each builder below memoizes its result to DATA_DIR/<name>.rds, so a
 # panel still calls only the builders it needs while the expensive work happens
@@ -241,7 +248,7 @@ build_or_cache <- function(name, expr, refresh = FALSE) {
 }
 
 # Columns every SuSiE table must supply. AF_POP_COLS are carried through so
-# .variant_af_map() can source allele frequencies here instead of from a
+# .variant_feature_map() can source allele frequencies here instead of from a
 # separate annotation table.
 SUSIE_BASE_COLS <- c("molecular_trait_id", "variant", "pip", "cs_index",
                      "posterior_mean", "cs_id", "posterior_sd")
@@ -276,19 +283,22 @@ SUSIE_BASE_COLS <- c("molecular_trait_id", "variant", "pip", "cs_index",
 susie_finemapping <- function(refresh = FALSE)
   build_or_cache("susie_finemapping", refresh = refresh, {
     eQTL <- .read_susie_table("susie_eqtl", "gene_name") %>%
-      select(all_of(SUSIE_BASE_COLS), gene_name, all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), gene_name, all_of(AF_POP_COLS),
+             any_of(c(FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS))) %>%
       mutate(molecular_trait_id = str_remove(molecular_trait_id, "\\..*"),
              variant = str_replace(variant, "chrchr", "chr")) %>%
       .add_cs_stats()
 
     sQTL <- .read_susie_table("susie_sqtl") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
-      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS),
+             any_of(c(FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS))) %>%
       .add_cs_stats()
 
     pQTL <- .read_susie_table("susie_pqtl") %>%
       mutate(molecular_trait_id = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
-      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS)) %>%
+      select(all_of(SUSIE_BASE_COLS), all_of(AF_POP_COLS),
+             any_of(c(FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS))) %>%
       .add_cs_stats()
 
     cs_list <- bind_rows(
@@ -368,45 +378,51 @@ coloc_cs_level <- function(refresh = FALSE)
              cs_2 = str_remove(cs_2, "^ENSG[0-9]+:"))
   })
 
-# Allele frequency is a property of the VARIANT, not of an assay, so the three
-# SuSiE tables are pooled and reduced to one row per variant. Rows whose AF
-# columns are entirely NA carry no information and are dropped before the
-# uniqueness check, so a table that simply lacks a variant cannot manufacture a
-# spurious conflict with one that has it.
-.variant_af_map <- function(fm) {
-  af <- bind_rows(
-      fm$eQTL %>% select(variant, all_of(AF_POP_COLS)),
-      fm$sQTL %>% select(variant, all_of(AF_POP_COLS)),
-      fm$pQTL %>% select(variant, all_of(AF_POP_COLS))
-    ) %>%
-    mutate(across(all_of(AF_POP_COLS), as.numeric),
-           # The eQTL reader already repairs "chrchr"; normalise all three here
-           # so a stray prefix cannot split one variant into two AF rows.
-           variant = str_replace(variant, "chrchr", "chr"))
+# One row per variant, carrying allele frequencies AND the annotation features
+# panel E's enrichment needs.
+#
+# cs_size is a property of a CREDIBLE SET and one variant can sit in several
+# across genes and assays, so the map carries the median over that variant's
+# rows. Keeping exactly one row per variant is what the many-to-one join guard
+# in coloc_variant_level() relies on.
+.variant_feature_map <- function(fm) {
+  keep <- c("variant", AF_POP_COLS, FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS)
+  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL),
+                          function(d) dplyr::select(d, any_of(keep)))) %>%
+    # The eQTL reader already repairs "chrchr"; normalise all three here so a
+    # stray prefix cannot split one variant into two rows.
+    mutate(variant = str_replace(variant, "chrchr", "chr"),
+           across(all_of(AF_POP_COLS), as.numeric))
+
+  size <- raw %>%
+    group_by(variant) %>%
+    summarise(cs_size_med = stats::median(as.numeric(cs_size), na.rm = TRUE),
+              .groups = "drop")
+
+  af <- raw %>% select(-any_of("cs_size"))
   af <- af[rowSums(!is.na(af[AF_POP_COLS])) > 0, , drop = FALSE] %>% distinct()
 
-  # One AF row per variant, or the variant-level join below fans out. A
-  # duplicate here means two SuSiE tables disagree about the same variant's
-  # allele frequencies, which is a genuine upstream inconsistency rather than
-  # something to silently pick a winner for.
+  # A duplicate here means two SuSiE tables disagree about the same variant's
+  # variant-level annotations, which is a genuine upstream inconsistency rather
+  # than something to silently pick a winner for.
   dup <- unique(af$variant[duplicated(af$variant)])
   if (length(dup))
-    stop(length(dup), " variant(s) carry CONFLICTING per-ancestry allele ",
-         "frequencies across the SuSiE fine-mapping tables -- e.g. '", dup[1],
-         "'. Allele frequency is a property of the variant alone; resolve the ",
+    stop(length(dup), " variant(s) carry CONFLICTING variant-level values ",
+         "across the SuSiE fine-mapping tables -- e.g. '", dup[1],
+         "'. These are properties of the variant alone; resolve the ",
          "disagreement upstream.", call. = FALSE)
-  af
+  left_join(af, size, by = "variant")
 }
 
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
-    af <- .variant_af_map(susie_finemapping())
+    af <- .variant_feature_map(susie_finemapping())
 
     variants <- load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
       .label_by_pair("SCP", "variant level") %>%
       mutate(Gene = str_remove(Signal, ":.*"))
 
-    # relationship = "many-to-one" asserts SNP is unique in `af`. .variant_af_map()
+    # relationship = "many-to-one" asserts SNP is unique in `af`. .variant_feature_map()
     # already enforces that, so this is a belt-and-braces guard: without it a
     # duplicated key would silently multiply rows (dplyr's default only warns)
     # and build_or_cache would cache the inflated result on this very run.
