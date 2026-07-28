@@ -97,8 +97,12 @@ E and F share a narrow middle column, and their tags landed against both the
 panel content above them and panel D to the left. Rather than buying room with
 a large margin -- which also pushed E and F apart -- the tags are moved out to
 the top-left corner of each plot with `plot.tag.position = c(0, 1)`, and the
-margins are kept small: `margin(t = 26, r = 10, b = 6, l = 24)`, applied with
-`&` so it reaches both sub-plots.
+margins carry only what each side needs:
+`margin(t = 26, r = 44, b = 6, l = 74)`, applied with `&` so it reaches both
+sub-plots. `l` and `r` are the horizontal gutters separating this column from
+panels D and G; `t` is the only value that affects how close E and F sit, so
+the two concerns are independent -- widening the gutters does not push E and F
+apart.
 
 **`plot.tag.position` resolves relative to the PANEL region, not the outer
 margin.** Widening `l` moves the tag right along with the panel, so it cannot

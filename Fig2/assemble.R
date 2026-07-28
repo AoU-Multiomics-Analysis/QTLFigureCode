@@ -16,7 +16,7 @@ P <- setNames(lapply(LETTERS[1:7], function(x) readRDS(file.path(OBJ_DIR, paste0
 # margin is kept, just wide enough to hold the letter. `&` applies both to the
 # two sub-plots. t is small so E and F sit close together again.
 QTLBurden <- (P$E / P$F + plot_layout(heights = c(1, 3))) &
-  theme(plot.margin = margin(t = 26, r = 10, b = 6, l = 24),
+  theme(plot.margin = margin(t = 26, r = 44, b = 6, l = 74),
         plot.tag.position = c(0, 1))
 
 top_row <- P$A + (P$B + theme(plot.margin = margin(l = 100))) + P$C +
