@@ -25,7 +25,7 @@ makes the follow-up question worth asking rather than speculative.
 |---|---|---|
 | Unit | variant × assay pair | The grain `coloc_variant_level()` already returns. |
 | Contrast (A) | `Coloc == TRUE` vs `FALSE`, **within pair** | Background matched by construction — both groups are fine-mapped QTL variants in the same two layers. |
-| Contrast (B) | `rare` vs common, **within `Coloc == TRUE`** | Matches the question as posed: among shared variants, what distinguishes the rare ones. |
+| Contrast (B) | **continuous log10 MAF**, within `Coloc == TRUE` | Same question — among shared variants, what distinguishes the rare ones — but without dichotomising a continuous variable at 1%. See §5a. |
 | Pairs | tested independently, never pooled | eQTL-pQTL and eQTL-sQTL are the substantive comparison; pooling would hide it. |
 | Features | all binary | One statistic (an odds ratio) so both figures read coherently. |
 | Statistic | binomial GLM, adjusted OR | Colocalization requires good fine-mapping in *both* layers; a raw Fisher test conflates biology with detectability. |
@@ -77,9 +77,15 @@ exact cut-point that is a finding about fragility, and belongs in `NOTES.md`.
 Per (analysis, pair, feature), one model:
 
 ```
-A:  glm(coloc ~ feature + PIP + log10(cs_size), family = binomial)
-B:  glm(rare  ~ feature + PIP + log10(cs_size), family = binomial)   # Coloc == TRUE only
+A:  glm(coloc    ~ feature + PIP + log10(cs_size), family = binomial)   # adjusted OR
+B:  lm (log_maf ~ feature + PIP + log10(cs_size))                      # Coloc == TRUE only
 ```
+
+Analysis A reports an adjusted **odds ratio**. Analysis B reports the fitted
+coefficient as a **fold-change in MAF** (`10^coef`): "carriers of this feature
+have N-fold lower minor-allele frequency". The two statistics are NOT
+comparable and are never plotted on a shared axis — panel E is analysis A
+alone, and the supplement facets them separately.
 
 Reported: adjusted odds ratio `exp(beta_feature)`, profile CI, p-value, and
 `n_carriers`. FDR correction is applied **across features within each
@@ -90,6 +96,35 @@ separates real biology from "this variant was simply easier to fine-map in both
 layers". In B it earns its place independently: rare variants are harder to
 fine-map, so without it any feature correlated with fine-mapping precision
 would masquerade as a rarity signal.
+
+## 5a. Why analysis B is continuous, not binary
+
+The binary `rare` (MAF < 1%) cut was measured against the continuous
+alternative on the real staged data before this was adopted.
+
+**Power.** Significant features rose from 5 to 7 (eQTL-pQTL 2→3, eQTL-sQTL
+3→4), with 87% direction agreement across the 23 tests. More important than the
+count: the promoter/enhancer contrast crossed from trend to decisive —
+`PLS` −0.153 (padj 0.098 → 0.0005), `dELS` +0.141 (0.098 → 0.0003), `pELS`
++0.093 (0.70 → 0.026).
+
+**The cut was badly placed.** Among colocalizing variants the median MAF is
+~20% and only 6-7% fall below 1%, so the binary split isolated a thin tail and
+discarded the rest of the frequency information.
+
+**Non-normal residuals are not a practical problem here.** Residuals are
+decisively non-normal (Shapiro-Wilk p ≈ 1e-30 to 1e-43, skew −0.70 to −1.05,
+hard ceiling at log10(0.5)). A 999-permutation null on the `PLS` coefficient
+returned p = 0.001 and p = 0.043 against model p = 1.6e-04 and 4.0e-02 — well
+calibrated. At n = 1,722-3,226 the CLT carries the coefficient estimates, and
+Wilcoxon agrees independently.
+
+**One real loss, retained deliberately.** `non_coding_transcript_variant` is
+significant under the binary test (OR 2.13, padj 0.016) and not under log MAF
+(padj 0.36) — it is enriched specifically in the extreme tail without shifting
+the bulk. The binary result is therefore kept as a supplementary column rather
+than discarded: the two tests answer different questions ("enriched below 1%?"
+vs "shifts mean frequency?").
 
 ## 6. Guardrails
 
