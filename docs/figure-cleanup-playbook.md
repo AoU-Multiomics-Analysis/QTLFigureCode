@@ -114,8 +114,12 @@ grobs; reading the code is not enough (see the tag bug below). Reuse the
 `python3 tools/build_notebooks.py FigN` and commit `FigN/FigN.ipynb` in the same
 PR. The generator pulls code cells from the real pipeline scripts, so notebooks
 stay faithful; its setup cell is case-robust (`^(FigN|fign)$`) so it runs on
-Terra/Linux. The tracked notebook must round-trip through the generator — after
-any generator change, regenerate and commit.
+Terra/Linux. A notebook's *code cells* must round-trip through the generator, but
+notebooks are committed **executed**, with their rendered panels, so a
+regenerated notebook will not match the tracked one byte-for-byte — the
+generator emits output-free cells. After any generator change: regenerate,
+re-execute against the staged inputs (`FIG<N>_INPUT=<staging root>`), then
+commit. Regenerating without re-executing silently drops every figure.
 
 **Tests.** No controlled-access data locally, so: a `make_<fig>_fixture()` in
 `tests/fixtures.R` builds mock inputs; the pure seams are tested on those; the

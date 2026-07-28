@@ -14,10 +14,20 @@ generator in `tools/build_notebooks.py`; design specs and plans under
 
 ## Non-negotiables
 
-- **Inputs are *All of Us* controlled-access data. Never commit anything derived
-  from a participant** — staged input files, cached `.rds`, or rendered figures.
-  `.gitignore` covers the staged dirs, `data/`, `objects/`, and figure outputs.
+- **Inputs are *All of Us* controlled-access data. Never commit individual-level
+  data** — staged input files or anything carrying per-participant records (e.g.
+  `echo_v4_r2.ancestry_preds.tsv`, keyed by `research_id`). `.gitignore` covers
+  the staged dirs, `data/`, `objects/`, and the PDF/PNG figure outputs.
   **Never `git add -A`** — stage named paths only.
+- **Executed notebooks are the exception, and it is deliberate.** `Fig<N>.ipynb`
+  is committed *with* its rendered panels, so the figures are viewable on
+  GitHub without staging 2 GB of inputs. This is judged acceptable because the
+  repo is **private**, the rendered panels are aggregate summaries (binned
+  counts, per-variant statistics, per-group totals — never per-participant
+  rows), and no code cell prints a data frame: every cell ends in a ggplot
+  object or a status `message()`. **If you add a cell, keep it that way** — a
+  bare data-frame expression at the end of a cell would embed real rows in the
+  committed JSON. Re-check before committing an executed notebook.
 - **Run every script from the project root.** Scripts self-reference as lowercase
   `fig<n>/…` even though the directory is `Fig<N>/` (works on case-insensitive
   macOS / the Workbench; would break on case-sensitive Linux — a known caveat).
@@ -59,5 +69,8 @@ pre-staged by hand). Each figure's `NOTES.md` lists its own deferred items.
 - Any change that alters a **result** goes in that figure's `NOTES.md`, with the
   original line reference and what changed.
 - Generating `Fig<N>.ipynb` (via `tools/build_notebooks.py`) is a standard part of
-  each cleanup; commit it in the same PR. The tracked notebook must round-trip
-  through the generator.
+  each cleanup; commit it in the same PR. A notebook's **code cells** must
+  round-trip through the generator, but an executed notebook no longer matches
+  it byte-for-byte, because the generator emits output-free cells. So: change
+  the generator → regenerate → re-execute against the staged inputs → commit.
+  Regenerating alone silently discards every rendered panel.
