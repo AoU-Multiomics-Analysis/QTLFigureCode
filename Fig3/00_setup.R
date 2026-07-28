@@ -596,15 +596,25 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10,
       ci  <- suppressMessages(stats::confint(fit))
       co  <- summary(fit)$coefficients
       # R's model.matrix names a logical predictor's coefficient
-      # `<variable name>TRUE`, with any backticks used to make an
-      # irregular name syntactic in the formula stripped by the parser --
-      # never `` `<name>`TRUE ``. Match that exact name; a substring
-      # grep() fallback previously "worked" only by the accident of the
-      # feature's row preceding the covariates' rows in this formula's
-      # term order, which is untested and not a real invariant.
-      row <- paste0(f, "TRUE")
-      if (!row %in% rownames(co))
-        stop("coefficient row '", row, "' not found among: ",
+      # `<variable name>TRUE` for a SYNTACTICALLY VALID name (e.g. "PLS" ->
+      # "PLSTRUE"), but for a name the parser cannot write bare -- anything
+      # starting with a digit, e.g. "3_prime_UTR_variant" -- the backticks
+      # this formula wraps every feature in (see sprintf() above) survive
+      # into the term, giving `` `3_prime_UTR_variant`TRUE ``. Which of the
+      # two happens is a property of the name alone, decided once by R's
+      # parser when the formula is built, so there are only ever exactly
+      # these two candidate row names; check both by EXACT match (never a
+      # substring/grep() match -- a feature name can be a substring of
+      # another model term, e.g. "qtl" inside "PIP_qtl") and never index
+      # with NA.
+      row_bare  <- paste0(f, "TRUE")
+      row_ticked <- paste0("`", f, "`TRUE")
+      row <- if (row_bare %in% rownames(co)) row_bare
+             else if (row_ticked %in% rownames(co)) row_ticked
+             else NA_character_
+      if (is.na(row))
+        stop("coefficient row for feature '", f, "' not found (tried '",
+             row_bare, "' and '", row_ticked, "') among: ",
              paste(rownames(co), collapse = ", "))
 
       if (family == "binomial") {

@@ -520,4 +520,75 @@ ok("a feature whose carriers are RARER gives fold-change > 1",
 ok("the CI brackets the estimate on the same scale",
    all(b$conf.low < b$odds_ratio & b$odds_ratio < b$conf.high, na.rm = TRUE))
 
+# --- coefficient-row lookup handles digit-leading (non-syntactic) names ----
+# R keeps backticks around a formula term whose name is not syntactically
+# valid (e.g. anything starting with a digit), so its glm coefficient row is
+# named `` `3_prime_UTR_variant`TRUE ``, not the naive "3_prime_UTR_variantTRUE".
+# The lookup in fit_feature_enrichment() must resolve both forms, exactly --
+# not via a substring/grep() match, since a feature name can be a substring of
+# another model term ("qtl" inside "PIP_qtl"). This block pins that directly:
+# a digit-leading feature must be FITTED AND RETURNED (not silently dropped as
+# a "failed to fit/profile" case), alongside an ordinary feature in the same
+# call, under both families used by the two analyses (binomial for analysis A,
+# gaussian for analysis B). The digit-leading feature is given a strong, known
+# effect and the ordinary feature a null effect so a lookup that silently grabs
+# the WRONG row (estimates swapped) is caught, not just a dropped-feature bug.
+set.seed(99)
+n4 <- 800
+digit_frame <- data.frame(
+  PIP_qtl     = runif(n4, 0.1, 0.9),
+  cs_size_med = sample(2:40, n4, replace = TRUE),
+  # Strong, known positive association with the binomial outcome.
+  `3_prime_UTR_variant` = rep(c(TRUE, FALSE), each = n4 / 2),
+  # Null / no association -- an ordinary, syntactically valid name.
+  PLS         = sample(c(TRUE, FALSE), n4, replace = TRUE),
+  check.names = FALSE)
+digit_frame$outcome <- c(rbinom(n4 / 2, 1, 0.75), rbinom(n4 / 2, 1, 0.20)) == 1L
+
+msg_digit <- capture.output(
+  res_digit <- fit_feature_enrichment(digit_frame, "outcome",
+                                      c("3_prime_UTR_variant", "PLS")),
+  type = "message")
+
+ok("a digit-leading feature name is fitted and returned, not dropped (binomial)",
+   "3_prime_UTR_variant" %in% res_digit$feature)
+ok("no 'failed to fit/profile' message names the digit-leading feature (binomial)",
+   !any(grepl("3_prime_UTR_variant", msg_digit) & grepl("failed to fit", msg_digit)))
+ok("an ordinary feature name still works alongside it in the same call (binomial)",
+   "PLS" %in% res_digit$feature)
+ok("the digit-leading feature's estimate reflects its strong effect, not swapped with PLS's (binomial)",
+   res_digit$odds_ratio[res_digit$feature == "3_prime_UTR_variant"] > 1 &&
+   res_digit$conf.low[res_digit$feature == "3_prime_UTR_variant"] > 1)
+ok("the ordinary (null) feature's CI still includes 1, unaffected by the lookup fix (binomial)",
+   res_digit$conf.low[res_digit$feature == "PLS"] < 1 &&
+   res_digit$conf.high[res_digit$feature == "PLS"] > 1)
+
+# Same shape under family = "gaussian" (analysis B's path): outcome is
+# continuous, digit-leading feature carries a strong, known effect on it.
+set.seed(100)
+digit_frame_g <- data.frame(
+  PIP_qtl     = runif(n4, 0.1, 0.9),
+  cs_size_med = sample(2:40, n4, replace = TRUE),
+  `3_prime_UTR_variant` = rep(c(TRUE, FALSE), each = n4 / 2),
+  PLS         = sample(c(TRUE, FALSE), n4, replace = TRUE),
+  check.names = FALSE)
+digit_frame_g$outcome <- ifelse(digit_frame_g$`3_prime_UTR_variant`,
+                                rnorm(n4, 5, 1), rnorm(n4, 0, 1))
+
+msg_digit_g <- capture.output(
+  res_digit_g <- fit_feature_enrichment(digit_frame_g, "outcome",
+                                        c("3_prime_UTR_variant", "PLS"),
+                                        family = "gaussian"),
+  type = "message")
+
+ok("a digit-leading feature name is fitted and returned, not dropped (gaussian)",
+   "3_prime_UTR_variant" %in% res_digit_g$feature)
+ok("no 'failed to fit/profile' message names the digit-leading feature (gaussian)",
+   !any(grepl("3_prime_UTR_variant", msg_digit_g) & grepl("failed to fit", msg_digit_g)))
+ok("an ordinary feature name still works alongside it in the same call (gaussian)",
+   "PLS" %in% res_digit_g$feature)
+ok("the digit-leading feature's coefficient reflects its known strong effect, not swapped with PLS's (gaussian)",
+   abs(res_digit_g$odds_ratio[res_digit_g$feature == "3_prime_UTR_variant"] -
+       res_digit_g$odds_ratio[res_digit_g$feature == "PLS"]) > 0.5)
+
 cat("test_fig3_enrichment.R: all assertions passed\n")
