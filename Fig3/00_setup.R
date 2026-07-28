@@ -441,6 +441,51 @@ build_feature_matrix <- function(d) {
 feature_names <- function(d)
   setdiff(names(d)[vapply(d, is.logical, logical(1))], NON_FEATURE_LOGICAL)
 
+# Adjusted enrichment of each feature on a binary outcome.
+#
+# The PIP + log10(cs_size) adjustment is the point of the design: colocalization
+# requires good fine-mapping in BOTH layers, so an unadjusted test conflates
+# biology with detectability.
+#
+# A feature is fitted only with at least `min_carriers` observations in the
+# SMALLER of its two groups. Below that, glm returns separated or wildly
+# unstable estimates -- the infinite odds ratios that silently vanished from
+# Fig1 panel H. Dropped features are named in a message rather than disappearing.
+fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
+  empty <- tibble::tibble(feature = character(), odds_ratio = numeric(),
+                          conf.low = numeric(), conf.high = numeric(),
+                          p.value = numeric(), n_carriers = integer())
+  y <- as.logical(d[[outcome]])
+  keep <- character(0); dropped <- character(0)
+  for (f in features) {
+    x <- as.logical(d[[f]])
+    tab <- table(x, y)
+    if (nrow(tab) == 2L && ncol(tab) == 2L && min(tab) >= min_carriers)
+      keep <- c(keep, f) else dropped <- c(dropped, f)
+  }
+  if (length(dropped))
+    message("  ", length(dropped), " feature(s) below the ", min_carriers,
+            "-carrier floor, not tested: ", paste(dropped, collapse = ", "))
+  if (!length(keep)) return(empty)
+
+  purrr::map_dfr(keep, function(f) {
+    form <- stats::as.formula(
+      sprintf("%s ~ `%s` + PIP_qtl + log10(cs_size_med)", outcome, f))
+    fit <- stats::glm(form, data = d, family = stats::binomial())
+    ci  <- suppressMessages(stats::confint(fit))
+    co  <- summary(fit)$coefficients
+    row <- paste0("`", f, "`TRUE")
+    if (!row %in% rownames(co)) row <- grep(f, rownames(co), fixed = TRUE, value = TRUE)[1]
+    tibble::tibble(
+      feature    = f,
+      odds_ratio = unname(exp(stats::coef(fit)[row])),
+      conf.low   = unname(exp(ci[row, 1])),
+      conf.high  = unname(exp(ci[row, 2])),
+      p.value    = unname(co[row, 4]),
+      n_carriers = sum(as.logical(d[[f]]), na.rm = TRUE))
+  })
+}
+
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
     af <- .variant_feature_map(susie_finemapping())
