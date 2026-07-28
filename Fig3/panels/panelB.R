@@ -16,8 +16,14 @@ main <- signal_counts %>%
   ggplot(aes(x = factor(n), y = nn / sum(nn), fill = factor(n))) +
     geom_col(width = 0.75) +
     scale_fill_manual(values = SIGNAL_FILL, guide = "none") +
+    # NO hard y limit. scale_y_continuous(limits = ) REMOVES out-of-range
+    # values rather than clipping them, and the inherited cap of 0.55 silently
+    # deleted the tallest bar once Fig3 moved to Fig2's shared SuSiE tables and
+    # the "1 colocalized signal" share rose to 66% (2,298 of 3,483 genes). The
+    # y axis text is hidden here, so a truncated bar cannot even be read as
+    # truncated -- it just vanishes. See NOTES.md.
     scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                       limits = c(0, 0.55)) +
+                       expand = expansion(mult = c(0, 0.05))) +
     labs(x = "Number of colocalized signals", y = "Percent of genes",
          title = "Signal-level Colocalization") +
     theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),

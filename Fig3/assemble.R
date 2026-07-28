@@ -18,7 +18,7 @@ bottom_row   <- (P$D | P$E) + plot_layout(widths = c(1.3, 1))
 
 Fig3 <- (top_row / bottom_row) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = SZ_TAG, face = "bold"))
+  theme(plot.tag = element_text(size = SZ_TAG, face = "bold", family = FONT))
 
 ggsave(file.path(OUTDIR, "Figure3.pdf"), Fig3,
        width = 18, height = 12, dpi = DPI, limitsize = FALSE)

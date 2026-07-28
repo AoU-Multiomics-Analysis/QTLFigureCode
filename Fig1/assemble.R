@@ -20,7 +20,7 @@ bottom_row <- (P$G + theme(plot.margin = margin(r = 60, unit = "pt"))) + P$H +
 
 Fig1 <- (top_row / second_row / third_row / bottom_row) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = SZ_TAG))
+  theme(plot.tag = element_text(size = SZ_TAG, face = "bold", family = FONT))
 
 ggsave(file.path(OUTDIR, "Figure1.pdf"), Fig1, width = 25, height = 27, dpi = DPI, limitsize = FALSE)
 # Raster preview: full physical size at lower DPI (showtext DPI matched).

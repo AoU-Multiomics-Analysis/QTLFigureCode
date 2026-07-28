@@ -33,8 +33,14 @@ pA <- layer_counts %>%
              label = sprintf("%.1f%% shared across ≥1 molecular layer",
                              100 * shared_pct),
              size = SZ_ANNOT, color = "grey20") +
+    # coord_cartesian, NOT scale_y_continuous(limits = ): the latter REMOVES
+    # out-of-range bars instead of clipping them, which is how panel B lost its
+    # tallest bar entirely once the underlying data shifted (see NOTES.md). The
+    # rendered result is identical here -- the largest share is 38.7% -- but a
+    # future data change can no longer delete a bar silently.
     scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                       breaks = seq(0, 0.5, by = 0.1), limits = c(0, 0.55)) +
+                       breaks = seq(0, 0.5, by = 0.1)) +
+    coord_cartesian(ylim = c(0, 0.55)) +
     labs(x = "Number of Colocalized Molecular Layers", y = "Percent of Genes",
          title = "Gene-level Colocalization") +
     theme(axis.line.x = element_blank(),

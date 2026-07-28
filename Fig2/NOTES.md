@@ -63,3 +63,88 @@ have links or scripts pointing at `Fig2.pdf`, they need updating.
 - **No `gs://` origins.** All six inputs are locally-derived and carry
   `gs_uri = -`, so they must be pre-staged; the pipeline cannot self-stage them
   on the Workbench. Fig4 and Fig5 have the same gap.
+
+---
+
+## Panel F — the central percent-change bin was mislabelled
+
+**This changes a printed label, not a number.** `Fig2Data/MedianKOSummary.tsv`
+labels its central bin `(-10,-10)` — a degenerate interval, since no value can
+be both greater than and less than -10. It sits between `(-25,-10]` and
+`[10,25)` in the ordering, so it is the **-10% to +10%** bin and the upper
+bound lost its sign upstream.
+
+Relabelled to `(-10,10)` in `01_prep_data.R` rather than editing the staged
+input, which is controlled-access. `lower` still extracts `-10` from the
+string, so the bin's position in `reorder(pct_bin, lower)` is unchanged; only
+the axis text differs. The bar itself (median 7,991 genes per individual — the
+tallest in the panel) was always plotted correctly.
+
+The underlying generator of `MedianKOSummary.tsv` should be fixed at source;
+until then this rename is load-bearing and must not be dropped.
+
+## Panel G — legend moved to the bottom-right corner
+
+The manual legend was anchored at hard-coded `x = 1850 / 2000`, roughly the
+middle of the axis. It is now placed at 86% / 89.5% of the data maximum, so it
+sits in the bottom-right corner, and the right-hand scale expansion widened
+from 0.18 to 0.34 so "Duplication-like" clears the panel edge. The anchors are
+computed from the data, so the legend stays in the corner if the counts change.
+
+## Panels E and F — tag placement
+
+E and F share a narrow middle column, and their tags landed against both the
+panel content above them and panel D to the left. Rather than buying room with
+a large margin -- which also pushed E and F apart -- the tags are moved out to
+the top-left corner of each plot with `plot.tag.position = c(0, 1)`, and the
+margins carry only what each side needs:
+`margin(t = 26, r = 44, b = 6, l = 74)`, applied with `&` so it reaches both
+sub-plots. `l` and `r` are the horizontal gutters separating this column from
+panels D and G; `t` is the only value that affects how close E and F sit, so
+the two concerns are independent -- widening the gutters does not push E and F
+apart.
+
+**`plot.tag.position` resolves relative to the PANEL region, not the outer
+margin.** Widening `l` moves the tag right along with the panel, so it cannot
+be used to separate the tag from a y-axis title. Verified empirically at
+`l = 140`: the tag stayed locked against E's title.
+
+That matters here because panel E's rotated "Outlier Enrichment" title spans
+its whole (short) panel height and ends exactly where F's tag begins. The
+clearance therefore has to come from the vertical gap: `t = 26` is the smallest
+value at which the F tag clears the title -- at `t = 22` the glyphs touch.
+Shortening E's y-axis title is the only way to close the gap further.
+
+## Panel F — the grey bands were ~10x too dark (overplotting, not colour)
+
+The two highlight rectangles used `geom_rect()` **without a `data =` argument**,
+so they inherited the plot's data (`median_pc`, 13 rows) and redrew the SAME
+rectangle once per row. Thirteen stacked copies at `alpha = 0.05` give an
+effective opacity of `1 - 0.95^13 = 0.49`, against panel D's 0.05 — which is
+why F's bands read far darker than D's despite both nominally using alpha 0.05.
+
+Replaced with `annotate("rect", ...)`, which draws exactly once, and the fill
+changed from `"lightgrey"` to `"grey40"` so it matches
+`PlotExpectedExpression()`'s bands exactly. Nothing about the data changed.
+
+**The general trap:** a `geom_*` given constant parameters but no `data =`
+inherits the plot's data and draws one copy per row. It is invisible for opaque
+fills and compounds for transparent ones.
+
+## Panel G — count labels crowded their points
+
+The labels used `hjust = 1.35` / `hjust = -0.5`, which offsets text by a
+fraction of its OWN WIDTH. Short labels therefore sat closer to their point
+than long ones: "444" crowded its dot while "1,676" cleared it. Compounding
+this, `size = 10` points are several hundred data units wide on this axis, so a
+width-proportional gap never reliably cleared the dot's radius.
+
+Both sides now use a constant offset of 6% of the x range, applied as data
+columns (`UnderLabelX` / `OverLabelX`) with `hjust = 1` / `0`. Every label has
+the same clearance regardless of digit count.
+
+**The offsets are baked into the data on purpose.** Referencing the `LabelPad`
+script local from inside `aes()` leaves it lazy: the saved `.rds` keeps only
+the symbol and a fresh `assemble.R` session dies with
+"object 'LabelPad' not found" — the same trap `panelF.R` documents for
+`DelBoxStart` / `DupBoxStart`, and one this change hit before being corrected.
