@@ -507,3 +507,105 @@ three tables together -- the same "collapsed, not rejected" policy as
 collapse is scoped to within one table specifically so it can never absorb a
 *genuine* disagreement between two *different* assay tables about the same
 (variant, gene), which remains exactly what the guard exists to catch.
+
+---
+
+## Panel E — replaced: symmetric background + rare-variant enrichment
+
+**This changes results.** Panel E previously rendered the pair-contrast scatter
+of the colocalizing-vs-layer-specific feature enrichment (Analysis A of
+`docs/superpowers/specs/2026-07-27-fig3-panelE-coloc-enrichment-design.md`).
+It now shows, among **colocalizing eQTL-pQTL variants only**, which annotations
+mark rarer and which mark commoner variants. The Analysis A machinery
+(`coloc_feature_enrichment()`, `.enrich_pairs()`, `enrichment_forest_panel()`)
+is untouched and still drives `Fig3/supp_coloc_enrichment.R`.
+
+New code lives in **`Fig3/symmetric.R`**, sourced from `00_setup.R`.
+
+### 1. The background was one-sided (the reason for the rewrite)
+
+FastENLOC enumerates credible sets from ONE layer. In `Signal`, the half before
+`(@)` is the QTL/annotation side; the half after it is the partner layer and is
+populated only on colocalization. So every non-colocalizing row of
+`.snp.out`/`.sig.out` is an annotation-side-specific credible set, and the
+partner layer's unshared signals are **absent from the output entirely**.
+
+For eQTL-pQTL the background was therefore 11,065 eQTL-specific credible sets
+and **zero** pQTL-specific ones. `symmetric_universe()` reconstructs the missing
+side from the SuSiE table at the genes each pair was tested on:
+
+| pair | annotation side | partner side recovered | unrecoverable |
+|---|---|---|---|
+| eQTL-pQTL | 13,295 eQTL CS (2,230 coloc) | 9,768 pQTL CS (2,143 coloc / 7,625 specific) | 0 / 2,143 |
+| sQTL-pQTL | 770 sQTL CS (390 coloc) | 2,338 pQTL CS (379 / 1,959) | 7 / 386 |
+| eQTL-sQTL | 37,606 eQTL CS (4,515 coloc) | 26,800 sQTL CS (3,307 / 23,493) | **1,075 / 4,382** |
+
+**Panel E uses eQTL-pQTL only.** It is the only pair whose partner side is
+fully recoverable; eQTL-sQTL loses 24.5% of its colocalizing credible sets to
+introns absent from the staged splicing table.
+
+### 2. `10^coef`, not `exp(coef)`
+
+The outcome is `log10(max_af)`, so the fold change is `10^coef`. The
+exploratory code used `exp()`, which understated every effect (`stop_gained`
+3.18x -> 7.62x, `dELS` 0.88 -> 0.75). `exp()` remains correct for Analysis A,
+which is logistic. Pinned by a test.
+
+### 3. Coding consequences redefined as "clean canonical"
+
+`consequence` is a VARIANT-level VEP call on whichever transcript VEP picked.
+`missense_variant`, `synonymous_variant`, `stop_gained` and `frameshift_variant`
+now require the variant to be in a **canonical CDS of the eGene itself**
+(GENCODE v48), with SpliceAI max delta <= 0.2 and no cCRE overlap. The
+pre-cleaning column survives as `<feature>_raw`.
+
+`splice_region_variant` is deliberately NOT cleaned: the SpliceAI criterion
+discards exactly the variants that make the class meaningful (it cut n from 184
+to 23 and collapsed the evidence), and leaving it raw makes it consistent with
+`splice_donor`/`splice_acceptor`, which were never in the list.
+
+This adds **`gene_gtf`** to `Fig3/inputs.tsv`.
+
+### 4. One row per variant, PIP-weighted
+
+~31% of colocalizing variants sit in BOTH layers' credible sets and were being
+counted twice as independent observations. `collapse_to_variants()` collapses
+to one row per variant weighted by the **geometric mean** of its PIPs, which is
+high only when the variant is confidently fine-mapped in both layers.
+
+`log10(cs_size)` was dropped from the model: `sum(PIP)` per credible set is
+0.997 (median, IQR 0.967-1.000), so PIP weighting already normalises each signal
+to one unit of evidence and cs_size was a second proxy for the same thing.
+Dropping it changed no estimate beyond the third decimal and no significance
+call.
+
+**The PIP weighting is load-bearing and must be stated, not assumed.**
+Unweighted, only `conserved` survives; `dELS` goes 0.80 -> 0.98 (null). The
+weighted result is corroborated independently by the PIP > 0.5 subset (dELS
+0.78). Weighting is a design decision about the estimand -- per signal rather
+than per credible-set member -- not a tuning choice.
+
+### 5. What the panel does NOT show
+
+The associations are **descriptive of colocalizing variants**. They are not
+colocalization-specific: `stop_gained` behaves identically among layer-specific
+variants (ratio-of-fold-changes 1.31, p = 0.33), and `conserved` and `PLS` are
+*weaker* among colocalizing variants than layer-specific ones. `splice_region`,
+`3' UTR` and `dELS` do differ. "Rare colocalizing variants are enriched for X"
+is supportable; "colocalization selects for X" is not.
+
+### 6. Two silent parse traps, both now tested
+
+Both returned an EMPTY join rather than an error:
+
+- Both halves of `Signal` carry an `ENSG<digits>:` prefix the SuSiE `cs_id`
+  lacks. Leaving it on matches nothing.
+- Multi-CS signals split on `_` before a NEW gene-prefixed id. Splitting on a
+  plain `_ENSG` shreds the UniProt-prefixed pQTL ids
+  (`Q6PCB0_ENSG00000179403.12_L2`) into fragments.
+
+A third, in the panel builder: a CI end outside the x scale is dropped by
+`geom_linerange` with only a warning, so the limits are derived from the data.
+And an annotation missing from `PANEL_E_LABELS` is now **named in a message**
+rather than vanishing -- that is how `stop_gained`/`frameshift` disappeared
+during development.

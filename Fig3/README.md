@@ -23,7 +23,7 @@ variant level, and whether that sharing depends on allele frequency.
 | **B** | Percent of genes by number of colocalized signals, inset with per-assay credible-set colocalization rate | signal-level FastENLOC + SuSiE |
 | **C** | Interaction coefficient (95% CI) between one assay's effect size and standardized −log10(MAF), per assay pair | variant-level FastENLOC + SuSiE |
 | **D** | eQTL vs pQTL posterior effect size, faceted by MAF bin | variant-level FastENLOC + SuSiE |
-| **E** | *Reserved slot — content undecided (see [`NOTES.md`](NOTES.md))* | — |
+| **E** | MAF fold change per functional annotation among colocalizing eQTL-pQTL variants (which annotations mark rarer vs commoner variants) | `enloc_cs`, SuSiE tables, `gene_gtf` |
 
 **Supplemental figures** (standalone; not built by `run_all.R`):
 
@@ -43,6 +43,7 @@ variant level, and whether that sharing depends on allele frequency.
 │   ├── 00_setup.R               #   libraries, paths, theme, FastENLOC readers,
 │   │                            #     FDR labelling, derived-data builders
 │   ├── inputs.tsv               #   input manifest: key, type, local_subpath, gs_uri
+│   ├── symmetric.R              #   symmetric coloc background + panel E enrichment
 │   ├── panels/panelA.R … panelE.R  #  each -> fig3/objects/<X>.rds
 │   ├── assemble.R               #   composes panels -> Figure3.pdf / Figure3.png
 │   ├── run_all.R                #   panels -> assemble (end-to-end)
@@ -180,10 +181,11 @@ applicable), `local_subpath` (relative to the staging root, overridable via
 
 | Manifest key | Files | Used by |
 |---|---|---|
-| `susie_eqtl` / `susie_sqtl` / `susie_pqtl` | `COMB.{expression,splicing,proteomics}_SusieMerged.annotated.ancestry_skew.tsv.gz` | A, B, C, D |
+| `susie_eqtl` / `susie_sqtl` / `susie_pqtl` | `COMB.{expression,splicing,proteomics}_SusieMerged.annotated.ancestry_skew.tsv.gz` | A, B, C, D, E |
 | `enloc_gene` | `Fig3Data/*.enloc.gene.out` (3 pairs) | A, S1, S2 |
 | `enloc_cs` | `Fig3Data/*.enloc.sig.out` (3 pairs) | B, S1 |
 | `enloc_variant` | `Fig3Data/*.enloc.snp.out` (3 pairs) | C, D, S1 |
+| `gene_gtf` | `gencode.v48.annotation.gtf.gz` | E |
 | `protein_lod` / `median_tpm` / `genebayes_shet` | `reference/…`, `41588_2024_1820_MOESM4_ESM.xlsx` | *(deferred — see NOTES.md)* |
 
 **The three SuSiE tables are shared, not Fig3-specific.** They are the same

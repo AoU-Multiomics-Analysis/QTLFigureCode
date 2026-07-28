@@ -1,10 +1,13 @@
-# Panel E — feature enrichment of colocalizing vs layer-specific variants,
-# contrasted between assay pairs. See docs/superpowers/specs/
-# 2026-07-27-fig3-panelE-coloc-enrichment-design.md
-# Inputs: enloc_variant, susie_eqtl, susie_sqtl, susie_pqtl
+# Panel E — among colocalizing eQTL-pQTL variants, which annotations mark rarer
+# and which mark commoner variants.
+#
+# Uses the SYMMETRIC colocalization background (fig3/symmetric.R): FastENLOC
+# emits credible sets from one layer only, so the pQTL-specific side is
+# reconstructed from the SuSiE table before anything is compared.
+# Inputs: enloc_cs, susie_eqtl, susie_sqtl, susie_pqtl, gene_gtf
 source("fig3/00_setup.R")
 
-pE <- build_panelE(coloc_feature_enrichment())
+pE <- build_panelE_maf(coloc_maf_enrichment())
 
 saveRDS(pE, file.path(OBJ_DIR, "E.rds"))
 message("Panel E built.")

@@ -78,6 +78,10 @@ LAYER_FILL <- c("0" = "#D9D9D9", "1" = "#A9C1D9", "2" = "#7B9AB8", "3" = "#57759
 SIGNAL_FILL <- c("0" = "#E9DCDC", "1" = "#D8BBBB", "2" = "#C89A9A", "3" = "#B37979",
                  "4" = "#9E5E5E", "5" = "#8A4D4D", "6" = "#763F3F", "7" = "#643232")
 
+# Symmetric colocalization background + panel E (fig3/symmetric.R).
+# Sourced here so every panel/supplement script gets it from 00_setup.R alone.
+source("fig3/symmetric.R")
+
 # Per-ancestry allele-frequency columns, used to derive a per-variant maximum
 # MAF. They ride along on the annotated SuSiE tables, which is why Fig3 no
 # longer reads the standalone AoU annotation table (see NOTES.md). Named
