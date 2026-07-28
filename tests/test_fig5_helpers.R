@@ -124,3 +124,35 @@ ok("SPR's coordinates on the WRONG chromosome resolve to nothing",
    nrow(spr_range$spans) == 0)
 ok("SPR resolves on its own chromosome",
    identical(gene_models_for_window("chr2", 72887408, 72892158)$spans$gene, "SPR"))
+
+# --- inset clearance --------------------------------------------------------
+# The zoom inset sits on an opaque background, so a bottom edge landing mid-marker
+# slices the point in half and it reads as clipped. This is what the SPR panel
+# used to do to its PIP-0.06 variant.
+b_clear <- inset_bottom_clearing_points(x_npc = 0.5, y_npc = 0.9, requested = 0.05,
+                                        inset_left = 0.24, inset_right = 0.96)
+ok("a bottom with nothing near it is left alone", b_clear == 0.05)
+
+b_one <- inset_bottom_clearing_points(x_npc = 0.5, y_npc = 0.056, requested = 0.05,
+                                      inset_left = 0.24, inset_right = 0.96,
+                                      marker_npc = 0.022)
+ok("a marker straddling the edge pushes the inset above it",
+   isTRUE(all.equal(b_one, 0.056 + 0.022)))
+
+# Clearing one point must not park the edge on top of the next one up.
+b_lad <- inset_bottom_clearing_points(x_npc = rep(0.5, 3), y_npc = c(0.056, 0.098, 0.110),
+                                      requested = 0.05, inset_left = 0.24,
+                                      inset_right = 0.96, marker_npc = 0.022)
+ok("the edge climbs a ladder of points until every one is clear",
+   all(abs(c(0.056, 0.098, 0.110) - b_lad) >= 0.022 - 1e-9))
+
+# Points outside the inset's x-span are not occluded, so they must not move it.
+b_out <- inset_bottom_clearing_points(x_npc = c(0.05, 0.99), y_npc = c(0.056, 0.06),
+                                      requested = 0.05, inset_left = 0.24,
+                                      inset_right = 0.96)
+ok("points beside the inset leave its bottom edge alone", b_out == 0.05)
+
+ok("the inset is never pushed past its ceiling",
+   inset_bottom_clearing_points(x_npc = rep(0.5, 40), y_npc = seq(0.05, 0.9, length.out = 40),
+                                requested = 0.05, inset_left = 0.24,
+                                inset_right = 0.96) == 0.4)

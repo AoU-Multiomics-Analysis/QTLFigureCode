@@ -106,3 +106,44 @@ Genes whose TSS falls outside the (now tighter) window keep their label: it is
 clamped into the panel, and the TSS tick + direction arrow are drawn only when
 the TSS is genuinely in view. Previously an out-of-range TSS made ggplot drop
 the label silently, leaving an unlabelled gene.
+
+## Panels D/F: markers no longer sliced by the panel edge or the inset
+
+Three separate ways a fine-mapping marker could come out cut in half, all fixed
+in `plot_finemapping_with_inset()` (`Fig5/00_setup.R`):
+
+- **The panel's left/right border.** `regional_window_bp()` clamps the window to
+  the range of tested variants, so there is *always* a variant sitting exactly on
+  each edge, and the x scale draws with `expansion(mult = 0)`. The edge variants
+  were rendered as half-diamonds in both D and F. The limits are now padded by
+  `edge_pad_x = 1.5%` of the window on each side. The padding is applied to
+  `regional_x_limits` rather than to the scale expansion **on purpose** — the
+  gene-model track is handed the same limits, so the two panels stay aligned.
+  This widens the drawn window slightly (D: 51.870–51.918 → 51.869–51.919 Mb),
+  which is a change to the *view*, not to any statistic.
+- **The zoom inset's bottom edge.** The inset is drawn on an opaque white
+  background, so an edge landing mid-marker slices it. F's PIP-0.06 variant sat
+  at 0.056 of the panel height with the inset bottom at 0.05 and showed as an
+  arc poking out from underneath. `inset_bottom_clearing_points()` now raises the
+  requested bottom to the first height that clears every marker beneath the
+  inset's x-span; F settles at ~0.13 and its three low-PIP variants are fully
+  drawn, while D (whose variants are all PIP ≥ 0.97) keeps the 0.05 default.
+  Nudging by a fixed amount does not work — it just re-slices the next point up
+  the PIP ladder, which is what `tests/test_fig5_helpers.R` pins down.
+- Note this only moves the *edge*. Variants that fall well under the inset were
+  and still are hidden by it; that is the point of overlaying the empty low-PIP
+  region.
+
+## Fine-map row (D/F) is taller
+
+`assemble.R` row heights are now written as inches of the 16-inch canvas. D/F
+went from ~3.2 in to 4.0 in — they carry a titled regional plot, an inset and a
+gene track, and were the most cramped band in the figure. The height comes from
+the top row (4.56 → 4.35 in) and the mechanism row E/G (7.52 → 6.99 in).
+
+The two gutters are deliberately **not** equal. The A-C / D-F spacer widens
+(0.37 → 0.40 in), but the D-F / E-G one narrows (0.32 → 0.26 in): D/F already
+carry an x-axis title along their bottom edge and E/G carry variant captions
+above theirs, so the *drawn* separation there is much larger than the spacer
+alone and an equal spacer reads as a gap. Figure dimensions are unchanged at
+18 × 16 in.
