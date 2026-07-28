@@ -468,21 +468,46 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
             "-carrier floor, not tested: ", paste(dropped, collapse = ", "))
   if (!length(keep)) return(empty)
 
+  # A feature clearing the carrier floor can still be a hard failure: e.g.
+  # complete/quasi-separation makes stats::confint() error ("need at least
+  # two non-NA values to interpolate") rather than return an unstable-but-
+  # finite CI. Fitting each surviving feature is therefore wrapped in its own
+  # tryCatch so ONE such feature cannot abort every other feature in `keep`
+  # (an unguarded error inside map_dfr would). On failure the feature is
+  # dropped and named in a message -- worded differently from the below-floor
+  # case above, so the two reasons a feature is missing from the result are
+  # distinguishable in the log -- rather than silently returning a row of NAs,
+  # which would render cleanly while being wrong.
   purrr::map_dfr(keep, function(f) {
-    form <- stats::as.formula(
-      sprintf("%s ~ `%s` + PIP_qtl + log10(cs_size_med)", outcome, f))
-    fit <- stats::glm(form, data = d, family = stats::binomial())
-    ci  <- suppressMessages(stats::confint(fit))
-    co  <- summary(fit)$coefficients
-    row <- paste0("`", f, "`TRUE")
-    if (!row %in% rownames(co)) row <- grep(f, rownames(co), fixed = TRUE, value = TRUE)[1]
-    tibble::tibble(
-      feature    = f,
-      odds_ratio = unname(exp(stats::coef(fit)[row])),
-      conf.low   = unname(exp(ci[row, 1])),
-      conf.high  = unname(exp(ci[row, 2])),
-      p.value    = unname(co[row, 4]),
-      n_carriers = sum(as.logical(d[[f]]), na.rm = TRUE))
+    tryCatch({
+      form <- stats::as.formula(
+        sprintf("%s ~ `%s` + PIP_qtl + log10(cs_size_med)", outcome, f))
+      fit <- stats::glm(form, data = d, family = stats::binomial())
+      ci  <- suppressMessages(stats::confint(fit))
+      co  <- summary(fit)$coefficients
+      # R's model.matrix names a logical predictor's coefficient
+      # `<variable name>TRUE`, with any backticks used to make an
+      # irregular name syntactic in the formula stripped by the parser --
+      # never `` `<name>`TRUE ``. Match that exact name; a substring
+      # grep() fallback previously "worked" only by the accident of the
+      # feature's row preceding the covariates' rows in this formula's
+      # term order, which is untested and not a real invariant.
+      row <- paste0(f, "TRUE")
+      if (!row %in% rownames(co))
+        stop("coefficient row '", row, "' not found among: ",
+             paste(rownames(co), collapse = ", "))
+      tibble::tibble(
+        feature    = f,
+        odds_ratio = unname(exp(stats::coef(fit)[row])),
+        conf.low   = unname(exp(ci[row, 1])),
+        conf.high  = unname(exp(ci[row, 2])),
+        p.value    = unname(co[row, 4]),
+        n_carriers = sum(as.logical(d[[f]]), na.rm = TRUE))
+    }, error = function(e) {
+      message("  feature '", f, "' failed to fit/profile, not tested: ",
+              conditionMessage(e))
+      empty
+    })
   })
 }
 

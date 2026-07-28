@@ -83,4 +83,39 @@ ok("the dropped feature is NAMED in a message, not silently discarded",
 ok("no surviving feature returns a zero-row frame of the right shape",
    nrow(fit_feature_enrichment(sim, "outcome", "thin")) == 0L)
 
+# --- a per-feature fit/profile failure is isolated, not fatal --------------
+# `separated` clears the >=10-carrier floor (its smallest table(x, outcome)
+# cell is well above 10) but is constructed so that INCLUDING it as a glm
+# covariate makes the outcome perfectly linearly separable: rows with
+# `separated == TRUE` flip to TRUE past a PIP_qtl of 0.3, rows with
+# `separated == FALSE` flip past 0.7. An additive glm term represents that
+# as an intercept shift, so `outcome ~ separated + PIP_qtl + log10(cs_size)`
+# is a clean separating hyperplane and stats::confint() dies with "need at
+# least two non-NA values to interpolate" -- the reviewer's reproduction of
+# the real failure mode. `healthy` has no such construction: with
+# `separated` excluded from ITS model, the same PIP_qtl value can carry
+# either outcome depending on the latent (unmodelled) `separated` status, so
+# `healthy`'s own fit is well-behaved and must still be returned.
+set.seed(2026)
+n3 <- 100
+sep_frame <- data.frame(
+  PIP_qtl     = runif(n3, 0, 1),
+  cs_size_med = sample(2:40, n3, replace = TRUE),
+  separated   = c(rep(TRUE, 40L), rep(FALSE, 60L)),
+  healthy     = sample(c(TRUE, FALSE), n3, replace = TRUE))
+sep_frame$outcome <- with(sep_frame, ifelse(separated, PIP_qtl > 0.3, PIP_qtl > 0.7))
+
+msg2 <- capture.output(
+  res2 <- fit_feature_enrichment(sep_frame, "outcome", c("separated", "healthy")),
+  type = "message")
+
+ok("a fit/profile failure on one feature does not error the whole call",
+   is.data.frame(res2))
+ok("the healthy feature is still returned despite the other's failure",
+   "healthy" %in% res2$feature)
+ok("the separated (unfittable) feature is absent from the results",
+   !"separated" %in% res2$feature)
+ok("the separated feature's failure is NAMED in a message, not swallowed",
+   any(grepl("separated", msg2)))
+
 cat("test_fig3_enrichment.R: all assertions passed\n")
