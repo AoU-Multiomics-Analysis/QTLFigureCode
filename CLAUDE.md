@@ -71,6 +71,12 @@ pre-staged by hand). Each figure's `NOTES.md` lists its own deferred items.
   `NOTES.md`, and `Fig<N>.ipynb`.
 - Any change that alters a **result** goes in that figure's `NOTES.md`, with the
   original line reference and what changed.
+- `Rscript tools/export_panels.R [Fig1 …]` renders each cached panel object to a
+  standalone PDF/PNG under `Fig<N>/objects/panels/` (git-ignored). It renders
+  `objects/*.rds`, so the panels must already be built, and it exports them
+  **untagged** — tagging belongs to `assemble.R`. Sizes default per figure and
+  are overridden per panel in `PANEL_OVERRIDE` where a panel's share of the
+  assembled layout differs; only Fig1's row-4 split is encoded so far.
 - Generating `Fig<N>.ipynb` (via `tools/build_notebooks.py`) is a standard part of
   each cleanup; commit it in the same PR. A notebook's **code cells** must
   round-trip through the generator, but an executed notebook no longer matches
