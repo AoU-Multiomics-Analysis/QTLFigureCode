@@ -57,7 +57,7 @@ reproducible. Before matching, one record was retained per gene–trait pair (th
 with the highest gene-level colocalization probability, breaking ties on the
 smallest conditional rare-variant *P*), and putative artefacts — records whose
 conditional rare-variant *Z* exceeded three times its unconditional value while
-|Vcor| > 0.3 — were removed. Axes are the expected against the observed
+|Vcor| > 0.3 — were removed. Axes are the expected against the observed TWAS
 −log₁₀(*P*), with the expectation taken as rank/(*n* + 1) within each test and
 group; the dashed line is the *y* = *x* null expectation. Observed values are
 capped for display at 40 (*Common*) and 12.5 (*Rare*). The colour key is

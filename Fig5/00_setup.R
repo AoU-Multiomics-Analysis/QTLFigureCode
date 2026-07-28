@@ -487,13 +487,31 @@ regional_window_bp <- function(position, causal, zoom_center, zoom_window_bp,
   c(max(win[1], tested[1]), min(win[2], tested[2]))
 }
 
+# The zoom inset is drawn on an opaque white background, so its bottom edge slices
+# in half any regional marker it happens to land on -- which reads as a clipped
+# point. Raise the requested bottom to the first height that clears every marker
+# underneath it. Positions are panel-relative (npc); marker_npc is the half-height
+# of the largest marker. Pure; covered by tests/test_fig5_helpers.R.
+inset_bottom_clearing_points <- function(x_npc, y_npc, requested,
+                                         inset_left, inset_right,
+                                         marker_npc = 0.022, max_bottom = 0.4) {
+  under  <- y_npc[is.finite(x_npc) & is.finite(y_npc) &
+                  x_npc >= inset_left & x_npc <= inset_right]
+  bottom <- requested
+  # ascending, so a single pass settles it: each point is either already clear of
+  # the running bottom or pushes it above itself.
+  for (y in sort(under))
+    if (abs(y - bottom) < marker_npc) bottom <- y + marker_npc
+  min(bottom, max_bottom)
+}
+
 # regional PIP plot with a zoom inset and an aligned gene-model track (untagged)
 plot_finemapping_with_inset <- function(finemapping_df, pip_thresh = 0.9,
     zoom_center, zoom_window_bp = 500,
     inset_left = 0.24, inset_bottom = 0.05, inset_right = 0.96, inset_top = 0.76,
     box_padding_bp = 1000, box_padding_pip = 0.05, cs_colors,
     panel_title = NULL, ccre = NULL, x_limits = NULL,
-    chrom = NULL, regional_flank_bp = 5000) {
+    chrom = NULL, regional_flank_bp = 5000, edge_pad_x = 0.015) {
 
   plot_df <- finemapping_df %>%
     filter(!is.na(position), !is.na(pip)) %>%
@@ -506,6 +524,12 @@ plot_finemapping_with_inset <- function(finemapping_df, pip_thresh = 0.9,
   regional_x_limits <- if (is.null(x_limits))
     regional_window_bp(plot_df$position, plot_df$causal, zoom_center,
                        zoom_window_bp, regional_flank_bp) / 1e6 else x_limits
+  # The window is clamped to the range of tested variants, so there is always a
+  # variant sitting exactly on each edge; with a zero-expansion scale the panel
+  # border slices those markers in half. Pad the limits rather than the scale
+  # expansion, so the gene track (which is handed the same limits) stays aligned.
+  regional_x_limits <- regional_x_limits +
+    c(-1, 1) * diff(regional_x_limits) * edge_pad_x
 
   # The gene track selects genes by chromosome, so it must be unambiguous.
   if (is.null(chrom)) {
@@ -524,6 +548,10 @@ plot_finemapping_with_inset <- function(finemapping_df, pip_thresh = 0.9,
   box_center_mb <- mean(c(box_start_mb, box_end_mb))
   box_y_min <- max(regional_y_limits[1], min(boxed$pip) - box_padding_pip)
   box_y_max <- min(regional_y_limits[2], max(boxed$pip) + box_padding_pip)
+  inset_bottom <- inset_bottom_clearing_points(
+    x_npc = (plot_df$position / 1e6 - regional_x_limits[1]) / diff(regional_x_limits),
+    y_npc = (plot_df$pip - regional_y_limits[1]) / diff(regional_y_limits),
+    requested = inset_bottom, inset_left = inset_left, inset_right = inset_right)
   inset_top_data <- regional_y_limits[1] + inset_top * diff(regional_y_limits)
 
   regional_plot <- ggplot(plot_df, aes(position / 1e6, pip)) +

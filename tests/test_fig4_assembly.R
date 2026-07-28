@@ -32,6 +32,7 @@ extract_tag_labels <- function(patchwork_obj) {
 }
 
 for (p in LETTERS[1:4]) source(sprintf("fig4/panels/panel%s.R", p))
+source("fig4/panels/panelA_labeled.R")
 source("fig4/assemble.R")
 
 tags <- extract_tag_labels(Fig4)
@@ -41,5 +42,12 @@ tags <- extract_tag_labels(Fig4)
 ok("Figure 4 carries exactly 4 tags", length(tags) == 4L)
 ok("Figure 4's tags are exactly A, B, C, D",
    identical(sort(unique(tags)), c("A", "B", "C", "D")))
+
+# The labelled-A variant shares compose_fig4(), so it must tag identically. The
+# shorthand labels are multi-character and so cannot be mistaken for tag grobs.
+labelled_tags <- extract_tag_labels(Fig4_labeled)
+ok("Figure 4 (labelled A) carries exactly 4 tags", length(labelled_tags) == 4L)
+ok("Figure 4 (labelled A) tags are exactly A, B, C, D",
+   identical(sort(unique(labelled_tags)), c("A", "B", "C", "D")))
 
 cat("test_fig4_assembly.R: all assertions passed\n")
