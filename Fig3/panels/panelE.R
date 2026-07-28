@@ -1,9 +1,10 @@
-# Panel E — reserved slot. The bottom row of Figure 3 leaves space for a panel
-# that has not been decided yet (see fig3/NOTES.md). Rendering a blank keeps the
-# layout stable and lets assemble.R stay unconditional.
+# Panel E — feature enrichment of colocalizing vs layer-specific variants,
+# contrasted between assay pairs. See docs/superpowers/specs/
+# 2026-07-27-fig3-panelE-coloc-enrichment-design.md
+# Inputs: enloc_variant, susie_eqtl, susie_sqtl, susie_pqtl
 source("fig3/00_setup.R")
 
-pE <- blank_plot
+pE <- build_panelE(coloc_feature_enrichment())
 
 saveRDS(pE, file.path(OBJ_DIR, "E.rds"))
-message("Panel E built (reserved slot).")
+message("Panel E built.")

@@ -188,16 +188,24 @@ variant two AF rows and fan out the variant-level join.
 so `rm -rf fig3/data` before the first rebuild or `coloc_variant_level()` will
 return a cached frame still built from the annotation table.
 
-## Panel E — reserved slot (undecided)
+## Panel E — colocalization feature enrichment
 
-The bottom row of Figure 3 reserves a slot beside panel D. Its content has not
-been decided. `panels/panelE.R` renders a blank so the layout and
-`assemble.R` stay unconditional.
+**This fills a previously blank slot, so Figure 3 gains a panel.**
 
-Mechanics for whoever fills it: the bottom row is `(D | E)` with
-`plot_layout(widths = c(1.3, 1))`, so E gets roughly 43% of an 18" canvas —
-about 7.7 × 6 inches. Replace the body of `panels/panelE.R` and nothing else
-needs to change.
+Panel E contrasts the adjusted enrichment of binary variant features between
+assay pairs: x = eQTL-pQTL, y = eQTL-sQTL, both as log2 odds ratios from
+`coloc ~ feature + PIP_qtl + log10(cs_size_med)`. Design and rationale:
+`docs/superpowers/specs/2026-07-27-fig3-panelE-coloc-enrichment-design.md`.
+
+Limitations carried deliberately:
+
+- **MAF is not adjusted for.** Rare-vs-common is a tested feature, so adjusting
+  for it would condition away the effect being measured.
+- **`cs_size_med` is a per-variant median.** `cs_size` belongs to a credible
+  set and a variant can sit in several; the median keeps the feature map at one
+  row per variant, which `coloc_variant_level()`'s join guard requires.
+- **`max_af` NA behaviour is inherited** from `coloc_model_input()` — a variant
+  missing any one per-ancestry frequency drops out.
 
 ## Colocalization covariate analysis (dropped from the pipeline)
 

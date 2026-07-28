@@ -247,4 +247,50 @@ ok("at least one of those padj values differs from a pooled-across-everything BH
 ok("every returned odds ratio on the synthetic matrix is finite",
    all(is.finite(enr2$odds_ratio)))
 
+# --- panel E -----------------------------------------------------------------
+pE <- build_panelE(enr)
+ok("panel E is a ggplot", inherits(pE, "ggplot"))
+ok("panel E plots analysis A only", all(pE$data$analysis == "A"))
+ok("panel E is a two-pair contrast, one row per feature",
+   !any(duplicated(pE$data$feature)))
+
+# The 9-row Fig3 fixture makes `enr` (built above) a well-formed but
+# ZERO-ROW tibble, so the three assertions just above are trivially true of
+# an empty data frame and cannot catch a broken pivot, a wrong analysis
+# filter, or a missing-pair leak. A small synthetic enrichment frame -- same
+# schema as `enr`/`enr2` above, built by hand rather than through the
+# memoized pipeline -- exercises build_panelE() on REAL rows instead.
+enr_panelE <- tibble::tibble(
+  analysis = c("A", "A",             # f1: both required pairs -> kept
+               "A",                  # f2: eQTL-pQTL only       -> dropped
+               "A",                  # f3: eQTL-sQTL only       -> dropped
+               "A", "A", "A",        # f4: both pairs + the structurally-
+                                      #     absent third pair    -> kept,
+                                      #     third pair ignored
+               "B", "B"),            # f5: analysis B           -> dropped
+  pair     = c("eQTL-pQTL", "eQTL-sQTL",
+               "eQTL-pQTL",
+               "eQTL-sQTL",
+               "eQTL-pQTL", "eQTL-sQTL", "sQTL-pQTL",
+               "eQTL-pQTL", "eQTL-sQTL"),
+  feature    = c("f1", "f1", "f2", "f3", "f4", "f4", "f4", "f5", "f5"),
+  odds_ratio = c(2.0, 1.5, 3.0, 0.5, 1.2, 0.8, 4.0, 2.0, 2.0),
+  padj       = c(0.01, 0.20, 0.01, 0.01, 0.04, 0.04, 0.01, 0.01, 0.01))
+
+pE2 <- build_panelE(enr_panelE)
+
+ok("synthetic panel E: analysis A only, B is excluded",
+   all(pE2$data$analysis == "A"))
+ok("synthetic panel E: one row per feature",
+   !any(duplicated(pE2$data$feature)))
+ok("synthetic panel E: both required pairs are pivoted into columns",
+   all(c("log_or_eQTL-pQTL", "log_or_eQTL-sQTL") %in% names(pE2$data)))
+ok("synthetic panel E: the structurally-absent sQTL-pQTL pair is not pivoted in",
+   !any(grepl("sQTL-pQTL", names(pE2$data), fixed = TRUE)))
+ok("synthetic panel E: features missing from either pair are excluded",
+   setequal(pE2$data$feature, c("f1", "f4")))
+ok("synthetic panel E: log-OR is log2 of the odds ratio",
+   isTRUE(all.equal(pE2$data$`log_or_eQTL-pQTL`[pE2$data$feature == "f1"],
+                    log2(2.0))))
+
 cat("test_fig3_enrichment.R: all assertions passed\n")

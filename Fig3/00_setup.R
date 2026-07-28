@@ -780,3 +780,48 @@ coloc_feature_enrichment <- function(refresh = FALSE)
 
     .enrich_pairs(v)
   })
+
+# Pair-contrast scatter: adjusted log-OR in eQTL-pQTL against eQTL-sQTL.
+# Points on the diagonal are generic shared-signal markers; off-diagonal ones
+# distinguish protein- from splicing-colocalization. sQTL-pQTL is structurally
+# absent -- this plot has two axes -- and appears in the supplement instead.
+build_panelE <- function(enr) {
+  pairs_needed <- c("eQTL-pQTL", "eQTL-sQTL")
+
+  wide <- enr %>%
+    filter(analysis == "A", pair %in% pairs_needed) %>%
+    mutate(log_or = log2(odds_ratio), sig = padj < 0.05) %>%
+    select(analysis, feature, pair, log_or, sig) %>%
+    tidyr::pivot_wider(names_from = pair,
+                       values_from = c(log_or, sig))
+
+  # pivot_wider() only creates a `log_or_<pair>`/`sig_<pair>` column for a
+  # pair value actually present in the (already analysis-A-only) input.
+  # coloc_feature_enrichment() can legitimately return zero rows (nothing
+  # clears the carrier floor -- exactly what the small test fixture does),
+  # or rows for only one of the two required pairs, in which case one or
+  # both expected columns never appear. Add any missing one as all-NA so the
+  # filter/aes() below have something to reference instead of erroring on a
+  # column that doesn't exist -- an all-NA column drops every row from the
+  # !is.na() filter next, which is the correct behaviour: no feature can be
+  # plotted without both pairs.
+  needed_cols <- paste0(c("log_or_", "sig_"), rep(pairs_needed, each = 2))
+  for (col in setdiff(needed_cols, names(wide))) wide[[col]] <- NA
+
+  wide <- wide %>%
+    filter(!is.na(`log_or_eQTL-pQTL`), !is.na(`log_or_eQTL-sQTL`))
+
+  ggplot(wide, aes(`log_or_eQTL-pQTL`, `log_or_eQTL-sQTL`)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey60") +
+    geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey85") +
+    geom_vline(xintercept = 0, linewidth = 0.25, colour = "grey85") +
+    geom_point(aes(fill = `sig_eQTL-pQTL` & `sig_eQTL-sQTL`),
+               shape = 21, size = 3.4, stroke = 0.4, colour = "grey25") +
+    ggrepel::geom_text_repel(aes(label = feature), size = 3, max.overlaps = 12,
+                             segment.colour = "grey70") +
+    scale_fill_manual(values = c(`TRUE` = "#364B63", `FALSE` = "grey85"),
+                      name = "FDR < 0.05 in both") +
+    labs(x = "Adjusted log2 OR — eQTL-pQTL",
+         y = "Adjusted log2 OR — eQTL-sQTL") +
+    theme(legend.position = "bottom")
+}
