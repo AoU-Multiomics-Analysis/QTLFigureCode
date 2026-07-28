@@ -53,7 +53,9 @@ number of statistically independent signals per eGene in the combined
 multi-ancestry expression fine-mapping. The *y* axis is the percentage of all
 fine-mapped eGenes carrying at least *k* SuSiE (sum of single effects) credible
 sets, out of every eGene with at least one credible set; the final point is the
-percentage with five or more [TK: percentage of eGenes with ≥ 2 credible sets].
+percentage with five or more; note that the axis is truncated to the range of
+the data and does not start at zero [TK: percentage of eGenes with ≥ 2 credible
+sets].
 **(F)** Distribution of credible-set size — the number of variants contained in
 a SuSiE credible set — for protein QTL (pQTL) fine-mapping in each ancestry
 group and in the combined analysis (AoU), on a log10 scale. Groups are ordered
@@ -71,21 +73,29 @@ it contained a variant with a posterior inclusion probability (PIP) above 0.9;
 the denominator is all credible sets for that assay. The number above each bar
 is the count of resolved credible sets [TK: percentage and count of
 single-variant credible sets for expression, protein and splicing]. **(H)**
-Functional enrichment of putatively causal fine-mapped variants, by assay.
-Within each assay's combined multi-ancestry SuSiE table, variants with
-PIP > 0.9 were compared with a background of variants with PIP < 0.01 (each
-variant represented once, at its maximum PIP across credible sets), and
-enrichment for each annotation was tested with a two-sided Fisher exact test.
+Functional enrichment of fine-mapped variants, by assay.
+Within each assay's combined multi-ancestry SuSiE table, the presence of each
+annotation was regressed on the posterior inclusion probability (PIP) across
+every fine-mapped variant by logistic regression
+(`glm(annotated ~ PIP, binomial)`). The plotted effect is that model's slope,
+exponentiated, i.e. the ratio of the odds of carrying the annotation at PIP = 1
+to the odds at PIP = 0; the *y* axis is on a log10 scale and the dashed line
+marks an odds ratio of one, meaning no relationship between the annotation and
+PIP. Because the model uses the whole PIP range rather than a two-by-two table
+of extremes, no estimate is unbounded [TK: state the odds ratios for the
+annotations the manuscript highlights].
 Annotations comprise Ensembl Variant Effect Predictor (VEP) consequences and
 ENCODE candidate cis-regulatory element (cCRE) classes — promoter-like (PLS),
 proximal enhancer-like (pELS) and distal enhancer-like (dELS) — grouped into
-coding, regulatory and splice categories. Points give the odds ratio and bars
-the 95% confidence interval from the Fisher exact test; the dashed line marks no
-enrichment (odds ratio of 1) and the *y* axis is on a log10 scale. *P* values
-were adjusted across all annotation-by-assay tests by the Benjamini–Hochberg
-procedure and only annotations with an adjusted *P* below 0.05 are shown; the
-CTCF-only cCRE class was excluded [TK: which annotations are displayed in the
-rendered panel and their odds ratios].
+coding, regulatory and splice categories. Twelve annotations are shown: missense,
+frameshift, start-lost and stop-gained consequences; 3' and 5' UTR variants and
+the PLS, pELS and dELS cCRE classes; and splice region, donor and acceptor
+variants. Circles give the exponentiated slope and bars its 95% confidence
+interval. The grey rule beneath each annotation marks the span of its three
+assay points and stands in for the *x* axis line. *P* values were adjusted across
+all annotation-by-assay tests by the Benjamini–Hochberg procedure; every
+annotation shown is significant at an adjusted *P* below 0.05, and any that were
+not would be drawn faded [TK: state the odds ratios the manuscript highlights].
 
 Throughout, ancestry groups are AFR (African), AMR (admixed American), EAS (East
 Asian), EUR (European), MID (Middle Eastern), SAS (South Asian) and, where
@@ -93,11 +103,13 @@ present, ADMIX (admixed/unassigned); AoU denotes the combined multi-ancestry
 analysis of all groups together, and the same colour scheme is used in (B), (C)
 and (F). Assays are expression (eQTL), splicing (sQTL) and protein abundance
 (pQTL), and are coloured consistently in (D), (G) and (H). Error bars appear
-only in (H), where they are 95% confidence intervals on the Fisher exact odds
-ratio; no other panel plots an interval, and the boxplots in (F) summarise the
-observed distribution rather than any uncertainty. Significance thresholds are
-FDR < 0.05 in (C), Storey *q* < 0.05 in (D), PIP > 0.9 for putatively causal
-variants in (G) and (H), and Benjamini–Hochberg adjusted *P* < 0.05 in (H). All
+only in (H), where they are 95% confidence intervals on the exponentiated
+logistic-regression slope; no other panel plots an interval, and the boxplots in
+(F) summarise the observed distribution rather than any uncertainty.
+Significance thresholds are FDR < 0.05 in (C), Storey *q* < 0.05 in (D),
+PIP > 0.9 for putatively causal variants in (G), and Benjamini–Hochberg adjusted
+*P* < 0.05 in (H); note that (H), unlike (G), uses PIP as a continuous predictor
+rather than thresholding it. All
 molecular phenotype and genotype data derive from the *All of Us* Research
 Program controlled-access dataset [TK: data release / callset version] and were
 analysed under its Data Use Agreement.

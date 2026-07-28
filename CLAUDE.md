@@ -55,7 +55,10 @@ established the original shape and adopted the manifest last. Read the most
 recent `docs/superpowers/specs/*-cleanup-design.md` and
 `docs/superpowers/plans/*.md` before starting a new one.
 
-Known gaps, if you are looking for work: Fig1 and Fig2 have no tests, and Fig2,
+Known gaps, if you are looking for work: Fig2 has no tests and Fig1 has only two
+(`tests/test_fig1_enrichment_panel.R` for the enrichment panel and the assay
+palette, `tests/test_fig1_enrichment_glm.R` for the standalone PIP-regression
+enrichment), and Fig2,
 Fig4 and Fig5 have no `gs://` origins in their manifests (their inputs must be
 pre-staged by hand). Each figure's `NOTES.md` lists its own deferred items.
 

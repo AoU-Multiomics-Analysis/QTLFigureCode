@@ -1,13 +1,21 @@
 # Panel H — fine-mapping functional enrichment by assay
 # Inputs: annot (COMB annotated SuSiE tables for eQTL / sQTL / pQTL)
+#
+# The enrichment is a logistic regression of each annotation on PIP, fitted over
+# every fine-mapped variant. The panel shows that slope exponentiated, on a log10
+# axis, so it reads as an odds ratio between PIP = 1 and PIP = 0.
+# It replaced a Fisher exact test on a (PIP > 0.9) x annotated table,
+# which threw away every variant in the middle of the PIP range and returned an
+# infinite odds ratio for three pQTL annotations whose background cell was
+# empty. NOTES.md has the comparison between the two.
+#
+# The fits are memoized to fig1/objects/enrichment_glm.tsv and shared with
+# fig1/enrichment_glm.R, which draws all 31 annotations rather than the twelve
+# on the panel. Delete that file, or pass refresh = TRUE, to refit.
 source("fig1/00_setup.R")
+source("fig1/enrichment_glm_fit.R")
 
-# One enrichment computation per annotated table, labelled by its assay/type.
-annot <- input_files("annot")
-QTLFinemappingEnrichments <- purrr::pmap_dfr(
-  list(annot$path, annot$Assay),
-  function(p, ty) fread(p) %>% ComputeFinemappingAnnotationEnrichment() %>% mutate(type = ty)
-)
+QTLFinemappingEnrichments <- FitAnnotationEnrichmentGlm()
 
 # Names must match VEP's own spelling exactly (3_prime_UTR_variant, not
 # _utr_): these are matched by an equality join, so a casing difference
@@ -53,7 +61,7 @@ variant_functional_groups <- tibble::tribble(
   "intergenic_variant", "Intronic/Intergenic"
 )
 
-pH <- PlotFinemappingEnrichment(QTLFinemappingEnrichments, variant_functional_groups)
+pH <- PlotGlmEnrichment(QTLFinemappingEnrichments, variant_functional_groups)
 
 saveRDS(pH, file.path(OBJ_DIR, "H.rds"))
 message("Panel H built.")
