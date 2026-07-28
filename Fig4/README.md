@@ -15,6 +15,7 @@ in clinically important gene sets.
 | Panel | Content | Source |
 |-------|---------|--------|
 | **A** | Colocalizing-gene counts + **lenient** credible-set coloc rate, by trait category (traits with > 5 colocalizing genes; top 10 per category; two categories dropped) | `harmonized_coloc.gene.tsv.gz` + `coloc_rate_by_trait.tsv` |
+| **A** (labelled variant) | The same panel with a short label on every trait, composed into a separate `Figure4_labeled.pdf` | same as A |
 | **B** | Histogram of the R² increase (%) contributed by rare variants (x truncated to −20…40 %) | `R2_TWAS_combined.tsv` |
 | **C** | Common/rare conditional-TWAS QQ, colocalized vs. matched non-colocalized (blood traits) | `ConditionalTWAS.cleaned.tsv.gz` |
 | **D** | Odds-ratio forest: rare/common TWAS-signal enrichment across gene sets | conditional TWAS + ClinGen + drug interactions |
@@ -33,6 +34,36 @@ calls the helper directly gets the *stringent* rate unless it asks for lenient.
 category** by count. The "top 10" is therefore per category, not a global top-10
 of categories.
 
+### Panel A — the labelled variant
+
+`panels/panelA_labeled.R` builds a second copy of Panel A with
+`build_plot(label_top = Inf, label_size = 2.2)`, which writes a short label for
+**every** trait into the empty space to the right of the bars. All the labels are
+right-aligned at one x, in a column reserved by extending the count axis past the
+longest bar, so they line up and none of them touches a bar. (Keeping the column
+at the data maximum instead leaves any label that a bar reaches part-way through
+straddling bar and background, where no single text colour is legible — see
+[`NOTES.md`](NOTES.md).) The room the column needs is estimated per label from
+its character count via `label_char_frac` and `label_gap`. The count axis breaks
+are restricted to the data range, so the reserved column carries no ticks —
+without that the last break sits against the rate facet's `0%`. The labelled
+variant's x-axis breaks therefore differ from the plain panel's.
+
+Label text comes from `trait_label()` in `00_setup.R`: the `TRAIT_SHORTHAND`
+override if the trait has one, otherwise the upstream name tidied — underscores
+to spaces, and the first letter capitalised *only* if the name is entirely
+lower-case. `TRAIT_SHORTHAND` is an override map for the long, clinical and
+acronym names, not a whitelist; new upstream traits get a reasonable label
+without being added to it. Its keys are lower-case and matched
+**case-insensitively**, because the coloc table has changed the case of its trait
+names between releases and an exact-match lookup silently dropped every override
+(see [`NOTES.md`](NOTES.md)).
+
+`assemble.R` composes both: `Figure4.pdf` from the plain `objects/A.rds` and
+`Figure4_labeled.pdf` from `objects/A_labeled.rds`, sharing one layout and one
+set of tags. The labelled variant is skipped with a message if that object has
+not been built.
+
 ### Panel B — truncated axis
 
 `panels/panelB.R` sets `xlim(-20, 40)` on the histogram. That is a scale limit,
@@ -44,7 +75,7 @@ count is smaller than the number of genes passing `Pval < 1e-5`.
 
 Run from the **project root**:
 
-    Rscript fig4/run_all.R          # panels -> assemble -> Figure4.pdf / .png
+    Rscript fig4/run_all.R          # panels -> assemble -> Figure4{,_labeled}.pdf / .png
     Rscript fig4/panels/panelD.R    # rebuild one panel
     Rscript fig4/assemble.R         # recompose
     rm -rf fig4/data && Rscript fig4/run_all.R   # force-rebuild the derived cache

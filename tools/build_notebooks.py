@@ -136,6 +136,7 @@ PANEL_NOTES = {
  ("Fig3","E"): "Among variants that colocalize between eQTLs and pQTLs, the fold change in minor allele frequency for variants carrying each functional annotation versus those that do not — which annotations mark rarer, and which mark commoner, shared causal variants. Uses the **symmetric** colocalization background: FastENLOC emits credible sets from one layer only, so the pQTL-specific side is reconstructed from the SuSiE tables before anything is compared (see `Fig3/NOTES.md`).",
 
  ("Fig4","A"): "For each trait category, the number of colocalizing genes (intensity-shaded bars) beside the credible-set colocalization rate (lollipop, with a dashed median reference). The rate plotted is the **lenient** union rate (`pct_lenient_union`): `coloc_by_trait()` calls `build_plot_data(rate_type = \"lenient\")`, even though that function's own default is `\"stringent\"` — a caller reusing it gets the stringent rate unless it asks otherwise. The panel keeps **traits** with more than five colocalizing genes, then the top ten traits *within each category*, and drops the `neuropsychiatric` and `renal_urological` categories.",
+ ("Fig4","A_labeled"): "The same panel with `build_plot(label_top = Inf)`, which gives **every** trait a short label in the empty space to the right of the bars. All the labels are right-aligned at one x, in a column reserved by extending the count axis past the longest bar, so they line up and no bar reaches a label; the room needed is estimated per label from its character count. Because the axis is extended, this panel's x-axis breaks differ from the plain Panel A's. Label text comes from `trait_label()`: the `TRAIT_SHORTHAND` override if there is one (matched case-insensitively, because the coloc table has changed the case of its trait names between releases), else the upstream name tidied. This feeds `Figure4_labeled.pdf`; `Figure4.pdf` still uses the unlabelled panel.",
  ("Fig4","B"): "Histogram of the R² increase (%) that rare variants add to TWAS, computed as the difference in adjusted R² between allele-frequency thresholds 0 and 0.01 for genes with a significant fit — how much predictive signal rare variants contribute. Note the axis is truncated with `xlim(-20, 40)`, so genes whose R² increase falls outside that window are dropped from the histogram rather than shown at the edge.",
  ("Fig4","C"): "Common and rare conditional-TWAS QQ plots over nine blood traits, comparing colocalized genes against **MatchIt propensity-matched** non-colocalized genes (\"Null\") — an inflation test that controls for expression, selection, rare-variant count and LD.",
  ("Fig4","D"): "Odds-ratio forest (logistic regression) for the enrichment of rare vs. common conditional-TWAS signal across four gene-set outcomes — Mendelian (any), Mendelian (immune/hematological), druggable, and approved drug target. Both continuous and binary predictor sets are fit; the panel plots the continuous rare/common terms (see `Fig4/NOTES.md`).",
@@ -333,6 +334,15 @@ so clear that directory (or pass `refresh = TRUE`) after changing an input.
    "env": {"FIG4_MANIFEST": "inputs.tsv", "FIG4_OBJ": "objects", "FIG4_DATA": "data"},
    "steps": [
      ("panel","Fig4/panels/panelA.R","A","coloc_plot"),
+     # Shown taller than the 7.5x5 panel default: the panel is 70 rows, and at
+     # the default height the rows are shorter than the label text, so the
+     # labels collide in the preview even though they do not in the 15x10
+     # figure. The option is restored so the panels after it are unaffected.
+     ("panel","Fig4/panels/panelA_labeled.R","A_labeled",
+      'old <- options(repr.plot.height = 9.5)\n'
+      'print(coloc_plot)\n'
+      'options(old)\n'
+      'message("Shown at the row height Panel A gets in the assembled figure.")'),
      ("panel","Fig4/panels/panelB.R","B","R2_dist"),
      ("panel","Fig4/panels/panelC.R","C","p_blood_qq"),
      ("panel","Fig4/panels/panelD.R","D","p"),

@@ -30,6 +30,84 @@ ok("min_coloc_genes trims traits with too few genes", nrow(trimmed) == 0L)
 ok("as_logical_flag maps yes/1/true",
    identical(as_logical_flag(c("yes", "1", "true", "no")), c(TRUE, TRUE, TRUE, FALSE)))
 
+# --- trait_label -----------------------------------------------------------
+ok("a TRAIT_SHORTHAND entry overrides the upstream name",
+   trait_label("Inflammatory bowel disease") == "IBD")
+ok("an all-lower-case name is capitalised",
+   identical(trait_label(c("creatinine", "gout")), c("Creatinine", "Gout")))
+ok("underscores become spaces",
+   identical(trait_label(c("platelet_count", "RBC_count")),
+             c("Platelet count", "RBC count")))
+ok("acronyms the coloc table already capitalises are left alone",
+   identical(trait_label(c("MCHC", "AST", "HbA1c")), c("MCHC", "AST", "HbA1c")))
+# The coloc table has changed the case of its trait names between releases
+# ("Asthma" -> "asthma"), which silently dropped every override when the lookup
+# was case-sensitive; acronyms then sentence-cased to "Ast" / "Mchc".
+ok("overrides match whatever case the coloc table uses",
+   identical(trait_label(c("Type 2 diabetes", "type 2 diabetes", "TYPE 2 DIABETES")),
+             rep("T2D", 3)))
+ok("lower-case acronyms come back upper-cased, not sentence-cased",
+   identical(trait_label(c("ast", "mchc", "rdw", "hba1c", "rbc_count")),
+             c("AST", "MCHC", "RDW", "HbA1c", "RBC count")))
+
+# --- build_plot's optional trait labels ------------------------------------
+# The fixture's two traits are "eosinophil" (hematological) and "LDL" (lipid);
+# neither has a TRAIT_SHORTHAND override, so both exercise the fallback.
+text_layers <- function(p)
+  Filter(function(l) inherits(l$geom, "GeomText"), p$layers)
+label_data <- function(...) text_layers(build_plot(...))[[1]]$data
+
+ok("label_top = 0 draws no trait labels",
+   length(text_layers(build_plot(combined))) == 0L)
+
+labelled <- build_plot(combined, label_top = Inf)
+tl <- text_layers(labelled)
+ok("label_top > 0 adds exactly one text layer", length(tl) == 1L)
+ok("label_top = Inf labels every trait, not a curated subset",
+   setequal(tl[[1]]$data$label, c("Eosinophil", "LDL")))
+ok("labels are confined to the count facet",
+   all(tl[[1]]$data$metric == "a_count"))
+ok("labels are right-aligned, so they form one column",
+   identical(tl[[1]]$aes_params$hjust, 1))
+ok("every label shares one x, so they line up",
+   length(unique(tl[[1]]$data$x)) == 1L)
+ok("that column is reserved past the longest bar, so no bar reaches a label",
+   unique(tl[[1]]$data$x) > max(combined$count))
+
+# How much room the column needs depends on how wide the labels are, so a long
+# label pushes it further right than a short one on the same bar. Two equal bars
+# with very different labels, under a taller bar that sets the maximum.
+width_mock <- tibble::tibble(
+  trait          = c("tall bar", "a trait with a long name", "xy"),
+  trait_category = "hematological",
+  count          = c(100L, 88L, 88L),
+  pct_coloc_union = 30)
+short_mock <- width_mock
+short_mock$trait <- c("tall bar", "ab", "xy")
+long_x  <- unique(label_data(width_mock, label_top = Inf)$x)
+short_x <- unique(label_data(short_mock, label_top = Inf)$x)
+ok("a long label reserves a wider column than a short one", long_x > short_x)
+ok("a wider label_gap reserves more room still",
+   unique(label_data(width_mock, label_top = Inf, label_gap = 0.1)$x) > long_x)
+
+# The reserved column is layout, not data, so it must not be ticked: a break out
+# there implies values that do not exist, and it collides with the rate facet's
+# "0%" across the 8pt panel gap.
+count_breaks <- function(p) {
+  b <- ggplot_build(p)$layout$panel_params[[1]]$x$get_breaks()
+  b[!is.na(b)]
+}
+ok("the count axis is not ticked past the data, despite the reserved column",
+   max(count_breaks(build_plot(combined, label_top = Inf))) <= max(combined$count))
+ok("the unlabelled panel keeps ggplot's default breaks",
+   identical(count_breaks(build_plot(combined)),
+             count_breaks(ggplot(combined, aes(count, trait)) + geom_col())))
+ok("label_top = 1 keeps only the highest-count trait per category",
+   nrow(label_data(combined, label_top = 1)) == 2L)   # one per category
+
+expect_error("a negative label_top errors", build_plot(combined, label_top = -1))
+expect_error("a fractional label_top errors", build_plot(combined, label_top = 1.5))
+
 # --- derive_gene_sets ------------------------------------------------------
 clingen_mock <- tibble::tibble(
   targetId          = c("ENSG1", "ENSG1", "ENSG2", "ENSG3"),

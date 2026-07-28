@@ -88,6 +88,69 @@ GROUP_COLORS <- c(
 )
 RATE_COLUMNS <- c(stringent = "pct_stringent_union", lenient = "pct_lenient_union")
 
+# --- Short labels for the in-panel trait annotations (Panel A, labelled variant)
+# An OVERRIDE map, not a whitelist: only traits whose upstream name is too long,
+# too clinical, or an acronym that must not be sentence-cased need an entry.
+# Everything else falls through to trait_label()'s tidy-up below. Keys are
+# LOWER-CASE and matched case-insensitively — the coloc table has changed the
+# case of its trait names before ("Asthma" -> "asthma"), which silently dropped
+# every override when the keys were exact. Keep entries to ~15 characters: the
+# widest label sets the width of the label column, and that column has to clear
+# the longest bar.
+TRAIT_SHORTHAND <- c(
+  # allergic_respiratory
+  "allergic rhinitis" = "Rhinitis", "atopic dermatitis" = "Atopic derm.",
+  # anthropometric
+  "body mass index" = "BMI",
+  # autoimmune
+  "inflammatory bowel disease" = "IBD", "rheumatoid arthritis" = "RA",
+  "crohn's disease" = "Crohn's", "autoimmune thyroid disease" = "AITD",
+  "ulcerative colitis" = "UC", "type 1 diabetes" = "T1D",
+  "primary biliary cholangitis" = "PBC", "autoimmune disease" = "Autoimmune",
+  "systemic lupus erythematosus" = "SLE", "multiple sclerosis" = "MS",
+  # cancer
+  "prostate carcinoma" = "Prostate ca.", "breast carcinoma" = "Breast ca.",
+  # cardiometabolic
+  "type 2 diabetes" = "T2D", "atrial fibrillation" = "AFib",
+  "hypertension" = "HTN", "coronary artery disease" = "CAD",
+  "abdominal aortic aneurysm" = "AAA", "venous thromboembolism" = "VTE",
+  # clinical_chemistry — the assay acronyms would otherwise sentence-case to
+  # "Ast" / "Alt" / "Bun".
+  "c-reactive protein measurement" = "CRP", "urate measurement" = "Urate",
+  "ast" = "AST", "alt" = "ALT", "bun" = "BUN",
+  # gastrointestinal
+  "cholelithiasis" = "Gallstones", "diverticular disease" = "Diverticular",
+  "gastroesophageal reflux disease" = "GERD",
+  # hematological — likewise "Mchc" / "Rdw" / "Rbc count".
+  "mchc" = "MCHC", "mch" = "MCH", "rdw" = "RDW", "rbc_count" = "RBC count",
+  # lipid
+  "hdl cholesterol" = "HDL-C", "ldl cholesterol" = "LDL-C",
+  "triglycerides" = "TG",
+  # metabolic
+  "hba1c" = "HbA1c",
+  # musculoskeletal
+  "hip osteoarthritis" = "Hip OA", "osteoarthritis" = "OA",
+  # neurodegenerative
+  "alzheimer disease" = "Alzheimer's", "parkinson disease" = "Parkinson's",
+  # ophthalmological
+  "primary open angle glaucoma" = "POAG",
+  "age-related macular degeneration" = "AMD",
+  # reproductive_endocrine
+  "uterine fibroid" = "Fibroids"
+)
+
+# Display label for a raw trait string: the TRAIT_SHORTHAND override if there is
+# one (matched case-insensitively), else the upstream name tidied — underscores
+# to spaces, and the first letter capitalised only when the name is entirely
+# lower-case, so a mixed-case upstream name is left as its authors wrote it.
+trait_label <- function(trait) {
+  override <- unname(TRAIT_SHORTHAND[tolower(trait)])
+  tidied <- gsub("_", " ", trait, fixed = TRUE)
+  all_lower <- !is.na(tidied) & tidied == tolower(tidied)
+  tidied[all_lower] <- sub("^(.)", "\\U\\1", tidied[all_lower], perl = TRUE)
+  ifelse(is.na(override), tidied, override)
+}
+
 # --- Blood traits used by Panel C -------------------------------------------
 BLOOD_TRAITS <- c("eosinophil", "hematocrit", "lymphocyte", "MCH", "MCHC",
                   "monocyte", "neutrophil", "platelet_count", "RDW")
@@ -212,7 +275,25 @@ build_empty_plot <- function() {
     xlim(-1, 1) + ylim(-1, 1) + theme_void()
 }
 
-build_plot <- function(combined) {
+# `label_top`: annotate the n highest-count traits per category in the count
+# facet with their trait_label(); `Inf` labels every trait. 0 (the default)
+# reproduces the unlabelled panel exactly. Every label sits at the same place —
+# right-aligned in a column reserved past the end of the longest bar, so every
+# label shares one x and none of them collides with a bar. The count axis is
+# extended to make room, which is the only way the column can hold: a bar that
+# stops part-way through a label leaves the label straddling bar and background,
+# and no single text colour is legible on both.
+# The width the column needs is estimated per label from its character count.
+# `label_char_frac` is the width of one character as a fraction of the count-axis
+# range and `label_gap` the clearance between the longest bar and the column, both
+# as fractions of that range. They track `label_size` and the panel geometry, so
+# retune them if either changes — the symptom is a label touching its bar.
+build_plot <- function(combined, label_top = 0, label_char_frac = 0.0165,
+                       label_gap = 0.03, label_size = 2.8) {
+  if (length(label_top) != 1 || is.na(label_top) || label_top < 0 ||
+      (is.finite(label_top) && label_top != as.integer(label_top)))
+    stop("label_top must be a non-negative integer, or Inf for every trait.",
+         call. = FALSE)
   colors <- complete_category_colors(combined$trait_category)
   plotdat <- combined %>%
     group_by(trait_category) %>%
@@ -224,6 +305,7 @@ build_plot <- function(combined) {
     ungroup() %>%
     mutate(
       trait_category = forcats::fct_drop(forcats::fct_reorder(trait_category, count, .fun = sum)),
+      trait_raw      = trait,
       trait          = reorder_within(trait, count, trait_category),
       base_col       = unname(colors[as.character(trait_category)]))
 
@@ -234,6 +316,45 @@ build_plot <- function(combined) {
   seg  <- plotdat %>% count(trait_category, name = "nbar") %>% mutate(metric = "a_count")
   vref <- tibble(metric = "b_rate", xi = median(plotdat$pct_coloc_union, na.rm = TRUE))
   metric_labels <- c(a_count = "Colocalizing Genes", b_rate = "CS coloc rate ")
+
+  count_max <- max(plotdat$count)
+  count_scale <- scale_x_continuous()
+  label_layer <- list()
+  if (label_top > 0) {
+    labdat <- plotdat %>%
+      group_by(trait_category) %>%
+      # slice_max() needs a constant n, so Inf ("label everything") becomes the
+      # row count, which is an upper bound on any single category's size.
+      slice_max(count, n = min(label_top, nrow(plotdat)), with_ties = FALSE) %>%
+      ungroup() %>%
+      mutate(metric = "a_count", label = trait_label(trait_raw))
+    # Reserve a column for the labels by extending the count axis past the
+    # longest bar, so every label clears the bar on its own row and they can all
+    # share one x. Solving `count + width(label) + gap <= axis_max` per row, with
+    # width and gap expressed as fractions of the axis, gives the bound below;
+    # the binding row is usually the longest bar, not the longest label.
+    label_x <- max(labdat$count /
+                     (1 - label_char_frac * nchar(labdat$label) - label_gap))
+    labdat$x <- label_x
+    # Tick only the data range: the reserved column is a layout device, not
+    # values, and a break out there both implies data and collides with the rate
+    # facet's "0%" across the 8pt panel gap.
+    brks <- scales::extended_breaks()(c(0, count_max))
+    count_scale <- scale_x_continuous(breaks = brks[brks <= count_max])
+    # The harmonized coloc table carries near-duplicate trait strings from
+    # different GWAS sources ("Asthma" and "asthma"), which collapse to the same
+    # label on adjacent rows. That is what the data says, but it reads as a
+    # mistake, so name them rather than letting them pass silently.
+    dup_labels <- labdat %>% count(trait_category, label) %>% filter(n > 1)
+    if (nrow(dup_labels) > 0)
+      message("Repeated trait label(s) within a category: ",
+              paste(sprintf("%s/%s x%d", dup_labels$trait_category,
+                            dup_labels$label, dup_labels$n), collapse = ", "))
+    label_layer <- geom_text(data = labdat, inherit.aes = FALSE,
+                             aes(x = x, y = trait, label = label),
+                             colour = "grey25", hjust = 1, size = label_size,
+                             family = FONT, show.legend = FALSE)
+  }
   category_labeller <- c(GROUP_LABELS, setNames(
     setdiff(as.character(unique(plotdat$trait_category)), names(GROUP_LABELS)),
     setdiff(as.character(unique(plotdat$trait_category)), names(GROUP_LABELS))))
@@ -241,6 +362,7 @@ build_plot <- function(combined) {
   ggplot(long, aes(y = trait)) +
     geom_col(data = ~ subset(.x, metric == "a_count"),
              aes(x = value, fill = fill_col), width = 0.85, show.legend = FALSE) +
+    label_layer +
     geom_segment(data = seg, inherit.aes = FALSE,
                  aes(y = 0.5, yend = nbar + 0.5, x = xline, xend = xline),
                  color = "grey60", linewidth = 0.5) +
@@ -256,7 +378,7 @@ build_plot <- function(combined) {
                  trait_category = as_labeller(category_labeller, default = label_value),
                  metric = as_labeller(metric_labels))) +
     ggh4x::facetted_pos_scales(x = list(
-      scale_x_continuous(),
+      count_scale,
       scale_x_continuous(labels = function(x) paste0(x, "%"),
                          expand = expansion(mult = c(0, 0.08))))) +
     ggh4x::force_panelsizes(cols = c(3, 1.3)) +
@@ -267,8 +389,11 @@ build_plot <- function(combined) {
           axis.line.y = element_blank(),
           panel.spacing.x = grid::unit(8, "pt"), panel.spacing.y = grid::unit(2, "pt"),
           strip.placement = "outside", strip.background = element_blank(),
+          # Bold on the column headers only. The trait-category strips down the
+          # side are already set apart by size and the grey rule beside them, and
+          # bolding them too made the panel read as all heading.
           strip.text.y.left = element_text(angle = 0, hjust = 1, size = 12),
-          strip.text.x = element_text(size = 12))
+          strip.text.x = element_text(size = 12, face = "bold"))
 }
 
 # Builder: the per-trait coloc table (lenient union rate, matching the figure).
@@ -395,7 +520,8 @@ plot_qq <- function(qq_data) {
     scale_colour_manual(values = c("Matched non-colocalized genes" = "#2B2B2B",
                                    "Colocalized genes" = "#275D8E"), name = NULL) +
     guides(colour = guide_legend(override.aes = list(shape = 16, size = 2.5, alpha = 1))) +
-    labs(x = expression(Expected ~ -log[10](P)), y = expression(Observed ~ -log[10](P))) +
+    labs(x = expression(Expected ~ TWAS ~ -log[10](P)),
+         y = expression(Observed ~ TWAS ~ -log[10](P))) +
     theme_classic(base_size = 12) +
     theme(strip.background = element_blank(), strip.text = element_text(size = 12),
           panel.spacing = grid::unit(2, "lines"), legend.position = "top",
