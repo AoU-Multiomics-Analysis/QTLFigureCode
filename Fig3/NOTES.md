@@ -207,6 +207,42 @@ Limitations carried deliberately:
 - **`max_af` NA behaviour is inherited** from `coloc_model_input()` — a variant
   missing any one per-ancestry frequency drops out.
 
+### The carrier floor is 5, not 10
+
+`fit_feature_enrichment()`'s `min_carriers` (and `.enrich_pairs()`'s own
+default, which threads it through) was **10**, chosen against an earlier
+figure that produced infinite odds ratios from separated fits. Measured
+empirically on the real staged data at both values:
+
+| | floor 10 | floor 5 |
+|---|---|---|
+| tests fitted | 106 | 124 |
+| FDR-significant | 34 | **40** |
+| features lost relative to floor 10 | — | **none** |
+
+Every feature significant at floor 10 is still significant at floor 5, so
+lowering the floor is a strict gain: six additional FDR-significant features,
+with no loss. Four of the six are substantial (n = 18–44 carriers) and
+include the largest effects in the study — `stop_gained` (OR 6.80),
+`frameshift_variant` (OR 6.58), `splice_acceptor_variant` (OR 7.31). The
+remaining two rest on very few carriers and are fragile:
+
+- analysis B's `stop_gained`, n = 7, CI [1.71, 13.55]
+- analysis B's `frameshift_variant`, n = 8, CI [2.68, 18.55]
+
+Both are still worth showing — the effect sizes are large and consistent
+with the truncating-variant biology of the four substantial features above —
+but with only 7–8 carriers behind them they are **leads, not stable
+estimates**. Rather than hide that distinction in the data (or drop the
+floor further, or leave it at 10 and lose real findings), any row with
+`n_carriers < 10` is rendered visually weaker (reduced alpha, `low_n` in
+`build_panelE()`) in both panel E's scatter and the
+`enrichment_forest_panel()` supplement, with a caption noting the
+distinction, so a reader sees at a glance which points are estimates and
+which are leads. The 10-carrier visual cutoff is deliberately kept at the
+OLD statistical floor value, now repurposed as a legibility threshold rather
+than an inclusion threshold.
+
 ### Analysis B now uses continuous log10 MAF instead of a binary `rare` outcome
 
 Panel E's underlying enrichment fits two analyses per assay pair (see

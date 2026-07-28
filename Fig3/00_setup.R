@@ -537,6 +537,17 @@ feature_names <- function(d)
 # unstable estimates -- the infinite odds ratios that silently vanished from
 # Fig1 panel H. Dropped features are named in a message rather than disappearing.
 #
+# The floor is 5, not 10. Measured empirically on the real staged data at both
+# values: floor 10 fits 106 tests / 34 FDR-significant; floor 5 fits 124 tests
+# / 40 FDR-significant, and every feature significant at floor 10 is STILL
+# significant at floor 5 -- lowering it gains six findings (four substantial,
+# n = 18-44, including the study's largest effects: stop_gained OR 6.80,
+# frameshift_variant OR 6.58, splice_acceptor_variant OR 7.31) and loses
+# nothing. Two of the six gained features rest on very few carriers (analysis
+# B's stop_gained n=7, frameshift_variant n=8) and are rendered as leads, not
+# estimates, by build_panelE()/enrichment_forest_panel() below (n_carriers <
+# 10 -> hollow/low-alpha point). See Fig3/NOTES.md.
+#
 # `family` selects the outcome model:
 #   "binomial" (default) -- outcome is logical, estimate is an odds ratio.
 #     The carrier floor requires min_carriers in EVERY cell of table(feature,
@@ -547,7 +558,7 @@ feature_names <- function(d)
 #     of the feature itself (table(feature)).
 # In both cases the estimate/CI reported is for the feature's own coefficient,
 # adjusted for PIP_qtl + log10(cs_size_med).
-fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10,
+fit_feature_enrichment <- function(d, outcome, features, min_carriers = 5,
                                    family = c("binomial", "gaussian")) {
   family <- match.arg(family)
   empty <- tibble::tibble(feature = character(), odds_ratio = numeric(),
@@ -881,7 +892,7 @@ UNDERPOWERED_FRAC <- 0.5
 # build_or_cache() keys its cache file on NAME ONLY, so a non-default
 # min_carriers passed to the public function could silently read back a
 # stale cache built under a different floor.
-.enrich_pairs <- function(v, min_carriers = 10) {
+.enrich_pairs <- function(v, min_carriers = 5) {
   feats <- feature_names(v)
   message("  ", length(feats), " candidate features")
 
@@ -966,41 +977,63 @@ coloc_feature_enrichment <- function(refresh = FALSE)
 build_panelE <- function(enr) {
   pairs_needed <- c("eQTL-pQTL", "eQTL-sQTL")
 
+  # n_carriers rides along only if the caller's frame carries it (the
+  # documented coloc_feature_enrichment() schema always does; a hand-built
+  # test fixture exercising only the pivot/filter logic may not). Missing it
+  # degrades gracefully to "nothing is low-n" rather than erroring.
+  has_n <- "n_carriers" %in% names(enr)
+  value_cols <- c("log_or", "sig", if (has_n) "n_carriers")
+
   wide <- enr %>%
     filter(analysis == "A", pair %in% pairs_needed) %>%
     mutate(log_or = log2(odds_ratio), sig = padj < 0.05) %>%
-    select(analysis, feature, pair, log_or, sig) %>%
-    tidyr::pivot_wider(names_from = pair,
-                       values_from = c(log_or, sig))
+    select(analysis, feature, pair, all_of(value_cols)) %>%
+    tidyr::pivot_wider(names_from = pair, values_from = all_of(value_cols))
 
-  # pivot_wider() only creates a `log_or_<pair>`/`sig_<pair>` column for a
-  # pair value actually present in the (already analysis-A-only) input.
-  # coloc_feature_enrichment() can legitimately return zero rows (nothing
-  # clears the carrier floor -- exactly what the small test fixture does),
-  # or rows for only one of the two required pairs, in which case one or
-  # both expected columns never appear. Add any missing one as all-NA so the
-  # filter/aes() below have something to reference instead of erroring on a
-  # column that doesn't exist -- an all-NA column drops every row from the
+  # pivot_wider() only creates a `log_or_<pair>`/`sig_<pair>`/`n_carriers_<pair>`
+  # column for a pair value actually present in the (already analysis-A-only)
+  # input. coloc_feature_enrichment() can legitimately return zero rows
+  # (nothing clears the carrier floor -- exactly what the small test fixture
+  # does), or rows for only one of the two required pairs, in which case one
+  # or both expected columns never appear. Add any missing one as all-NA so
+  # the filter/aes() below have something to reference instead of erroring on
+  # a column that doesn't exist -- an all-NA column drops every row from the
   # !is.na() filter next, which is the correct behaviour: no feature can be
   # plotted without both pairs.
   needed_cols <- paste0(c("log_or_", "sig_"), rep(pairs_needed, each = 2))
+  if (has_n) needed_cols <- c(needed_cols, paste0("n_carriers_", pairs_needed))
   for (col in setdiff(needed_cols, names(wide))) wide[[col]] <- NA
 
   wide <- wide %>%
     filter(!is.na(`log_or_eQTL-pQTL`), !is.na(`log_or_eQTL-sQTL`))
 
+  # A result resting on fewer than 10 carriers in EITHER contributing pair is
+  # a lead, not a stable estimate (this is exactly the floor
+  # fit_feature_enrichment() checks per-fit; see its min_carriers comment).
+  # Rendered with reduced alpha rather than dropped, so it stays visible
+  # without reading as equally reliable to a normal point.
+  wide$low_n <- if (has_n)
+    pmin(wide[["n_carriers_eQTL-pQTL"]], wide[["n_carriers_eQTL-sQTL"]], na.rm = TRUE) < 10
+  else
+    FALSE
+
   ggplot(wide, aes(`log_or_eQTL-pQTL`, `log_or_eQTL-sQTL`)) +
     geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey60") +
     geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey85") +
     geom_vline(xintercept = 0, linewidth = 0.25, colour = "grey85") +
-    geom_point(aes(fill = `sig_eQTL-pQTL` & `sig_eQTL-sQTL`),
+    geom_point(aes(fill = `sig_eQTL-pQTL` & `sig_eQTL-sQTL`, alpha = low_n),
                shape = 21, size = 3.4, stroke = 0.4, colour = "grey25") +
     ggrepel::geom_text_repel(aes(label = feature), size = 3, max.overlaps = 12,
                              segment.colour = "grey70") +
     scale_fill_manual(values = c(`TRUE` = "#364B63", `FALSE` = "grey85"),
                       name = "FDR < 0.05 in both") +
+    # FALSE (n_carriers >= 10 in both pairs) keeps the default alpha of 1, so
+    # a normal point's appearance is exactly what it was before this scale
+    # existed; only a low-n point is faded.
+    scale_alpha_manual(values = c(`TRUE` = 0.35, `FALSE` = 1), guide = "none") +
     labs(x = "Adjusted log2 OR — eQTL-pQTL",
-         y = "Adjusted log2 OR — eQTL-sQTL") +
+         y = "Adjusted log2 OR — eQTL-sQTL",
+         caption = "Faint points: fewer than 10 carriers in at least one contributing pair -- a lead, not a stable estimate.") +
     theme(legend.position = "bottom")
 }
 
@@ -1048,8 +1081,13 @@ enrichment_forest_panel <- function(d, title) {
   else
     "Adjusted odds ratio"
 
+  # n_carriers is part of the documented schema (always present on real
+  # output); guard defensively in case a hand-built frame omits it, in which
+  # case nothing is treated as low-n.
+  low_n <- if ("n_carriers" %in% names(d)) d$n_carriers < 10 else FALSE
+
   ggplot(d, aes(x = odds_ratio, y = reorder(feature, odds_ratio),
-                colour = flagged)) +
+                colour = flagged, alpha = low_n)) +
     geom_vline(xintercept = 1, linetype = "dashed", colour = "grey60") +
     geom_pointrange(aes(xmin = conf.low, xmax = conf.high), size = 0.35) +
     facet_wrap(~pair, nrow = 1) +
@@ -1057,6 +1095,14 @@ enrichment_forest_panel <- function(d, title) {
     # Grey = the pair was flagged underpowered for this analysis.
     scale_colour_manual(values = c(`FALSE` = "#364B63", `TRUE` = "grey70"),
                         guide = "none") +
-    labs(x = x_lab, y = NULL, title = title) +
+    # Faint = this ROW individually rests on fewer than 10 carriers (a lead,
+    # not a stable estimate) -- independent of the pair-level `flagged`
+    # colour above, which is about how many of the pair's candidate features
+    # cleared the carrier floor at all, not about any one surviving
+    # feature's own n. FALSE (n_carriers >= 10) keeps the default alpha of
+    # 1, so a normal point's appearance is unchanged by this scale.
+    scale_alpha_manual(values = c(`TRUE` = 0.4, `FALSE` = 1), guide = "none") +
+    labs(x = x_lab, y = NULL, title = title,
+         caption = "Faint points rest on fewer than 10 carriers -- a lead, not a stable estimate.") +
     theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
 }

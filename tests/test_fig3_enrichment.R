@@ -173,7 +173,7 @@ sim <- data.frame(
   # `hit` is strongly associated with the outcome; `dud` is not.
   hit         = rep(c(TRUE, FALSE), each = n / 2),
   dud         = sample(c(TRUE, FALSE), n, replace = TRUE),
-  # `thin` has only 4 carriers -- below the floor of 10.
+  # `thin` has only 4 carriers -- below the (current default) floor of 5.
   thin        = c(rep(TRUE, 4), rep(FALSE, n - 4)))
 sim$outcome <- c(rbinom(n / 2, 1, 0.65), rbinom(n / 2, 1, 0.20)) == 1L
 
@@ -200,8 +200,9 @@ ok("no surviving feature returns a zero-row frame of the right shape",
    nrow(fit_feature_enrichment(sim, "outcome", "thin")) == 0L)
 
 # --- a per-feature fit/profile failure is isolated, not fatal --------------
-# `separated` clears the >=10-carrier floor (its smallest table(x, outcome)
-# cell is well above 10) but is constructed so that INCLUDING it as a glm
+# `separated` clears the carrier floor (its smallest table(x, outcome) cell
+# is well above the current default of 5) but is constructed so that
+# INCLUDING it as a glm
 # covariate makes the outcome perfectly linearly separable: rows with
 # `separated == TRUE` flip to TRUE past a PIP_qtl of 0.3, rows with
 # `separated == FALSE` flip past 0.7. An additive glm term represents that
@@ -238,17 +239,23 @@ ok("the separated feature's failure is NAMED in a message, not swallowed",
 enr <- coloc_feature_enrichment(refresh = TRUE)
 
 # The 9-row Fig3 fixture (see tests/fixtures.R) is sized for panels C/D's
-# per-MAF-bin regressions, not for a 10-carrier floor applied within a single
-# assay pair: min(table(feature, outcome)) can never reach 10 out of 9 total
-# rows, so it is expected (not a bug) that no (analysis, pair) combination
-# here survives fit_feature_enrichment()'s carrier floor. The assertions
-# below therefore check the SHAPE of the result unconditionally, and check
-# per-row properties only if any rows happen to exist -- exactly per the
-# "do not depend on every combination succeeding" contract.
+# per-MAF-bin regressions, not for meaningfully covering the carrier floor
+# within a single assay pair. At the OLD floor of 10, min(table(feature,
+# outcome)) could never reach 10 out of 9 total rows, so nothing ever
+# survived. At the current default of 5 it clears for exactly one
+# (analysis, pair, feature) combination -- analysis B / eQTL-pQTL /
+# tss_proximal, n_carriers = 5 -- and nothing for analysis A, so `enr` here
+# is a well-formed 1-row frame, not the fully-empty one the old floor
+# produced. The assertions below therefore check the SHAPE of the result
+# unconditionally, and check per-row properties only if any rows happen to
+# exist -- exactly per the "do not depend on every combination succeeding"
+# contract; they do NOT assume both analyses necessarily appear on a
+# fixture this small (the `.enrich_pairs()` synthetic-matrix block below
+# covers that property on a properly-sized input instead).
 ok("the documented columns are all present",
    all(c("analysis", "pair", "feature", "odds_ratio", "conf.low", "conf.high",
          "p.value", "padj", "n_carriers", "flagged") %in% names(enr)))
-ok("coloc_feature_enrichment() returns a well-formed tibble even when the fixture is too small for any feature to survive",
+ok("coloc_feature_enrichment() returns a well-formed tibble even when the fixture is too small for full coverage",
    is.data.frame(enr))
 ok("only the documented analysis labels ever appear",
    all(unique(enr$analysis) %in% c("A", "B")))
@@ -257,7 +264,6 @@ ok("both analyses return the SAME columns",
              sort(names(enr[enr$analysis == "B", ]))))
 
 if (nrow(enr)) {
-  ok("both analyses are present", setequal(unique(enr$analysis), c("A", "B")))
   ok("padj is FDR within (analysis, pair), so never below the raw p",
      all(enr$padj >= enr$p.value - 1e-9))
   ok("flagged is logical", is.logical(enr$flagged))
@@ -265,16 +271,18 @@ if (nrow(enr)) {
      all(is.finite(enr$odds_ratio)))
 } else {
   message("  note: the fixture is too small for any (analysis, pair) ",
-          "combination to clear the 10-carrier floor; coloc_feature_enrichment() ",
+          "combination to clear the 5-carrier floor; coloc_feature_enrichment() ",
           "still returned a well-formed zero-row tibble of the documented shape.")
   ok("flagged column is logical-typed even with zero rows", is.logical(enr$flagged))
 }
 
 # --- .enrich_pairs() orchestration on a synthetic feature matrix ------------
-# The real Fig3 fixture (9 rows) can never clear the 10-carrier floor, so the
-# block above is schema-only -- deleting the FDR line, reverting `flagged`'s
-# denominator, or dropping the `rare` exclusion from B would all leave `enr`
-# an identical 0-row tibble there. This block builds a small, fully
+# The real Fig3 fixture (9 rows) barely clears the current default 5-carrier
+# floor (exactly 1 row, analysis B only -- see the builder block above), so
+# it is still far too thin to exercise the orchestration for real: deleting
+# the FDR line, reverting `flagged`'s denominator, or dropping the `rare`
+# exclusion from B could all still leave `enr` looking plausible on a single
+# row. This block builds a small, fully
 # deterministic feature matrix by hand (in the spirit of `sim` above) and
 # calls the pure `.enrich_pairs(v, min_carriers = ...)` helper directly --
 # bypassing coloc_variant_level()/build_feature_matrix() and the memoized
@@ -590,5 +598,118 @@ ok("an ordinary feature name still works alongside it in the same call (gaussian
 ok("the digit-leading feature's coefficient reflects its known strong effect, not swapped with PLS's (gaussian)",
    abs(res_digit_g$odds_ratio[res_digit_g$feature == "3_prime_UTR_variant"] -
        res_digit_g$odds_ratio[res_digit_g$feature == "PLS"]) > 0.5)
+
+# --- the carrier floor is 5, not 10 -----------------------------------------
+# Measured on the real staged data (see NOTES.md and fit_feature_enrichment()'s
+# comment): floor 10 -> 34 FDR-significant features, floor 5 -> 40, and every
+# floor-10 significant feature survives at floor 5. These tests pin the two
+# edges of that change directly against fit_feature_enrichment(), independent
+# of the real data.
+
+# A feature with 5-9 total carriers: dropped at the OLD default (10), tested
+# at the CURRENT default (5). Uses family = "gaussian" (analysis B's path) so
+# the floor applies directly to table(feature) -- i.e. the total carrier
+# count -- rather than to a 2x2 cell that a total-carrier count alone does not
+# pin down.
+set.seed(3030)
+n5 <- 200
+mid_frame <- data.frame(
+  PIP_qtl     = runif(n5, 0.1, 0.9),
+  cs_size_med = sample(2:40, n5, replace = TRUE),
+  # `mid` has exactly 7 carriers: inside [5, 9], the band this task adds
+  # coverage for.
+  mid         = c(rep(TRUE, 7), rep(FALSE, n5 - 7)))
+mid_frame$outcome <- rnorm(n5, ifelse(mid_frame$mid, 5, 0), 1)
+
+res_mid_default <- fit_feature_enrichment(mid_frame, "outcome", "mid", family = "gaussian")
+ok("a feature with 7 carriers (5-9 band) is TESTED at the current default floor of 5",
+   "mid" %in% res_mid_default$feature)
+ok("its reported n_carriers is 7",
+   res_mid_default$n_carriers[res_mid_default$feature == "mid"] == 7L)
+
+msg_mid_old <- capture.output(
+  res_mid_old <- fit_feature_enrichment(mid_frame, "outcome", "mid",
+                                        family = "gaussian", min_carriers = 10),
+  type = "message")
+ok("the SAME feature would have been dropped under the old default of 10",
+   !"mid" %in% res_mid_old$feature)
+ok("...and named in the dropped-feature message under the old floor",
+   any(grepl("mid", msg_mid_old)))
+
+# A feature with fewer than 5 carriers is still dropped at the current
+# default, and still named in the message -- the floor moved, it did not
+# disappear.
+set.seed(3031)
+verylow_frame <- data.frame(
+  PIP_qtl     = runif(n5, 0.1, 0.9),
+  cs_size_med = sample(2:40, n5, replace = TRUE),
+  verylow     = c(rep(TRUE, 3), rep(FALSE, n5 - 3)))
+verylow_frame$outcome <- rnorm(n5, ifelse(verylow_frame$verylow, 5, 0), 1)
+
+msg_verylow <- capture.output(
+  res_verylow <- fit_feature_enrichment(verylow_frame, "outcome", "verylow",
+                                        family = "gaussian"),
+  type = "message")
+ok("a feature with 3 carriers (below the current floor of 5) is still dropped",
+   !"verylow" %in% res_verylow$feature)
+ok("...and is still named in the dropped-feature message",
+   any(grepl("verylow", msg_verylow)))
+
+# --- low-n points render distinctly but do not disappear -------------------
+# build_panelE() and enrichment_forest_panel() must both keep rendering when
+# their input mixes low-n (n_carriers < 10, a lead) and normal-n rows -- the
+# whole point of task 2 is that low-n results stay ON the plot, visually
+# weaker, rather than being filtered out like the carrier floor filters out
+# sub-floor features upstream.
+mix_panelE <- tibble::tibble(
+  analysis   = rep("A", 4),
+  pair       = rep(c("eQTL-pQTL", "eQTL-sQTL"), 2),
+  feature    = rep(c("f_lo", "f_hi"), each = 2),
+  odds_ratio = c(2.0, 1.8, 3.0, 2.5),
+  padj       = c(0.01, 0.01, 0.02, 0.02),
+  # f_lo: min(6, 20) = 6 < 10 -> a lead. f_hi: min(25, 30) = 25 >= 10 -> normal.
+  n_carriers = c(6L, 20L, 25L, 30L))
+
+p_mixE <- build_panelE(mix_panelE)
+ok("build_panelE() returns a ggplot object on a mix of low-n and normal-n rows",
+   inherits(p_mixE, "ggplot"))
+ok("build_panelE() keeps BOTH the low-n and normal-n feature (nothing is dropped for low n)",
+   setequal(p_mixE$data$feature, c("f_lo", "f_hi")))
+ok("build_panelE() flags the low-carrier feature as low_n and leaves the normal one alone",
+   isTRUE(p_mixE$data$low_n[p_mixE$data$feature == "f_lo"]) &&
+   isFALSE(p_mixE$data$low_n[p_mixE$data$feature == "f_hi"]))
+
+built_mixE <- try(ggplot2::ggplot_build(p_mixE), silent = TRUE)
+ok("build_panelE() renders without error on a mix of low-n and normal-n rows",
+   !inherits(built_mixE, "try-error"))
+alpha_mixE <- built_mixE$data[[which(vapply(p_mixE$layers, function(l)
+  inherits(l$geom, "GeomPoint"), logical(1)))]]$alpha
+ok("the low-n point is rendered at reduced alpha and the normal-n point is unchanged (alpha 1)",
+   isTRUE(all.equal(sort(alpha_mixE), sort(c(0.35, 1)))))
+
+mix_forest <- tibble::tibble(
+  analysis      = rep("A", 3),
+  pair          = c("eQTL-pQTL", "eQTL-pQTL", "eQTL-sQTL"),
+  feature       = c("f1", "f2", "f3"),
+  odds_ratio    = c(2.0, 3.0, 1.5),
+  conf.low      = c(1.1, 1.5, 0.9),
+  conf.high     = c(3.6, 5.0, 2.4),
+  p.value       = c(0.01, 0.001, 0.2),
+  padj          = c(0.01, 0.001, 0.2),
+  n_carriers    = c(6L, 25L, 40L),     # f1 is a lead, f2/f3 are normal
+  flagged       = c(FALSE, FALSE, FALSE),
+  estimate_type = "odds_ratio")
+
+p_mix_forest <- enrichment_forest_panel(mix_forest, "A")
+ok("enrichment_forest_panel() returns a ggplot object on a mix of low-n and normal-n rows",
+   inherits(p_mix_forest, "ggplot"))
+
+built_mix_forest <- try(ggplot2::ggplot_build(p_mix_forest), silent = TRUE)
+ok("enrichment_forest_panel() renders without error on a mix of low-n and normal-n rows",
+   !inherits(built_mix_forest, "try-error"))
+alpha_mix_forest <- built_mix_forest$data[[which(vapply(p_mix_forest$layers, function(l)
+  inherits(l$geom, "GeomPointrange"), logical(1)))]]$alpha
+ok("the low-n row (f1, n_carriers = 6) is rendered at reduced alpha; the normal-n rows are alpha 1",
+   isTRUE(all.equal(sort(alpha_mix_forest), sort(c(0.4, 1, 1)))))
 
 cat("test_fig3_enrichment.R: all assertions passed\n")
