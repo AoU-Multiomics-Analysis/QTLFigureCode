@@ -91,13 +91,25 @@ sits in the bottom-right corner, and the right-hand scale expansion widened
 from 0.18 to 0.34 so "Duplication-like" clears the panel edge. The anchors are
 computed from the data, so the legend stays in the corner if the counts change.
 
-## Panels E and F — tag spacing
+## Panels E and F — tag placement
 
 E and F share a narrow middle column, and their tags landed against both the
-panel content above them and panel D to the left. The `E / F` composite now
-carries `plot.margin = margin(t = 34, r = 10, b = 6, l = 70)` applied with `&`
-so it reaches both sub-plots; patchwork draws each tag inside the plot margin,
-so widening top and left is what gives the letters room.
+panel content above them and panel D to the left. Rather than buying room with
+a large margin -- which also pushed E and F apart -- the tags are moved out to
+the top-left corner of each plot with `plot.tag.position = c(0, 1)`, and the
+margins are kept small: `margin(t = 26, r = 10, b = 6, l = 24)`, applied with
+`&` so it reaches both sub-plots.
+
+**`plot.tag.position` resolves relative to the PANEL region, not the outer
+margin.** Widening `l` moves the tag right along with the panel, so it cannot
+be used to separate the tag from a y-axis title. Verified empirically at
+`l = 140`: the tag stayed locked against E's title.
+
+That matters here because panel E's rotated "Outlier Enrichment" title spans
+its whole (short) panel height and ends exactly where F's tag begins. The
+clearance therefore has to come from the vertical gap: `t = 26` is the smallest
+value at which the F tag clears the title -- at `t = 22` the glyphs touch.
+Shortening E's y-axis title is the only way to close the gap further.
 
 ## Panel F — the grey bands were ~10x too dark (overplotting, not colour)
 
