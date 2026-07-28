@@ -118,4 +118,40 @@ ok("the separated (unfittable) feature is absent from the results",
 ok("the separated feature's failure is NAMED in a message, not swallowed",
    any(grepl("separated", msg2)))
 
+# --- builder ----------------------------------------------------------------
+enr <- coloc_feature_enrichment(refresh = TRUE)
+
+# The 9-row Fig3 fixture (see tests/fixtures.R) is sized for panels C/D's
+# per-MAF-bin regressions, not for a 10-carrier floor applied within a single
+# assay pair: min(table(feature, outcome)) can never reach 10 out of 9 total
+# rows, so it is expected (not a bug) that no (analysis, pair) combination
+# here survives fit_feature_enrichment()'s carrier floor. The assertions
+# below therefore check the SHAPE of the result unconditionally, and check
+# per-row properties only if any rows happen to exist -- exactly per the
+# "do not depend on every combination succeeding" contract.
+ok("the documented columns are all present",
+   all(c("analysis", "pair", "feature", "odds_ratio", "conf.low", "conf.high",
+         "p.value", "padj", "n_carriers", "flagged") %in% names(enr)))
+ok("coloc_feature_enrichment() returns a well-formed tibble even when the fixture is too small for any feature to survive",
+   is.data.frame(enr))
+ok("only the documented analysis labels ever appear",
+   all(unique(enr$analysis) %in% c("A", "B")))
+ok("both analyses return the SAME columns",
+   identical(sort(names(enr[enr$analysis == "A", ])),
+             sort(names(enr[enr$analysis == "B", ]))))
+
+if (nrow(enr)) {
+  ok("both analyses are present", setequal(unique(enr$analysis), c("A", "B")))
+  ok("padj is FDR within (analysis, pair), so never below the raw p",
+     all(enr$padj >= enr$p.value - 1e-9))
+  ok("flagged is logical", is.logical(enr$flagged))
+  ok("odds ratios are finite -- the carrier floor rules out separation",
+     all(is.finite(enr$odds_ratio)))
+} else {
+  message("  note: the fixture is too small for any (analysis, pair) ",
+          "combination to clear the 10-carrier floor; coloc_feature_enrichment() ",
+          "still returned a well-formed zero-row tibble of the documented shape.")
+  ok("flagged column is logical-typed even with zero rows", is.logical(enr$flagged))
+}
+
 cat("test_fig3_enrichment.R: all assertions passed\n")
