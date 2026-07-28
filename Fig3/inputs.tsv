@@ -11,6 +11,7 @@ enloc_cs	eQTL-sQTL	Fig3Data/eQTL_sQTL.enloc.sig.out	-
 enloc_variant	eQTL-pQTL	Fig3Data/eQTL_pQTL.enloc.snp.out	-
 enloc_variant	sQTL-pQTL	Fig3Data/sQTL_pQTL.enloc.snp.out	-
 enloc_variant	eQTL-sQTL	Fig3Data/eQTL_sQTL.enloc.snp.out	-
+gene_gtf	-	gencode.v48.annotation.gtf.gz	-
 protein_lod	-	reference/LOD_proportions_per_proteins.tsv	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/LOD_proportions_per_proteins.tsv
 median_tpm	-	reference/median_tpms.tsv.gz	-
 genebayes_shet	-	41588_2024_1820_MOESM4_ESM.xlsx	-

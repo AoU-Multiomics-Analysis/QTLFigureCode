@@ -78,6 +78,10 @@ LAYER_FILL <- c("0" = "#D9D9D9", "1" = "#A9C1D9", "2" = "#7B9AB8", "3" = "#57759
 SIGNAL_FILL <- c("0" = "#E9DCDC", "1" = "#D8BBBB", "2" = "#C89A9A", "3" = "#B37979",
                  "4" = "#9E5E5E", "5" = "#8A4D4D", "6" = "#763F3F", "7" = "#643232")
 
+# Symmetric colocalization background + panel E (fig3/symmetric.R).
+# Sourced here so every panel/supplement script gets it from 00_setup.R alone.
+source("fig3/symmetric.R")
+
 # Per-ancestry allele-frequency columns, used to derive a per-variant maximum
 # MAF. They ride along on the annotated SuSiE tables, which is why Fig3 no
 # longer reads the standalone AoU annotation table (see NOTES.md). Named
@@ -90,8 +94,28 @@ AF_POP_COLS <- c("gvs_afr_af", "gvs_amr_af", "gvs_eas_af", "gvs_eur_af",
 # SuSiE tables.
 FEATURE_CCRE_COLS <- c("PLS", "pELS", "dELS", "CTCF.bound", "CTCF.only",
                        "DNase.H3K4me3", "FANTOM5")
-# Extra columns the enrichment needs beyond the base fine-mapping fields.
-FEATURE_EXTRA_COLS <- c("consequence", "phylop", "distTSS", "gene_type", "cs_size")
+
+# Genuinely VARIANT-level extra columns: confirmed empirically (100,000-variant
+# sample of the real staged data) to carry exactly one distinct value per
+# variant across all three SuSiE tables. Folded into .variant_feature_map()'s
+# one-row-per-variant map, which enforces that with a hard guard.
+FEATURE_VARIANT_COLS <- c("consequence", "phylop")
+
+# GENE-RELATIVE extra columns: these are properties of a variant WITH RESPECT
+# TO A PARTICULAR GENE, not the variant alone -- the same variant sits at a
+# different distance from different genes' TSSs, and can annotate a
+# protein-coding gene under one credible set and a lncRNA under another (on
+# the same 100,000-variant sample: 33,435 variants had >1 distinct distTSS,
+# 26,030 had >1 distinct gene_type). Folding these into the variant-level map
+# is what made its conflict guard fire on real data even though every row was
+# individually correct. Joined separately, keyed on (variant, gene), by
+# .variant_gene_feature_map().
+FEATURE_GENE_REL_COLS <- c("distTSS", "gene_type")
+
+# Union used only for pulling columns out of the raw SuSiE tables (see
+# susie_finemapping()); cs_size rides along too for .variant_feature_map()'s
+# per-variant median (cs_size_med).
+FEATURE_EXTRA_COLS <- c(FEATURE_VARIANT_COLS, FEATURE_GENE_REL_COLS, "cs_size")
 
 # =============================================================================
 # FastENLOC output readers
@@ -379,17 +403,41 @@ coloc_cs_level <- function(refresh = FALSE)
              cs_2 = str_remove(cs_2, "^ENSG[0-9]+:"))
   })
 
-# One row per variant, carrying allele frequencies AND the annotation features
-# panel E's enrichment needs.
+# One row per variant, carrying allele frequencies AND the genuinely
+# VARIANT-level annotation features panel E's enrichment needs. distTSS and
+# gene_type are deliberately EXCLUDED here -- they are properties of a variant
+# relative to a particular gene (a variant can sit near one gene's TSS and far
+# from another's), not the variant alone, so folding them into a one-row-per-
+# variant map made the guard below fire on real, non-conflicting data. They
+# are joined separately, keyed on (variant, gene), by
+# .variant_gene_feature_map().
 #
 # cs_size is a property of a CREDIBLE SET and one variant can sit in several
 # across genes and assays, so the map carries the median over that variant's
 # rows. Keeping exactly one row per variant is what the many-to-one join guard
 # in coloc_variant_level() relies on.
 .variant_feature_map <- function(fm) {
-  keep <- c("variant", AF_POP_COLS, FEATURE_CCRE_COLS, FEATURE_EXTRA_COLS)
-  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL),
-                          function(d) dplyr::select(d, any_of(keep)))) %>%
+  keep <- c("variant", "molecular_trait_id", AF_POP_COLS, FEATURE_CCRE_COLS,
+           FEATURE_VARIANT_COLS, "cs_size")
+
+  # Collapse the tiny number of duplicate (variant, gene) rows a SINGLE SuSiE
+  # table can itself carry -- see NOTES.md's "Duplicate (variant, gene) keys
+  # are collapsed, not rejected": 3 in eQTL, 3 in pQTL (out of 800k+ rows),
+  # an upstream annotation-join artifact (e.g. a variant overlapping two
+  # distinct ENCODE cCRE records, which can disagree on a cCRE flag like
+  # CTCF.bound even though every other variant-level column agrees). "First
+  # row wins" is an arbitrary but DETERMINISTIC tie-break, the same policy
+  # NOTES.md already documents for this exact duplicate class in
+  # coloc_model_input()'s posteriors(). Scoping the collapse to WITHIN one
+  # table, before bind_rows(), is essential: it must never swallow a genuine
+  # disagreement BETWEEN two DIFFERENT assay tables about the same (variant,
+  # gene) -- that is exactly what the guard below exists to catch.
+  per_table <- function(d)
+    dplyr::select(d, any_of(keep)) %>%
+      dplyr::distinct(variant, molecular_trait_id, .keep_all = TRUE)
+
+  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL), per_table)) %>%
+    select(-any_of("molecular_trait_id")) %>%
     # The eQTL reader already repairs "chrchr"; normalise all three here so a
     # stray prefix cannot split one variant into two rows.
     mutate(variant = str_replace(variant, "chrchr", "chr"),
@@ -405,7 +453,9 @@ coloc_cs_level <- function(refresh = FALSE)
 
   # A duplicate here means two SuSiE tables disagree about the same variant's
   # variant-level annotations, which is a genuine upstream inconsistency rather
-  # than something to silently pick a winner for.
+  # than something to silently pick a winner for. (Not FEATURE_GENE_REL_COLS --
+  # those are excluded above precisely because they are gene-relative, not
+  # variant-level, and disagree legitimately across a variant's genes.)
   dup <- unique(af$variant[duplicated(af$variant)])
   if (length(dup))
     stop(length(dup), " variant(s) carry CONFLICTING variant-level values ",
@@ -413,6 +463,45 @@ coloc_cs_level <- function(refresh = FALSE)
          "'. These are properties of the variant alone; resolve the ",
          "disagreement upstream.", call. = FALSE)
   left_join(af, size, by = "variant")
+}
+
+# One row per (variant, gene) pair, carrying the GENE-RELATIVE annotation
+# features panel E's enrichment needs (distTSS, gene_type). These are
+# properties of a variant WITH RESPECT TO a particular gene -- the same
+# variant can be TSS-proximal for one gene and distant from another's, or
+# annotate a protein-coding gene under one credible set and a lncRNA under
+# another -- so they are kept out of .variant_feature_map()'s one-row-per-
+# variant map and joined here instead, keyed on (variant, gene).
+#
+# The gene id is each SuSiE table's `molecular_trait_id`, which
+# susie_finemapping() has already version-stripped to a bare ENSG id for
+# eQTL, sQTL and pQTL alike -- matching coloc_variant_level()'s `Gene`
+# column, itself a bare ENSG id stripped from the enloc Signal (confirmed
+# against the real staged tables; see NOTES.md).
+.variant_gene_feature_map <- function(fm) {
+  keep <- c("variant", "molecular_trait_id", FEATURE_GENE_REL_COLS)
+  raw <- bind_rows(lapply(list(fm$eQTL, fm$sQTL, fm$pQTL),
+                          function(d) dplyr::select(d, any_of(keep)))) %>%
+    mutate(variant = str_replace(variant, "chrchr", "chr")) %>%
+    dplyr::rename(gene = molecular_trait_id)
+
+  raw <- raw[rowSums(!is.na(raw[FEATURE_GENE_REL_COLS])) > 0, , drop = FALSE] %>%
+    distinct()
+
+  # A duplicate here means two SuSiE tables disagree about the same
+  # (variant, gene) pair's gene-relative annotations -- a genuine upstream
+  # inconsistency, not something to silently pick a winner for. Keyed on the
+  # PAIR (not just the variant), mirroring the style of the posterior-join
+  # guard in coloc_model_input()'s join_posteriors().
+  key <- raw[c("variant", "gene")]
+  dup  <- raw[duplicated(key) | duplicated(key, fromLast = TRUE), , drop = FALSE]
+  if (nrow(dup))
+    stop(sum(duplicated(key)), " (variant, gene) pair(s) carry CONFLICTING ",
+         "gene-relative values across the SuSiE fine-mapping tables -- e.g. ",
+         "variant '", dup$variant[1], "', gene '", dup$gene[1], "'. These are ",
+         "properties of the variant RELATIVE TO THAT GENE; resolve the ",
+         "disagreement upstream.", call. = FALSE)
+  raw
 }
 
 # Cut-points for the binarized covariates. Conventional defaults, NOT tuned --
@@ -451,17 +540,50 @@ feature_names <- function(d)
 # SMALLER of its two groups. Below that, glm returns separated or wildly
 # unstable estimates -- the infinite odds ratios that silently vanished from
 # Fig1 panel H. Dropped features are named in a message rather than disappearing.
-fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
+#
+# The floor is 5, not 10. Measured empirically on the real staged data at both
+# values: floor 10 fits 106 tests / 34 FDR-significant; floor 5 fits 124 tests
+# / 40 FDR-significant, and every feature significant at floor 10 is STILL
+# significant at floor 5 -- lowering it gains six findings (four substantial,
+# n = 18-44, including the study's largest effects: stop_gained OR 6.80,
+# frameshift_variant OR 6.58, splice_acceptor_variant OR 7.31) and loses
+# nothing. Two of the six gained features rest on very few carriers (analysis
+# B's stop_gained n=7, frameshift_variant n=8) and are rendered as leads, not
+# estimates, by build_panelE()/enrichment_forest_panel() below (n_carriers <
+# 10 -> hollow/low-alpha point). See Fig3/NOTES.md.
+#
+# `family` selects the outcome model:
+#   "binomial" (default) -- outcome is logical, estimate is an odds ratio.
+#     The carrier floor requires min_carriers in EVERY cell of table(feature,
+#     outcome) (a 2x2 table).
+#   "gaussian" -- outcome is continuous (analysis B's log10 MAF), estimate is
+#     a fold change. There is no outcome-side 2x2 table to floor on, so the
+#     carrier floor instead requires min_carriers observations on BOTH sides
+#     of the feature itself (table(feature)).
+# In both cases the estimate/CI reported is for the feature's own coefficient,
+# adjusted for PIP_qtl + log10(cs_size_med).
+fit_feature_enrichment <- function(d, outcome, features, min_carriers = 5,
+                                   family = c("binomial", "gaussian")) {
+  family <- match.arg(family)
   empty <- tibble::tibble(feature = character(), odds_ratio = numeric(),
                           conf.low = numeric(), conf.high = numeric(),
                           p.value = numeric(), n_carriers = integer())
-  y <- as.logical(d[[outcome]])
   keep <- character(0); dropped <- character(0)
-  for (f in features) {
-    x <- as.logical(d[[f]])
-    tab <- table(x, y)
-    if (nrow(tab) == 2L && ncol(tab) == 2L && min(tab) >= min_carriers)
-      keep <- c(keep, f) else dropped <- c(dropped, f)
+  if (family == "binomial") {
+    y <- as.logical(d[[outcome]])
+    for (f in features) {
+      x <- as.logical(d[[f]])
+      tab <- table(x, y)
+      if (nrow(tab) == 2L && ncol(tab) == 2L && min(tab) >= min_carriers)
+        keep <- c(keep, f) else dropped <- c(dropped, f)
+    }
+  } else {
+    for (f in features) {
+      x   <- as.logical(d[[f]])
+      tab <- table(x)
+      if (length(tab) == 2L && min(tab) >= min_carriers)
+        keep <- c(keep, f) else dropped <- c(dropped, f)
+    }
   }
   if (length(dropped))
     message("  ", length(dropped), " feature(s) below the ", min_carriers,
@@ -482,25 +604,58 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
     tryCatch({
       form <- stats::as.formula(
         sprintf("%s ~ `%s` + PIP_qtl + log10(cs_size_med)", outcome, f))
-      fit <- stats::glm(form, data = d, family = stats::binomial())
+      fit <- if (family == "binomial")
+        stats::glm(form, data = d, family = stats::binomial())
+      else
+        stats::lm(form, data = d)
       ci  <- suppressMessages(stats::confint(fit))
       co  <- summary(fit)$coefficients
       # R's model.matrix names a logical predictor's coefficient
-      # `<variable name>TRUE`, with any backticks used to make an
-      # irregular name syntactic in the formula stripped by the parser --
-      # never `` `<name>`TRUE ``. Match that exact name; a substring
-      # grep() fallback previously "worked" only by the accident of the
-      # feature's row preceding the covariates' rows in this formula's
-      # term order, which is untested and not a real invariant.
-      row <- paste0(f, "TRUE")
-      if (!row %in% rownames(co))
-        stop("coefficient row '", row, "' not found among: ",
+      # `<variable name>TRUE` for a SYNTACTICALLY VALID name (e.g. "PLS" ->
+      # "PLSTRUE"), but for a name the parser cannot write bare -- anything
+      # starting with a digit, e.g. "3_prime_UTR_variant" -- the backticks
+      # this formula wraps every feature in (see sprintf() above) survive
+      # into the term, giving `` `3_prime_UTR_variant`TRUE ``. Which of the
+      # two happens is a property of the name alone, decided once by R's
+      # parser when the formula is built, so there are only ever exactly
+      # these two candidate row names; check both by EXACT match (never a
+      # substring/grep() match -- a feature name can be a substring of
+      # another model term, e.g. "qtl" inside "PIP_qtl") and never index
+      # with NA.
+      row_bare  <- paste0(f, "TRUE")
+      row_ticked <- paste0("`", f, "`TRUE")
+      row <- if (row_bare %in% rownames(co)) row_bare
+             else if (row_ticked %in% rownames(co)) row_ticked
+             else NA_character_
+      if (is.na(row))
+        stop("coefficient row for feature '", f, "' not found (tried '",
+             row_bare, "' and '", row_ticked, "') among: ",
              paste(rownames(co), collapse = ", "))
+
+      if (family == "binomial") {
+        est <- unname(exp(stats::coef(fit)[row]))
+        lo  <- unname(exp(ci[row, 1]))
+        hi  <- unname(exp(ci[row, 2]))
+      } else {
+        # Analysis B's coefficient is on log10(MAF): negative means carriers
+        # sit at LOWER MAF, i.e. rarer. Transform by 10^(-x) so "carriers are
+        # rarer" reports a value ABOVE 1, matching analysis A's "enriched
+        # among colocalizing variants" direction -- both analyses then read
+        # the same way on a log axis with a reference line at 1. Negating
+        # SWAPS which raw bound is smaller, so the transformed CI bounds are
+        # explicitly re-sorted rather than assumed to keep their order.
+        raw_lo <- unname(ci[row, 1]); raw_hi <- unname(ci[row, 2])
+        est <- 10^(-unname(stats::coef(fit)[row]))
+        transformed <- 10^(-c(raw_lo, raw_hi))
+        lo <- min(transformed)
+        hi <- max(transformed)
+      }
+
       tibble::tibble(
         feature    = f,
-        odds_ratio = unname(exp(stats::coef(fit)[row])),
-        conf.low   = unname(exp(ci[row, 1])),
-        conf.high  = unname(exp(ci[row, 2])),
+        odds_ratio = est,
+        conf.low   = lo,
+        conf.high  = hi,
         p.value    = unname(co[row, 4]),
         n_carriers = sum(as.logical(d[[f]]), na.rm = TRUE))
     }, error = function(e) {
@@ -513,7 +668,9 @@ fit_feature_enrichment <- function(d, outcome, features, min_carriers = 10) {
 
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
-    af <- .variant_feature_map(susie_finemapping())
+    fm  <- susie_finemapping()
+    af  <- .variant_feature_map(fm)
+    gaf <- .variant_gene_feature_map(fm)
 
     variants <- load_input("enloc_variant", reader = LoadEnlocTable, cols = ENLOC_VARIANT_COLS) %>%
       .label_by_pair("SCP", "variant level") %>%
@@ -531,6 +688,20 @@ coloc_variant_level <- function(refresh = FALSE)
              conditionMessage(e), call. = FALSE)
     )
 
+    # Second join for the GENE-RELATIVE features (distTSS, gene_type), keyed
+    # on (variant, gene) rather than variant alone -- see
+    # .variant_gene_feature_map() above for why. relationship = "many-to-one"
+    # is the same belt-and-braces guard as the join above, asserting
+    # (variant, gene) is unique in `gaf`.
+    joined <- tryCatch(
+      left_join(joined, gaf, by = c("SNP" = "variant", "Gene" = "gene"),
+                relationship = "many-to-one"),
+      error = function(e)
+        stop("SuSiE-derived gene-relative feature table has duplicate ",
+             "(variant, gene) keys, violating the expected many-to-one ",
+             "gene-relative join: ", conditionMessage(e), call. = FALSE)
+    )
+
     # Coverage is no longer guaranteed the way it was with the genome-wide
     # annotation table: an enloc variant absent from every SuSiE table now gets
     # no AF and is dropped downstream by the max_af NA filters in panels C/D.
@@ -539,6 +710,12 @@ coloc_variant_level <- function(refresh = FALSE)
     if (n_missing)
       message("  note: ", n_missing, " of ", nrow(joined), " variant-level rows ",
               "have no allele frequency in the SuSiE tables (dropped downstream).")
+
+    n_missing_gene <- sum(is.na(joined$distTSS))
+    if (n_missing_gene)
+      message("  note: ", n_missing_gene, " of ", nrow(joined), " variant-level ",
+              "rows have no gene-relative feature (distTSS/gene_type) for their ",
+              "(SNP, Gene) pair in the SuSiE tables.")
 
     joined
   })
@@ -701,7 +878,10 @@ coloc_model_input <- function(refresh = FALSE)
 # of its candidate features clear the carrier floor.
 UNDERPOWERED_FRAC <- 0.5
 
-# Adjusted feature enrichment for both analyses, per assay pair.
+# Pure orchestration over an already-built feature matrix `v` (the output of
+# build_feature_matrix()): cross both analyses with every observed pair, fit
+# each combination, correct p-values WITHIN (analysis, pair), and flag pairs
+# where fewer than UNDERPOWERED_FRAC of candidate features survive.
 #
 #   A  what makes a variant shared    coloc vs non-coloc, within pair
 #   B  what makes a shared variant rare   rare vs common, within Coloc == TRUE
@@ -709,6 +889,74 @@ UNDERPOWERED_FRAC <- 0.5
 # Analysis B is attempted for every pair; where a pair has too few rare
 # colocalizing variants the carrier floor empties it and the underpowered flag
 # fires on its own. The criterion decides -- nothing is excluded a priori.
+#
+# `min_carriers` is a parameter HERE, not on coloc_feature_enrichment(), so
+# tests can lower the floor against a small synthetic matrix without ever
+# threading a non-default floor through the memoized builder:
+# build_or_cache() keys its cache file on NAME ONLY, so a non-default
+# min_carriers passed to the public function could silently read back a
+# stale cache built under a different floor.
+.enrich_pairs <- function(v, min_carriers = 5) {
+  feats <- feature_names(v)
+  message("  ", length(feats), " candidate features")
+
+  specs <- tidyr::expand_grid(analysis = c("A", "B"), pair = unique(v$type))
+
+  # The documented shape, kept even when NO (analysis, pair) combination
+  # survives the carrier floor (a real outcome on a small fixture/cohort,
+  # not an error): bind_rows() against this schema is what keeps the
+  # result a well-formed zero-row tibble instead of the columnless 0x0
+  # frame purrr::pmap_dfr() returns when every iteration answers NULL.
+  empty <- tibble::tibble(
+    analysis = character(), pair = character(), feature = character(),
+    odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
+    p.value = numeric(), padj = numeric(), n_carriers = integer(),
+    flagged = logical(), estimate_type = character())
+
+  out <- purrr::pmap_dfr(specs, function(analysis, pair) {
+    d <- v %>% filter(type == pair)
+    if (analysis == "A") {
+      d$.outcome <- as.logical(d$Coloc)
+      family <- "binomial"
+      estimate_type <- "odds_ratio"
+      # `rare` is a tested FEATURE in A.
+      use <- feats
+    } else {
+      d <- d %>% filter(Coloc == TRUE)
+      # log10(0) is -Inf and cannot be fit; drop those rows and report the
+      # count rather than let -Inf silently poison the model.
+      n_bad <- sum(is.na(d$max_af) | d$max_af <= 0)
+      if (n_bad)
+        message("  analysis B / ", pair, ": dropping ", n_bad,
+                " row(s) with missing or non-positive max_af before log10")
+      d <- d %>% filter(!is.na(max_af), max_af > 0)
+      d$.outcome <- log10(d$max_af)
+      family <- "gaussian"
+      estimate_type <- "maf_fold_change"
+      # `rare` is B's OUTCOME (it is derived from the same max_af this
+      # continuous model now regresses on); regressing a variable on itself
+      # is meaningless, so it is dropped from B only. `rare` stays a tested
+      # FEATURE in A.
+      use <- setdiff(feats, "rare")
+    }
+    message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
+    res <- fit_feature_enrichment(d, ".outcome", use, min_carriers = min_carriers,
+                                  family = family)
+    # Coverage assertion: a shrinking feature set must not look like a clean run.
+    n_expected <- length(use)
+    if (nrow(res) < n_expected)
+      message("    ", nrow(res), "/", n_expected, " features tested")
+    if (!nrow(res)) return(NULL)
+    res %>%
+      mutate(analysis = analysis, pair = pair, estimate_type = estimate_type,
+             padj = stats::p.adjust(p.value, method = "fdr"),
+             flagged = nrow(res) < UNDERPOWERED_FRAC * n_expected)
+  })
+  dplyr::bind_rows(empty, out)
+}
+
+# Memoized wrapper: build the annotated feature matrix from the fine-mapping /
+# colocalization tables and hand it to .enrich_pairs() at the default floor.
 coloc_feature_enrichment <- function(refresh = FALSE)
   build_or_cache("coloc_feature_enrichment", refresh = refresh, {
     vl <- coloc_variant_level()
@@ -723,44 +971,142 @@ coloc_feature_enrichment <- function(refresh = FALSE)
       mutate(max_af = do.call(pmax, as.list(folded))) %>%
       build_feature_matrix()
 
-    feats <- feature_names(v)
-    message("  ", length(feats), " candidate features")
-
-    specs <- tidyr::expand_grid(analysis = c("A", "B"), pair = unique(v$type))
-
-    # The documented shape, kept even when NO (analysis, pair) combination
-    # survives the carrier floor (a real outcome on a small fixture/cohort,
-    # not an error): bind_rows() against this schema is what keeps the
-    # result a well-formed zero-row tibble instead of the columnless 0x0
-    # frame purrr::pmap_dfr() returns when every iteration answers NULL.
-    empty <- tibble::tibble(
-      analysis = character(), pair = character(), feature = character(),
-      odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
-      p.value = numeric(), padj = numeric(), n_carriers = integer(),
-      flagged = logical())
-
-    out <- purrr::pmap_dfr(specs, function(analysis, pair) {
-      d <- v %>% filter(type == pair)
-      if (analysis == "A") {
-        d$.outcome <- as.logical(d$Coloc)
-      } else {
-        d <- d %>% filter(Coloc == TRUE)
-        d$.outcome <- as.logical(d$rare)
-      }
-      # `rare` is a tested FEATURE in A but the OUTCOME in B. Regressing a
-      # variable on itself is meaningless, so it is dropped from B only.
-      use <- if (analysis == "A") feats else setdiff(feats, "rare")
-      message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
-      res <- fit_feature_enrichment(d, ".outcome", use)
-      # Coverage assertion: a shrinking feature set must not look like a clean run.
-      n_expected <- length(use)
-      if (nrow(res) < n_expected)
-        message("    ", nrow(res), "/", n_expected, " features tested")
-      if (!nrow(res)) return(NULL)
-      res %>%
-        mutate(analysis = analysis, pair = pair,
-               padj = stats::p.adjust(p.value, method = "fdr"),
-               flagged = nrow(res) < UNDERPOWERED_FRAC * n_expected)
-    })
-    dplyr::bind_rows(empty, out)
+    .enrich_pairs(v)
   })
+
+# Pair-contrast scatter: adjusted log-OR in eQTL-pQTL against eQTL-sQTL.
+# Points on the diagonal are generic shared-signal markers; off-diagonal ones
+# distinguish protein- from splicing-colocalization. sQTL-pQTL is structurally
+# absent -- this plot has two axes -- and appears in the supplement instead.
+build_panelE <- function(enr) {
+  pairs_needed <- c("eQTL-pQTL", "eQTL-sQTL")
+
+  # n_carriers rides along only if the caller's frame carries it (the
+  # documented coloc_feature_enrichment() schema always does; a hand-built
+  # test fixture exercising only the pivot/filter logic may not). Missing it
+  # degrades gracefully to "nothing is low-n" rather than erroring.
+  has_n <- "n_carriers" %in% names(enr)
+  value_cols <- c("log_or", "sig", if (has_n) "n_carriers")
+
+  wide <- enr %>%
+    filter(analysis == "A", pair %in% pairs_needed) %>%
+    mutate(log_or = log2(odds_ratio), sig = padj < 0.05) %>%
+    select(analysis, feature, pair, all_of(value_cols)) %>%
+    tidyr::pivot_wider(names_from = pair, values_from = all_of(value_cols))
+
+  # pivot_wider() only creates a `log_or_<pair>`/`sig_<pair>`/`n_carriers_<pair>`
+  # column for a pair value actually present in the (already analysis-A-only)
+  # input. coloc_feature_enrichment() can legitimately return zero rows
+  # (nothing clears the carrier floor -- exactly what the small test fixture
+  # does), or rows for only one of the two required pairs, in which case one
+  # or both expected columns never appear. Add any missing one as all-NA so
+  # the filter/aes() below have something to reference instead of erroring on
+  # a column that doesn't exist -- an all-NA column drops every row from the
+  # !is.na() filter next, which is the correct behaviour: no feature can be
+  # plotted without both pairs.
+  needed_cols <- paste0(c("log_or_", "sig_"), rep(pairs_needed, each = 2))
+  if (has_n) needed_cols <- c(needed_cols, paste0("n_carriers_", pairs_needed))
+  for (col in setdiff(needed_cols, names(wide))) wide[[col]] <- NA
+
+  wide <- wide %>%
+    filter(!is.na(`log_or_eQTL-pQTL`), !is.na(`log_or_eQTL-sQTL`))
+
+  # A result resting on fewer than 10 carriers in EITHER contributing pair is
+  # a lead, not a stable estimate (this is exactly the floor
+  # fit_feature_enrichment() checks per-fit; see its min_carriers comment).
+  # Rendered with reduced alpha rather than dropped, so it stays visible
+  # without reading as equally reliable to a normal point.
+  wide$low_n <- if (has_n)
+    pmin(wide[["n_carriers_eQTL-pQTL"]], wide[["n_carriers_eQTL-sQTL"]], na.rm = TRUE) < 10
+  else
+    FALSE
+
+  ggplot(wide, aes(`log_or_eQTL-pQTL`, `log_or_eQTL-sQTL`)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey60") +
+    geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey85") +
+    geom_vline(xintercept = 0, linewidth = 0.25, colour = "grey85") +
+    geom_point(aes(fill = `sig_eQTL-pQTL` & `sig_eQTL-sQTL`, alpha = low_n),
+               shape = 21, size = 3.4, stroke = 0.4, colour = "grey25") +
+    ggrepel::geom_text_repel(aes(label = feature), size = 3, max.overlaps = 12,
+                             segment.colour = "grey70") +
+    scale_fill_manual(values = c(`TRUE` = "#364B63", `FALSE` = "grey85"),
+                      name = "FDR < 0.05 in both") +
+    # FALSE (n_carriers >= 10 in both pairs) keeps the default alpha of 1, so
+    # a normal point's appearance is exactly what it was before this scale
+    # existed; only a low-n point is faded.
+    scale_alpha_manual(values = c(`TRUE` = 0.35, `FALSE` = 1), guide = "none") +
+    labs(x = "Adjusted log2 OR — eQTL-pQTL",
+         y = "Adjusted log2 OR — eQTL-sQTL",
+         caption = "Faint points: fewer than 10 carriers in at least one contributing pair -- a lead, not a stable estimate.") +
+    theme(legend.position = "bottom")
+}
+
+# One forest-plot row for the FigS_ColocEnrichment supplement (one analysis
+# half: A or B, already filtered to a single `analysis` value by the caller).
+#
+# `d` can legitimately have zero rows -- not only when coloc_feature_enrichment()
+# returns fully empty (e.g. the 9-row test fixture, too small for anything to
+# clear the carrier floor: see .enrich_pairs() above), but also when the OTHER
+# analysis half has real rows and this one does not (a pair can clear the
+# floor for "what makes a variant shared" and not for "what makes a shared
+# variant rare", or vice versa). `facet_wrap(~pair)` on a 0-row frame errors
+# at render time ("Faceting variables must have at least one value") because
+# the `pair` factor carries no levels to facet on -- there is nothing to draw.
+#
+# A placeholder panel that names the analysis is rendered instead of silently
+# dropping the row: a missing half of a supplement reads as a rendering bug,
+# not as "this analysis produced no results" -- the two must be
+# distinguishable at a glance. Extracted here (out of the standalone
+# Fig3/supp_coloc_enrichment.R) specifically so it is unit-testable; a helper
+# buried in a script that CI never runs is how this went uncaught.
+enrichment_forest_panel <- function(d, title) {
+  if (nrow(d) == 0L) {
+    return(
+      ggplot() +
+        annotate("text", x = 0, y = 0,
+                 label = paste0("No feature cleared the carrier floor\nfor analysis ", title),
+                 size = 3.2, colour = "grey40", family = FONT) +
+        theme_void(base_family = FONT) +
+        labs(title = title) +
+        theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
+    )
+  }
+  # Analysis A's estimate is an odds ratio ("enriched among colocalizing
+  # variants"); analysis B's is a MAF fold change ("carriers are rarer") --
+  # see fit_feature_enrichment()'s gaussian branch. Both are transformed onto
+  # the same ">1 reads as enriched/rarer" convention and share the log10 axis
+  # with the reference line at 1, but the axis label must say which is which.
+  # `d` is already filtered to one analysis by the caller, so this is a
+  # constant lookup, not a per-row distinction; a frame without an
+  # `estimate_type` column (e.g. a hand-built test fixture) falls back to the
+  # odds-ratio label.
+  x_lab <- if ("estimate_type" %in% names(d) && all(d$estimate_type == "maf_fold_change"))
+    "MAF fold change (carriers rarer →)"
+  else
+    "Adjusted odds ratio"
+
+  # n_carriers is part of the documented schema (always present on real
+  # output); guard defensively in case a hand-built frame omits it, in which
+  # case nothing is treated as low-n.
+  low_n <- if ("n_carriers" %in% names(d)) d$n_carriers < 10 else FALSE
+
+  ggplot(d, aes(x = odds_ratio, y = reorder(feature, odds_ratio),
+                colour = flagged, alpha = low_n)) +
+    geom_vline(xintercept = 1, linetype = "dashed", colour = "grey60") +
+    geom_pointrange(aes(xmin = conf.low, xmax = conf.high), size = 0.35) +
+    facet_wrap(~pair, nrow = 1) +
+    scale_x_continuous(trans = "log10") +
+    # Grey = the pair was flagged underpowered for this analysis.
+    scale_colour_manual(values = c(`FALSE` = "#364B63", `TRUE` = "grey70"),
+                        guide = "none") +
+    # Faint = this ROW individually rests on fewer than 10 carriers (a lead,
+    # not a stable estimate) -- independent of the pair-level `flagged`
+    # colour above, which is about how many of the pair's candidate features
+    # cleared the carrier floor at all, not about any one surviving
+    # feature's own n. FALSE (n_carriers >= 10) keeps the default alpha of
+    # 1, so a normal point's appearance is unchanged by this scale.
+    scale_alpha_manual(values = c(`TRUE` = 0.4, `FALSE` = 1), guide = "none") +
+    labs(x = x_lab, y = NULL, title = title,
+         caption = "Faint points rest on fewer than 10 carriers -- a lead, not a stable estimate.") +
+    theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
+}

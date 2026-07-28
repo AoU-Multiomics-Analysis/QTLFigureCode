@@ -38,6 +38,26 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
 
   wtsv <- function(df, p) write.table(df, p, sep = "\t", row.names = FALSE, quote = FALSE)
 
+  # --- minimal GENCODE GTF --------------------------------------------------
+  # fig3/symmetric.R needs Ensembl-canonical CDS records to decide whether a
+  # coding call refers to the eGene's own dominant protein. One canonical CDS
+  # per gene, covering the fixture's variant positions (chr1:100-900).
+  gtf_path <- mp("gene_gtf")
+  dir.create(dirname(gtf_path), recursive = TRUE, showWarnings = FALSE)
+  gtf_line <- function(gene, start, end, canonical = TRUE)
+    sprintf(paste0("chr1\tHAVANA\tCDS\t%d\t%d\t.\t+\t0\t",
+                   "gene_id \"%s.1\"; transcript_id \"%s_T1\";%s\n"),
+            start, end, gene, gene,
+            if (canonical) " tag \"Ensembl_canonical\";" else "")
+  gz <- gzfile(gtf_path, "w")
+  writeLines(c("##description: fixture", "##provider: none"), gz)
+  cat(gtf_line("ENSG001", 50, 550),  file = gz)
+  cat(gtf_line("ENSG002", 560, 950), file = gz)
+  # a NON-canonical CDS overlapping ENSG001's span: must never satisfy the
+  # canonical-CDS test on its own
+  cat(gtf_line("ENSG003", 100, 200, canonical = FALSE), file = gz)
+  close(gz)
+
   # Nine variants, alternating between the two shared genes. Enough rows for the
   # per-MAF-bin regressions in panels C and D to actually fit.
   nv     <- 9
@@ -92,6 +112,15 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
       distTSS         = ifelse(i %% 2 == 1, 500L, 50000L),
       gene_type       = ifelse(i %% 3 == 0, "lncRNA", "protein_coding"),
       cs_size         = 2L + (i %% 4),
+      # Read by fig3/symmetric.R. gene_id is the ENSG the credible set belongs
+      # to (strand-prefixed in the real splicing table, hence .bare_gene()).
+      # SpliceAI scores gate the "clean canonical" coding redefinition: only
+      # variant 1 is splice-capable, so it is the one dropped from
+      # missense_variant by the SPLICEAI_MAX criterion.
+      splice_ai_acceptor_gain_score = ifelse(i == 1, 0.8, 0.01),
+      splice_ai_acceptor_loss_score = 0.01,
+      splice_ai_donor_gain_score    = 0.01,
+      splice_ai_donor_loss_score    = 0.01,
       check.names     = FALSE, stringsAsFactors = FALSE)
   }
 
@@ -122,7 +151,51 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
     cs_id = "E_ENSG003_L1", gene_name = "GENE_ENSG003",
     af_cols[NA_integer_, , drop = FALSE],
     annot_for(1L)[1, ]))
-  wtsv(eqtl, mp("susie_eqtl"))
+
+  # A variant fine-mapped for TWO different genes with DIFFERENT gene-relative
+  # annotations -- the exact real-data shape (33,435 variants over 100,000
+  # sampled) that broke .variant_feature_map()'s original all-columns guard.
+  # Reuses variant 5 (snps[5] = "chr1_500_A_G", already a credible-set member
+  # of ENSG001 above with distTSS = 500 / gene_type = "protein_coding, i.e.
+  # TSS-proximal + protein-coding -- deliberately NOT variant 1/snps[1], which
+  # a separate test below (test_fig3_builders.R's "same variant, different
+  # genes" case) independently duplicates under ENSG002 with distTSS/gene_type
+  # left UNCHANGED; reusing snps[1] here too would make that duplication and
+  # this one disagree about the same (variant, gene) pair and trip the very
+  # guard both are meant to demonstrate does NOT fire spuriously), now ALSO
+  # fine-mapped for ENSG002 with a DIFFERENT gene-relative annotation
+  # (distTSS = 50000 / gene_type = "lncRNA", i.e. TSS-distal + not
+  # protein-coding). Its variant-level values (AF, consequence, phylop) are
+  # left IDENTICAL to what it already carries for ENSG001 -- af_for() looks
+  # them up by variant, and dual_gene_annot only overrides distTSS/gene_type --
+  # so the variant-level guard in .variant_feature_map() stays silent and only
+  # the gene-relative map (.variant_gene_feature_map()) sees the two differing
+  # rows.
+  dual_gene_variant <- snps[5]
+  # NOTE: annot_for() indexes by seq_along(v), so annot_for(5L) would give row
+  # 1's annotation again (seq_along of a length-1 vector is always 1), not row
+  # 5's -- pull row 5 straight out of the already-annotated `eqtl` frame
+  # (still un-shifted at this point: the ENSG003 row above was appended, not
+  # inserted, so row 5 is still variant 5's original annotation) instead.
+  dual_gene_annot <- eqtl[5, names(annot_for(1L)), drop = FALSE]
+  dual_gene_annot$distTSS   <- 50000L
+  dual_gene_annot$gene_type <- "lncRNA"
+  eqtl <- rbind(eqtl, data.frame(
+    molecular_trait_id = "ENSG002.1", variant = dual_gene_variant, pip = 0.5,
+    cs_index = "L2", posterior_mean = 0.4, posterior_sd = 0.1,
+    cs_id = "E_ENSG002_L2", gene_name = "GENE_ENSG002",
+    af_for(dual_gene_variant),
+    dual_gene_annot))
+  # gene_id rides on the real SuSiE exports and is read by fig3/symmetric.R.
+  # Added at write time, after every rbind(), so it cannot desynchronise them.
+  # The splicing table's copy is strand-prefixed, as in the real export.
+  add_gene_id <- function(df, strand_prefix = FALSE) {
+    g <- stringr::str_extract(df$molecular_trait_id, "ENSG[0-9]+")
+    df$gene_id <- if (strand_prefix) paste0("-:", g) else g
+    df
+  }
+
+  wtsv(add_gene_id(eqtl), mp("susie_eqtl"))
 
   # NOTE: splicing ids are INTRON-level. `sqtl_extra` below adds a SECOND intron
   # cluster for ENSG001 that shares a variant with the first, reproducing the
@@ -151,7 +224,7 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   sqtl_extra$cs_index           <- "L2"
   sqtl_extra$posterior_mean     <- 0.95            # strongest for this (variant, gene)
   sqtl <- rbind(sqtl, sqtl_extra)
-  wtsv(sqtl, mp("susie_sqtl"))
+  wtsv(add_gene_id(sqtl, strand_prefix = TRUE), mp("susie_sqtl"))
 
   pqtl <- data.frame(
     molecular_trait_id = genes,
@@ -165,7 +238,7 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
   )
   pqtl <- cbind(pqtl, af_for(pqtl$variant))
   pqtl <- cbind(pqtl, annot_for(pqtl$variant))
-  wtsv(pqtl, mp("susie_pqtl"))
+  wtsv(add_gene_id(pqtl), mp("susie_pqtl"))
 
   # --- FastENLOC gene level (a normal TSV) ----------------------------------
   gene_out <- function(p, glcp) wtsv(
@@ -191,10 +264,17 @@ make_fig3_fixture <- function(root = file.path(tempdir(), "fig3_fixture")) {
           c("0.99", "0.01"))
 
   # --- FastENLOC variant level ---------------------------------------------
-  snp_out <- function(p, cs) writeLines(c(
+  # `extra` appends additional, hand-written rows (same whitespace-aligned
+  # shape) after the per-variant ones -- used below to give the shared
+  # dual_gene_variant a SECOND (SNP, Gene) row under ENSG002, so
+  # coloc_variant_level()'s gene-relative join has something real to match
+  # against end-to-end, not just .variant_gene_feature_map() in isolation.
+  snp_out <- function(p, cs, extra = character()) writeLines(c(
     "Signal SNP PIP_qtl PIP_gwas_marginal PIP_gwas_qtl_prior SCP",
-    sprintf("%s:%s %s 0.9 0.1 0.8 0.99", genes, cs, snps)), p)
-  snp_out(mp("enloc_variant", "eQTL-pQTL"), e_cs)
+    sprintf("%s:%s %s 0.9 0.1 0.8 0.99", genes, cs, snps),
+    extra), p)
+  dual_gene_row <- sprintf("ENSG002:E_ENSG002_L2 %s 0.9 0.1 0.8 0.99", dual_gene_variant)
+  snp_out(mp("enloc_variant", "eQTL-pQTL"), e_cs, extra = dual_gene_row)
   snp_out(mp("enloc_variant", "sQTL-pQTL"), s_cs)
   snp_out(mp("enloc_variant", "eQTL-sQTL"), e_cs)
 

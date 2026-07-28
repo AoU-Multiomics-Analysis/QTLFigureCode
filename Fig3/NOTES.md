@@ -188,16 +188,148 @@ variant two AF rows and fan out the variant-level join.
 so `rm -rf fig3/data` before the first rebuild or `coloc_variant_level()` will
 return a cached frame still built from the annotation table.
 
-## Panel E — reserved slot (undecided)
+## Panel E — colocalization feature enrichment
 
-The bottom row of Figure 3 reserves a slot beside panel D. Its content has not
-been decided. `panels/panelE.R` renders a blank so the layout and
-`assemble.R` stay unconditional.
+**This fills a previously blank slot, so Figure 3 gains a panel.**
 
-Mechanics for whoever fills it: the bottom row is `(D | E)` with
-`plot_layout(widths = c(1.3, 1))`, so E gets roughly 43% of an 18" canvas —
-about 7.7 × 6 inches. Replace the body of `panels/panelE.R` and nothing else
-needs to change.
+Panel E contrasts the adjusted enrichment of binary variant features between
+assay pairs: x = eQTL-pQTL, y = eQTL-sQTL, both as log2 odds ratios from
+`coloc ~ feature + PIP_qtl + log10(cs_size_med)`. Design and rationale:
+`docs/superpowers/specs/2026-07-27-fig3-panelE-coloc-enrichment-design.md`.
+
+Limitations carried deliberately:
+
+- **MAF is not adjusted for.** Rare-vs-common is a tested feature, so adjusting
+  for it would condition away the effect being measured.
+- **`cs_size_med` is a per-variant median.** `cs_size` belongs to a credible
+  set and a variant can sit in several; the median keeps the feature map at one
+  row per variant, which `coloc_variant_level()`'s join guard requires.
+- **`max_af` NA behaviour is inherited** from `coloc_model_input()` — a variant
+  missing any one per-ancestry frequency drops out.
+
+### The carrier floor is 5, not 10
+
+`fit_feature_enrichment()`'s `min_carriers` (and `.enrich_pairs()`'s own
+default, which threads it through) was **10**, chosen against an earlier
+figure that produced infinite odds ratios from separated fits. Measured
+empirically on the real staged data at both values:
+
+| | floor 10 | floor 5 |
+|---|---|---|
+| tests fitted | 106 | 124 |
+| FDR-significant | 34 | **40** |
+| features lost relative to floor 10 | — | **none** |
+
+Every feature significant at floor 10 is still significant at floor 5, so
+lowering the floor is a strict gain: six additional FDR-significant features,
+with no loss. Four of the six are substantial (n = 18–44 carriers) and
+include the largest effects in the study — `stop_gained` (OR 6.80),
+`frameshift_variant` (OR 6.58), `splice_acceptor_variant` (OR 7.31). The
+remaining two rest on very few carriers and are fragile:
+
+- analysis B's `stop_gained`, n = 7, CI [1.71, 13.55]
+- analysis B's `frameshift_variant`, n = 8, CI [2.68, 18.55]
+
+Both are still worth showing — the effect sizes are large and consistent
+with the truncating-variant biology of the four substantial features above —
+but with only 7–8 carriers behind them they are **leads, not stable
+estimates**. Rather than hide that distinction in the data (or drop the
+floor further, or leave it at 10 and lose real findings), any row with
+`n_carriers < 10` is rendered visually weaker (reduced alpha, `low_n` in
+`build_panelE()`) in both panel E's scatter and the
+`enrichment_forest_panel()` supplement, with a caption noting the
+distinction, so a reader sees at a glance which points are estimates and
+which are leads. The 10-carrier visual cutoff is deliberately kept at the
+OLD statistical floor value, now repurposed as a legibility threshold rather
+than an inclusion threshold.
+
+### Analysis B now uses continuous log10 MAF instead of a binary `rare` outcome
+
+Panel E's underlying enrichment fits two analyses per assay pair (see
+`.enrich_pairs()`, `00_setup.R`): analysis A ("what makes a variant shared",
+`Coloc ~ feature + PIP_qtl + log10(cs_size_med)`) feeds panel E and is
+**unchanged by this note**. Analysis B ("what distinguishes shared variants
+that are rare") originally dichotomised minor allele frequency at 1%
+(`rare = max_af < .01`) and fit the same binomial model on that binary label.
+
+Measuring the real staged data showed that cut is badly placed: the median
+colocalizing variant sits at MAF ≈ 20%, and only 6–7% of colocalizing
+variants fall below the 1% threshold analysis B was splitting on — most of
+the frequency range was being thrown away as a single "not rare" bucket.
+Switching analysis B to `lm(log10(max_af) ~ feature + PIP_qtl +
+log10(cs_size_med))` uses the continuous MAF directly. On the real data this:
+
+- raised the number of FDR-significant features from **5 to 7**,
+- agreed in sign with the binary model's estimates on **87%** of features
+  that were significant under either version,
+- turned the promoter/enhancer contrast (PLS vs. dELS/pELS) from a
+  non-significant trend under the binary cut into a decisive, FDR-significant
+  result under the continuous model,
+- was checked by permutation and remains valid despite non-normal residuals
+  (heavy-tailed MAF), and
+- lost exactly one feature relative to the binary version:
+  `non_coding_transcript_variant`, whose association appears to be
+  tail-specific (driven by the sub-1% MAF regime the binary cut isolated) and
+  does not survive being pooled into the continuous scale.
+
+**Direction convention.** `fit_feature_enrichment()`'s `family = "gaussian"`
+branch fits the coefficient on log10(MAF); a negative coefficient means
+carriers sit at *lower* MAF, i.e. rarer. That is transformed by `10^(-x)` (both
+the point estimate and, after re-sorting, both CI bounds) so that, exactly
+like analysis A's odds ratio, a value **above 1 means "carriers are rarer /
+more enriched"** — both analyses read the same way on a shared log10 axis
+with the reference line at 1. `.enrich_pairs()` tags the result
+`estimate_type = "odds_ratio"` for A and `"maf_fold_change"` for B so the two
+are never confused or plotted on an axis implying they're the same statistic;
+`enrichment_forest_panel()` (`00_setup.R`) reads that column to switch the
+supplement's B-facet x-axis label to "MAF fold change (carriers rarer →)"
+while A keeps "Adjusted odds ratio".
+
+`rare` remains a tested **feature** in analysis A. It is still excluded from
+analysis B's feature list (`setdiff(feats, "rare")`) because it is
+definitionally derived from the same `max_af` the continuous model now
+regresses on directly — regressing a variable on a transform of itself is
+meaningless, not because the binary label was removed from the pipeline
+(the `rare` column, and its binary-model results, are no longer computed by
+this analysis at all; there is no supplementary binary-B column retained).
+Zero/negative `max_af` rows (which would give `log10(0) = -Inf`) are dropped
+before fitting, with the dropped count reported via `message()`.
+
+### `distTSS` / `gene_type` are gene-relative, not variant-level — split out of `.variant_feature_map()`
+
+`.variant_feature_map()` originally folded `distTSS` and `gene_type` into its
+one-row-per-variant map alongside genuinely variant-level columns (allele
+frequencies, the cCRE flags, `consequence`, `phylop`), on the premise that all
+of them are "properties of the variant alone". That premise is false for
+these two: a variant's distance to a TSS and the type of gene it annotates
+are properties of the variant **relative to a particular gene** — the same
+variant can sit 14,508 bp from one gene's TSS and 13,376 bp from another's,
+or annotate a protein-coding gene under one credible set and a lncRNA under
+another. On the real staged data this hard-errored the whole variant-level
+build: 180,211 variants carried "conflicting" values, all of them actually
+correct per-gene rows collapsed into one map that could only hold one.
+
+Diagnosed over a 100,000-variant sample of the real data: `gvs_*_af`, `PLS`
+(and the rest of `FEATURE_CCRE_COLS`), `phylop`, `consequence` never carried
+more than one distinct value per variant; `distTSS` did for 33,435 variants,
+`gene_type` for 26,030.
+
+Fix: `distTSS`/`gene_type` (`FEATURE_GENE_REL_COLS`) moved to a new
+`.variant_gene_feature_map()`, one row per **(variant, gene)**, joined into
+`coloc_variant_level()` on `c("SNP" = "variant", "Gene" = "gene")` — `Gene`
+being the same bare-ENSG column `coloc_variant_level()` already derives from
+the enloc `Signal`. This makes `tss_proximal`/`protein_coding` mean
+"...for the gene this colocalization is about", which is what the analysis
+intends; before the fix a shared variant could only ever get one arbitrary
+gene's answer (when the guard didn't just abort the whole build).
+`.variant_feature_map()`'s original guard is otherwise **unchanged** and
+still fires on a genuine variant-level disagreement.
+
+Verified against the real staged data: rebuilding `coloc_variant_level()`
+now succeeds (0 variant-level conflicts, down from 180,211), with 268,437
+variant-level rows and only 197 (0.07%) missing a gene-relative feature —
+confirming the (variant, gene) join key is correct, not silently matching
+nothing.
 
 ## Colocalization covariate analysis (dropped from the pipeline)
 
@@ -355,3 +487,125 @@ Two deliberate scoping decisions:
   reachable from a duplicated input row, but it now asserts the collapse did its
   job. The tests that used to drive that error have been rewritten around the
   new contract.
+
+**The 3 eQTL / 3 pQTL duplicates above are not all harmless.** Discovered
+while verifying the `distTSS`/`gene_type` fix above against real data: for 5
+of these 6 rows the duplicate copies agree on every variant-level column, so
+`.variant_feature_map()`'s own `distinct()` silently collapses them for
+free. For exactly one --
+`chr3_23947795_C_CT` / `ENSG00000224074` in the eQTL table -- the two copies
+disagree on `CTCF.bound` (`TRUE` vs `FALSE`) because they matched two
+different ENCODE cCRE records (`ENCODE_ID_1`/`ENCODE_ID_2` differ between the
+copies). Left alone this tripped `.variant_feature_map()`'s variant-level
+guard on real data even after the gene-relative split, on a row that has
+nothing to do with genes at all.
+
+`.variant_feature_map()` now collapses duplicate `(variant, molecular_trait_id)`
+rows **within each single SuSiE table**, first-row-wins, before binding the
+three tables together -- the same "collapsed, not rejected" policy as
+`posteriors()` above, applied to the same upstream duplicate-row class. The
+collapse is scoped to within one table specifically so it can never absorb a
+*genuine* disagreement between two *different* assay tables about the same
+(variant, gene), which remains exactly what the guard exists to catch.
+
+---
+
+## Panel E — replaced: symmetric background + rare-variant enrichment
+
+**This changes results.** Panel E previously rendered the pair-contrast scatter
+of the colocalizing-vs-layer-specific feature enrichment (Analysis A of
+`docs/superpowers/specs/2026-07-27-fig3-panelE-coloc-enrichment-design.md`).
+It now shows, among **colocalizing eQTL-pQTL variants only**, which annotations
+mark rarer and which mark commoner variants. The Analysis A machinery
+(`coloc_feature_enrichment()`, `.enrich_pairs()`, `enrichment_forest_panel()`)
+is untouched and still drives `Fig3/supp_coloc_enrichment.R`.
+
+New code lives in **`Fig3/symmetric.R`**, sourced from `00_setup.R`.
+
+### 1. The background was one-sided (the reason for the rewrite)
+
+FastENLOC enumerates credible sets from ONE layer. In `Signal`, the half before
+`(@)` is the QTL/annotation side; the half after it is the partner layer and is
+populated only on colocalization. So every non-colocalizing row of
+`.snp.out`/`.sig.out` is an annotation-side-specific credible set, and the
+partner layer's unshared signals are **absent from the output entirely**.
+
+For eQTL-pQTL the background was therefore 11,065 eQTL-specific credible sets
+and **zero** pQTL-specific ones. `symmetric_universe()` reconstructs the missing
+side from the SuSiE table at the genes each pair was tested on:
+
+| pair | annotation side | partner side recovered | unrecoverable |
+|---|---|---|---|
+| eQTL-pQTL | 13,295 eQTL CS (2,230 coloc) | 9,768 pQTL CS (2,143 coloc / 7,625 specific) | 0 / 2,143 |
+| sQTL-pQTL | 770 sQTL CS (390 coloc) | 2,338 pQTL CS (379 / 1,959) | 7 / 386 |
+| eQTL-sQTL | 37,606 eQTL CS (4,515 coloc) | 26,800 sQTL CS (3,307 / 23,493) | **1,075 / 4,382** |
+
+**Panel E uses eQTL-pQTL only.** It is the only pair whose partner side is
+fully recoverable; eQTL-sQTL loses 24.5% of its colocalizing credible sets to
+introns absent from the staged splicing table.
+
+### 2. `10^coef`, not `exp(coef)`
+
+The outcome is `log10(max_af)`, so the fold change is `10^coef`. The
+exploratory code used `exp()`, which understated every effect (`stop_gained`
+3.18x -> 7.62x, `dELS` 0.88 -> 0.75). `exp()` remains correct for Analysis A,
+which is logistic. Pinned by a test.
+
+### 3. Coding consequences redefined as "clean canonical"
+
+`consequence` is a VARIANT-level VEP call on whichever transcript VEP picked.
+`missense_variant`, `synonymous_variant`, `stop_gained` and `frameshift_variant`
+now require the variant to be in a **canonical CDS of the eGene itself**
+(GENCODE v48), with SpliceAI max delta <= 0.2 and no cCRE overlap. The
+pre-cleaning column survives as `<feature>_raw`.
+
+`splice_region_variant` is deliberately NOT cleaned: the SpliceAI criterion
+discards exactly the variants that make the class meaningful (it cut n from 184
+to 23 and collapsed the evidence), and leaving it raw makes it consistent with
+`splice_donor`/`splice_acceptor`, which were never in the list.
+
+This adds **`gene_gtf`** to `Fig3/inputs.tsv`.
+
+### 4. One row per variant, PIP-weighted
+
+~31% of colocalizing variants sit in BOTH layers' credible sets and were being
+counted twice as independent observations. `collapse_to_variants()` collapses
+to one row per variant weighted by the **geometric mean** of its PIPs, which is
+high only when the variant is confidently fine-mapped in both layers.
+
+`log10(cs_size)` was dropped from the model: `sum(PIP)` per credible set is
+0.997 (median, IQR 0.967-1.000), so PIP weighting already normalises each signal
+to one unit of evidence and cs_size was a second proxy for the same thing.
+Dropping it changed no estimate beyond the third decimal and no significance
+call.
+
+**The PIP weighting is load-bearing and must be stated, not assumed.**
+Unweighted, only `conserved` survives; `dELS` goes 0.80 -> 0.98 (null). The
+weighted result is corroborated independently by the PIP > 0.5 subset (dELS
+0.78). Weighting is a design decision about the estimand -- per signal rather
+than per credible-set member -- not a tuning choice.
+
+### 5. What the panel does NOT show
+
+The associations are **descriptive of colocalizing variants**. They are not
+colocalization-specific: `stop_gained` behaves identically among layer-specific
+variants (ratio-of-fold-changes 1.31, p = 0.33), and `conserved` and `PLS` are
+*weaker* among colocalizing variants than layer-specific ones. `splice_region`,
+`3' UTR` and `dELS` do differ. "Rare colocalizing variants are enriched for X"
+is supportable; "colocalization selects for X" is not.
+
+### 6. Two silent parse traps, both now tested
+
+Both returned an EMPTY join rather than an error:
+
+- Both halves of `Signal` carry an `ENSG<digits>:` prefix the SuSiE `cs_id`
+  lacks. Leaving it on matches nothing.
+- Multi-CS signals split on `_` before a NEW gene-prefixed id. Splitting on a
+  plain `_ENSG` shreds the UniProt-prefixed pQTL ids
+  (`Q6PCB0_ENSG00000179403.12_L2`) into fragments.
+
+A third, in the panel builder: a CI end outside the x scale is dropped by
+`geom_linerange` with only a warning, so the limits are derived from the data.
+And an annotation missing from `PANEL_E_LABELS` is now **named in a message**
+rather than vanishing -- that is how `stop_gained`/`frameshift` disappeared
+during development.
