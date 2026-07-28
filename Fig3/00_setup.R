@@ -701,7 +701,10 @@ coloc_model_input <- function(refresh = FALSE)
 # of its candidate features clear the carrier floor.
 UNDERPOWERED_FRAC <- 0.5
 
-# Adjusted feature enrichment for both analyses, per assay pair.
+# Pure orchestration over an already-built feature matrix `v` (the output of
+# build_feature_matrix()): cross both analyses with every observed pair, fit
+# each combination, correct p-values WITHIN (analysis, pair), and flag pairs
+# where fewer than UNDERPOWERED_FRAC of candidate features survive.
 #
 #   A  what makes a variant shared    coloc vs non-coloc, within pair
 #   B  what makes a shared variant rare   rare vs common, within Coloc == TRUE
@@ -709,6 +712,58 @@ UNDERPOWERED_FRAC <- 0.5
 # Analysis B is attempted for every pair; where a pair has too few rare
 # colocalizing variants the carrier floor empties it and the underpowered flag
 # fires on its own. The criterion decides -- nothing is excluded a priori.
+#
+# `min_carriers` is a parameter HERE, not on coloc_feature_enrichment(), so
+# tests can lower the floor against a small synthetic matrix without ever
+# threading a non-default floor through the memoized builder:
+# build_or_cache() keys its cache file on NAME ONLY, so a non-default
+# min_carriers passed to the public function could silently read back a
+# stale cache built under a different floor.
+.enrich_pairs <- function(v, min_carriers = 10) {
+  feats <- feature_names(v)
+  message("  ", length(feats), " candidate features")
+
+  specs <- tidyr::expand_grid(analysis = c("A", "B"), pair = unique(v$type))
+
+  # The documented shape, kept even when NO (analysis, pair) combination
+  # survives the carrier floor (a real outcome on a small fixture/cohort,
+  # not an error): bind_rows() against this schema is what keeps the
+  # result a well-formed zero-row tibble instead of the columnless 0x0
+  # frame purrr::pmap_dfr() returns when every iteration answers NULL.
+  empty <- tibble::tibble(
+    analysis = character(), pair = character(), feature = character(),
+    odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
+    p.value = numeric(), padj = numeric(), n_carriers = integer(),
+    flagged = logical())
+
+  out <- purrr::pmap_dfr(specs, function(analysis, pair) {
+    d <- v %>% filter(type == pair)
+    if (analysis == "A") {
+      d$.outcome <- as.logical(d$Coloc)
+    } else {
+      d <- d %>% filter(Coloc == TRUE)
+      d$.outcome <- as.logical(d$rare)
+    }
+    # `rare` is a tested FEATURE in A but the OUTCOME in B. Regressing a
+    # variable on itself is meaningless, so it is dropped from B only.
+    use <- if (analysis == "A") feats else setdiff(feats, "rare")
+    message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
+    res <- fit_feature_enrichment(d, ".outcome", use, min_carriers = min_carriers)
+    # Coverage assertion: a shrinking feature set must not look like a clean run.
+    n_expected <- length(use)
+    if (nrow(res) < n_expected)
+      message("    ", nrow(res), "/", n_expected, " features tested")
+    if (!nrow(res)) return(NULL)
+    res %>%
+      mutate(analysis = analysis, pair = pair,
+             padj = stats::p.adjust(p.value, method = "fdr"),
+             flagged = nrow(res) < UNDERPOWERED_FRAC * n_expected)
+  })
+  dplyr::bind_rows(empty, out)
+}
+
+# Memoized wrapper: build the annotated feature matrix from the fine-mapping /
+# colocalization tables and hand it to .enrich_pairs() at the default floor.
 coloc_feature_enrichment <- function(refresh = FALSE)
   build_or_cache("coloc_feature_enrichment", refresh = refresh, {
     vl <- coloc_variant_level()
@@ -723,44 +778,5 @@ coloc_feature_enrichment <- function(refresh = FALSE)
       mutate(max_af = do.call(pmax, as.list(folded))) %>%
       build_feature_matrix()
 
-    feats <- feature_names(v)
-    message("  ", length(feats), " candidate features")
-
-    specs <- tidyr::expand_grid(analysis = c("A", "B"), pair = unique(v$type))
-
-    # The documented shape, kept even when NO (analysis, pair) combination
-    # survives the carrier floor (a real outcome on a small fixture/cohort,
-    # not an error): bind_rows() against this schema is what keeps the
-    # result a well-formed zero-row tibble instead of the columnless 0x0
-    # frame purrr::pmap_dfr() returns when every iteration answers NULL.
-    empty <- tibble::tibble(
-      analysis = character(), pair = character(), feature = character(),
-      odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
-      p.value = numeric(), padj = numeric(), n_carriers = integer(),
-      flagged = logical())
-
-    out <- purrr::pmap_dfr(specs, function(analysis, pair) {
-      d <- v %>% filter(type == pair)
-      if (analysis == "A") {
-        d$.outcome <- as.logical(d$Coloc)
-      } else {
-        d <- d %>% filter(Coloc == TRUE)
-        d$.outcome <- as.logical(d$rare)
-      }
-      # `rare` is a tested FEATURE in A but the OUTCOME in B. Regressing a
-      # variable on itself is meaningless, so it is dropped from B only.
-      use <- if (analysis == "A") feats else setdiff(feats, "rare")
-      message("  analysis ", analysis, " / ", pair, " (n = ", nrow(d), ")")
-      res <- fit_feature_enrichment(d, ".outcome", use)
-      # Coverage assertion: a shrinking feature set must not look like a clean run.
-      n_expected <- length(use)
-      if (nrow(res) < n_expected)
-        message("    ", nrow(res), "/", n_expected, " features tested")
-      if (!nrow(res)) return(NULL)
-      res %>%
-        mutate(analysis = analysis, pair = pair,
-               padj = stats::p.adjust(p.value, method = "fdr"),
-               flagged = nrow(res) < UNDERPOWERED_FRAC * n_expected)
-    })
-    dplyr::bind_rows(empty, out)
+    .enrich_pairs(v)
   })

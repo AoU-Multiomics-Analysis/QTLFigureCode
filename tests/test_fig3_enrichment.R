@@ -154,4 +154,97 @@ if (nrow(enr)) {
   ok("flagged column is logical-typed even with zero rows", is.logical(enr$flagged))
 }
 
+# --- .enrich_pairs() orchestration on a synthetic feature matrix ------------
+# The real Fig3 fixture (9 rows) can never clear the 10-carrier floor, so the
+# block above is schema-only -- deleting the FDR line, reverting `flagged`'s
+# denominator, or dropping the `rare` exclusion from B would all leave `enr`
+# an identical 0-row tibble there. This block builds a small, fully
+# deterministic feature matrix by hand (in the spirit of `sim` above) and
+# calls the pure `.enrich_pairs(v, min_carriers = ...)` helper directly --
+# bypassing coloc_variant_level()/build_feature_matrix() and the memoized
+# cache entirely -- so the carrier floor can be lowered without touching
+# tests/fixtures.R and every row asserted on is a REAL, fitted result.
+#
+# Two pairs, each split 50/50 on Coloc, n_half rows per Coloc value:
+#   PAIR_OK  -- `hit` is a real, strongly-associated feature (minority cell
+#               size 15, comfortably above the floor); `dud1`/`dud2`/`dud3`
+#               and `rare` are balanced-but-unassociated (~30/30 cells) --
+#               ALL 5 candidates clear the floor in analysis A.
+#   PAIR_LOW -- same `hit` column (so its fit is identical to PAIR_OK's,
+#               which is what makes the pooled-vs-within-group FDR
+#               divergence below exact and reproducible), but `dud1`/`dud2`/
+#               `dud3`/`rare` are made CONSTANT columns (zero variance
+#               against Coloc), so only `hit` clears the floor: 1 of 5
+#               candidates survives in analysis A, well under half.
+mk_enrich_pair <- function(pair, n_half, minority, sparse) {
+  Coloc <- c(rep(TRUE, n_half), rep(FALSE, n_half))
+  # `hit`: minority-cell size is fixed at `minority` in BOTH Coloc groups, so
+  # table(hit, Coloc) has all four cells >= minority regardless of `sparse`.
+  hit <- c(rep(TRUE, n_half - minority), rep(FALSE, minority),
+           rep(FALSE, n_half - minority), rep(TRUE, minority))
+  if (!sparse) {
+    # Period-2/4 alternating patterns: balanced against Coloc (~n_half/2 per
+    # cell) and, restricted to the Coloc == TRUE half used by analysis B,
+    # balanced against `rare` too -- every candidate clears the floor in
+    # both analyses.
+    dud1 <- rep(c(TRUE, FALSE),             n_half)
+    dud2 <- rep(c(FALSE, TRUE),             n_half)
+    dud3 <- rep(c(TRUE, TRUE, FALSE, FALSE), n_half / 2)
+    rare <- rep(c(TRUE, FALSE, FALSE, TRUE), n_half / 2)
+  } else {
+    # Zero variance: table(x, Coloc) has an all-zero row/column no matter how
+    # the floor is set, so these four are dropped unconditionally.
+    dud1 <- rep(FALSE, 2 * n_half)
+    dud2 <- rep(FALSE, 2 * n_half)
+    dud3 <- rep(TRUE,  2 * n_half)
+    rare <- rep(FALSE, 2 * n_half)
+  }
+  tibble::tibble(
+    type = pair, Coloc = Coloc, hit = hit, dud1 = dud1, dud2 = dud2, dud3 = dud3,
+    rare = rare,
+    PIP_qtl     = rep(seq(0.1, 0.9, length.out = n_half), 2),
+    cs_size_med = rep(2:(n_half + 1), 2)[seq_len(2 * n_half)])
+}
+
+v_synth <- dplyr::bind_rows(
+  mk_enrich_pair("PAIR_OK",  n_half = 60, minority = 15, sparse = FALSE),
+  mk_enrich_pair("PAIR_LOW", n_half = 60, minority = 15, sparse = TRUE))
+
+enr2 <- .enrich_pairs(v_synth, min_carriers = 5)
+
+ok("candidate features clear the floor on the synthetic matrix (not vacuous: rows exist)",
+   nrow(enr2) > 0L)
+ok("both analyses are present on the synthetic matrix",
+   setequal(unique(enr2$analysis), c("A", "B")))
+ok("rare is a tested feature in analysis A",
+   "rare" %in% enr2$feature[enr2$analysis == "A"])
+ok("rare NEVER appears among analysis B's features -- it is B's outcome",
+   !"rare" %in% enr2$feature[enr2$analysis == "B"])
+
+ok("the underpowered pair (1/5 candidates survive) is flagged",
+   isTRUE(enr2$flagged[enr2$analysis == "A" & enr2$pair == "PAIR_LOW" & enr2$feature == "hit"]))
+ok("the healthy pair (5/5 candidates survive) is NOT flagged",
+   all(!enr2$flagged[enr2$analysis == "A" & enr2$pair == "PAIR_OK"]))
+
+# FDR-within-(analysis, pair) vs. a pooled correction, checked on a
+# MULTI-feature group (analysis B / PAIR_OK has 4 surviving candidates: hit,
+# dud1, dud2, dud3). A single-feature group is the WRONG group to check this
+# on: BH applied to one p-value is always a no-op (padj == p.value) whether
+# or not p.adjust() actually runs, so such a check would pass even with the
+# p.adjust() line deleted. A 4-element group does not have that blind spot.
+grp_b_ok <- which(enr2$analysis == "B" & enr2$pair == "PAIR_OK")
+stopifnot(length(grp_b_ok) == 4L)
+expected_within_b_ok <- stats::p.adjust(enr2$p.value[grp_b_ok], method = "fdr")
+pooled_padj_all       <- stats::p.adjust(enr2$p.value, method = "fdr")
+
+ok("padj on PAIR_OK's analysis-B group matches the WITHIN-(analysis,pair) BH adjustment, feature by feature",
+   isTRUE(all.equal(enr2$padj[grp_b_ok], expected_within_b_ok)))
+ok("at least one of those padj values differs from its own raw p-value -- a real correction is applied, not a p.value passthrough",
+   any(abs(enr2$padj[grp_b_ok] - enr2$p.value[grp_b_ok]) > 1e-9))
+ok("at least one of those padj values differs from a pooled-across-everything BH correction -- proving padj is scoped per (analysis, pair), not pooled",
+   any(abs(enr2$padj[grp_b_ok] - pooled_padj_all[grp_b_ok]) > 1e-9))
+
+ok("every returned odds ratio on the synthetic matrix is finite",
+   all(is.finite(enr2$odds_ratio)))
+
 cat("test_fig3_enrichment.R: all assertions passed\n")
