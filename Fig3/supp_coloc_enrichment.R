@@ -16,22 +16,12 @@ enr <- coloc_feature_enrichment()
 ANALYSIS_LABELS <- c(A = "A — shared vs layer-specific",
                      B = "B — rare vs common, among shared")
 
-forest <- function(d, title) {
-  ggplot(d, aes(x = odds_ratio, y = reorder(feature, odds_ratio),
-                colour = flagged)) +
-    geom_vline(xintercept = 1, linetype = "dashed", colour = "grey60") +
-    geom_pointrange(aes(xmin = conf.low, xmax = conf.high), size = 0.35) +
-    facet_wrap(~pair, nrow = 1) +
-    scale_x_continuous(trans = "log10") +
-    # Grey = the pair was flagged underpowered for this analysis.
-    scale_colour_manual(values = c(`FALSE` = "#364B63", `TRUE` = "grey70"),
-                        guide = "none") +
-    labs(x = "Adjusted odds ratio", y = NULL, title = title) +
-    theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
-}
-
-figS <- forest(dplyr::filter(enr, analysis == "A"), ANALYSIS_LABELS[["A"]]) /
-        forest(dplyr::filter(enr, analysis == "B"), ANALYSIS_LABELS[["B"]])
+# enrichment_forest_panel() (Fig3/00_setup.R) renders a placeholder instead of
+# faceting on an empty frame when a given analysis has zero rows -- see its
+# doc comment for why that half can legitimately be empty even when the other
+# is not.
+figS <- enrichment_forest_panel(dplyr::filter(enr, analysis == "A"), ANALYSIS_LABELS[["A"]]) /
+        enrichment_forest_panel(dplyr::filter(enr, analysis == "B"), ANALYSIS_LABELS[["B"]])
 
 ggsave(file.path(OUTDIR, "FigS_ColocEnrichment.pdf"), figS,
        width = 14, height = 12, dpi = DPI, limitsize = FALSE)

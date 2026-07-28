@@ -293,4 +293,76 @@ ok("synthetic panel E: log-OR is log2 of the odds ratio",
    isTRUE(all.equal(pE2$data$`log_or_eQTL-pQTL`[pE2$data$feature == "f1"],
                     log2(2.0))))
 
+# --- enrichment_forest_panel() on the zero-row adversarial cases -----------
+# The supplement's forest() (now enrichment_forest_panel() in Fig3/00_setup.R,
+# extracted specifically so this is testable) used to facet_wrap(~pair)
+# unconditionally, which errors ("Faceting variables must have at least one
+# value") at BUILD/render time -- not at ggplot() construction -- whenever
+# its input has zero rows. That happens not only when coloc_feature_enrichment()
+# is fully empty (the 9-row fixture's real, documented outcome above) but also
+# when only ONE analysis half is empty while the other has real rows -- a
+# state .enrich_pairs() explicitly allows. ggplot2::ggplot_build() is called
+# below to force evaluation of the facet spec, matching what ggsave() would
+# trigger; a bare ggplot() call is lazy and would NOT reproduce the crash.
+schema_cols <- c("analysis", "pair", "feature", "odds_ratio", "conf.low",
+                 "conf.high", "p.value", "padj", "n_carriers", "flagged")
+
+empty_enr <- tibble::tibble(
+  analysis = character(), pair = character(), feature = character(),
+  odds_ratio = numeric(), conf.low = numeric(), conf.high = numeric(),
+  p.value = numeric(), padj = numeric(), n_carriers = integer(),
+  flagged = logical())
+
+mixed_enr <- tibble::tibble(
+  analysis   = c("A", "A"),
+  pair       = c("eQTL-pQTL", "eQTL-sQTL"),
+  feature    = c("f1", "f2"),
+  odds_ratio = c(2.0, 1.5),
+  conf.low   = c(1.1, 0.9),
+  conf.high  = c(3.5, 2.4),
+  p.value    = c(0.01, 0.2),
+  padj       = c(0.01, 0.2),
+  n_carriers = c(20L, 25L),
+  flagged    = c(FALSE, FALSE))
+
+ok("the synthetic empty frame carries the documented schema",
+   identical(sort(names(empty_enr)), sort(schema_cols)))
+ok("the synthetic mixed frame carries the documented schema",
+   identical(sort(names(mixed_enr)), sort(schema_cols)))
+
+# Case (a): fully empty input (reviewer's first reproduction).
+p_empty <- try(
+  ggplot2::ggplot_build(
+    enrichment_forest_panel(dplyr::filter(empty_enr, analysis == "A"), "A")),
+  silent = TRUE)
+ok("a fully empty analysis frame does not error on build (was: 'Faceting variables must have at least one value')",
+   !inherits(p_empty, "try-error"))
+ok("enrichment_forest_panel() on a fully empty frame still returns a ggplot object",
+   inherits(enrichment_forest_panel(dplyr::filter(empty_enr, analysis == "A"), "A"), "ggplot"))
+
+# Case (b): analysis A has real rows, analysis B is empty (reviewer's second,
+# adversarial reproduction -- NOT fully empty overall).
+p_b_empty <- try(
+  ggplot2::ggplot_build(
+    enrichment_forest_panel(dplyr::filter(mixed_enr, analysis == "B"), "B")),
+  silent = TRUE)
+ok("analysis B empty while analysis A is non-empty does not error on build",
+   !inherits(p_b_empty, "try-error"))
+p_b_panel <- enrichment_forest_panel(dplyr::filter(mixed_enr, analysis == "B"), "B")
+ok("the empty-B placeholder is still a ggplot object",
+   inherits(p_b_panel, "ggplot"))
+ok("the empty-B placeholder names the analysis so it reads as 'no results', not 'not run'",
+   any(grepl("B", vapply(p_b_panel$layers, function(l)
+     if (!is.null(l$aes_params$label)) l$aes_params$label else NA_character_,
+     character(1)), fixed = TRUE)))
+
+# The non-empty half (analysis A here) must still build normally -- the guard
+# must not degrade the populated case into a placeholder too.
+p_a_populated <- try(
+  ggplot2::ggplot_build(
+    enrichment_forest_panel(dplyr::filter(mixed_enr, analysis == "A"), "A")),
+  silent = TRUE)
+ok("the non-empty half still builds as a real faceted forest plot, not a placeholder",
+   !inherits(p_a_populated, "try-error"))
+
 cat("test_fig3_enrichment.R: all assertions passed\n")

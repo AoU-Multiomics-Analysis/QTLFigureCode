@@ -825,3 +825,46 @@ build_panelE <- function(enr) {
          y = "Adjusted log2 OR — eQTL-sQTL") +
     theme(legend.position = "bottom")
 }
+
+# One forest-plot row for the FigS_ColocEnrichment supplement (one analysis
+# half: A or B, already filtered to a single `analysis` value by the caller).
+#
+# `d` can legitimately have zero rows -- not only when coloc_feature_enrichment()
+# returns fully empty (e.g. the 9-row test fixture, too small for anything to
+# clear the carrier floor: see .enrich_pairs() above), but also when the OTHER
+# analysis half has real rows and this one does not (a pair can clear the
+# floor for "what makes a variant shared" and not for "what makes a shared
+# variant rare", or vice versa). `facet_wrap(~pair)` on a 0-row frame errors
+# at render time ("Faceting variables must have at least one value") because
+# the `pair` factor carries no levels to facet on -- there is nothing to draw.
+#
+# A placeholder panel that names the analysis is rendered instead of silently
+# dropping the row: a missing half of a supplement reads as a rendering bug,
+# not as "this analysis produced no results" -- the two must be
+# distinguishable at a glance. Extracted here (out of the standalone
+# Fig3/supp_coloc_enrichment.R) specifically so it is unit-testable; a helper
+# buried in a script that CI never runs is how this went uncaught.
+enrichment_forest_panel <- function(d, title) {
+  if (nrow(d) == 0L) {
+    return(
+      ggplot() +
+        annotate("text", x = 0, y = 0,
+                 label = paste0("No feature cleared the carrier floor\nfor analysis ", title),
+                 size = 3.2, colour = "grey40", family = FONT) +
+        theme_void(base_family = FONT) +
+        labs(title = title) +
+        theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
+    )
+  }
+  ggplot(d, aes(x = odds_ratio, y = reorder(feature, odds_ratio),
+                colour = flagged)) +
+    geom_vline(xintercept = 1, linetype = "dashed", colour = "grey60") +
+    geom_pointrange(aes(xmin = conf.low, xmax = conf.high), size = 0.35) +
+    facet_wrap(~pair, nrow = 1) +
+    scale_x_continuous(trans = "log10") +
+    # Grey = the pair was flagged underpowered for this analysis.
+    scale_colour_manual(values = c(`FALSE` = "#364B63", `TRUE` = "grey70"),
+                        guide = "none") +
+    labs(x = "Adjusted odds ratio", y = NULL, title = title) +
+    theme(plot.title = element_text(size = SZ_STRIP, face = "bold"))
+}
