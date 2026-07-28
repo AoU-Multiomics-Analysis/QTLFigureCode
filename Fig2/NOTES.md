@@ -98,3 +98,19 @@ panel content above them and panel D to the left. The `E / F` composite now
 carries `plot.margin = margin(t = 34, r = 10, b = 6, l = 70)` applied with `&`
 so it reaches both sub-plots; patchwork draws each tag inside the plot margin,
 so widening top and left is what gives the letters room.
+
+## Panel F — the grey bands were ~10x too dark (overplotting, not colour)
+
+The two highlight rectangles used `geom_rect()` **without a `data =` argument**,
+so they inherited the plot's data (`median_pc`, 13 rows) and redrew the SAME
+rectangle once per row. Thirteen stacked copies at `alpha = 0.05` give an
+effective opacity of `1 - 0.95^13 = 0.49`, against panel D's 0.05 — which is
+why F's bands read far darker than D's despite both nominally using alpha 0.05.
+
+Replaced with `annotate("rect", ...)`, which draws exactly once, and the fill
+changed from `"lightgrey"` to `"grey40"` so it matches
+`PlotExpectedExpression()`'s bands exactly. Nothing about the data changed.
+
+**The general trap:** a `geom_*` given constant parameters but no `data =`
+inherits the plot's data and draws one copy per row. It is invisible for opaque
+fills and compounds for transparent ones.

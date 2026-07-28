@@ -7,6 +7,12 @@ median_pc <- readRDS(file.path(DATA_DIR, "F.rds"))
 # evaluated EAGERLY (annotate(), or a bare geom_* parameter) -- inside aes() the
 # reference stays lazy, the saved .rds keeps only the symbol, and assemble.R in
 # a fresh session dies with "object 'DupBoxStart' not found".
+#
+# annotate("rect"), NOT geom_rect(): a geom_rect() without its own `data =`
+# inherits the plot's data and redraws the SAME rectangle once per row. With 13
+# bins at alpha = 0.05 that stacked to an effective opacity of 0.49, which is
+# why these bands read ~10x darker than panel D's. annotate() draws once.
+# Fill and alpha now match PlotExpectedExpression()'s bands exactly.
 DelBoxStart <- 0.5;  DelBoxEnd <- 2.45
 DupBoxStart <- 7.5;  DupBoxEnd <- 13.45
 DupBoxMid   <- DupBoxStart + (DupBoxEnd - DupBoxStart) / 2
@@ -14,10 +20,10 @@ max_median  <- max(median_pc$q75_genes)
 
 pF <- median_pc %>%
   ggplot(aes(reorder(pct_bin, lower), median_genes)) +
-    geom_rect(xmin = DelBoxStart, xmax = DelBoxEnd, ymin = -1, ymax = max_median + 100,
-              inherit.aes = FALSE, fill = "lightgrey", alpha = 0.05) +
-    geom_rect(xmin = DupBoxStart, xmax = DupBoxEnd, ymin = -1, ymax = max_median + 100,
-              inherit.aes = FALSE, fill = "lightgrey", alpha = 0.05) +
+    annotate("rect", xmin = DelBoxStart, xmax = DelBoxEnd,
+             ymin = -1, ymax = max_median + 100, fill = "grey40", alpha = 0.05) +
+    annotate("rect", xmin = DupBoxStart, xmax = DupBoxEnd,
+             ymin = -1, ymax = max_median + 100, fill = "grey40", alpha = 0.05) +
     geom_col(width = 0.8, alpha = 0.6, linewidth = 0.4, color = "#462255FF", fill = "#462255FF") +
     geom_errorbar(aes(ymin = q25_genes, ymax = q75_genes), alpha = 0.7, width = 0.2) +
     facet_wrap(~gene_type, nrow = 2, strip.position = "right") +
