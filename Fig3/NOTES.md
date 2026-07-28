@@ -609,3 +609,32 @@ A third, in the panel builder: a CI end outside the x scale is dropped by
 And an annotation missing from `PANEL_E_LABELS` is now **named in a message**
 rather than vanishing -- that is how `stop_gained`/`frameshift` disappeared
 during development.
+
+---
+
+## Panel B — the tallest bar was being deleted, not clipped
+
+**This changes the figure.** `panels/panelB.R:19-20` capped the y scale with
+`scale_y_continuous(limits = c(0, 0.55))`. That is not a zoom: `limits =`
+**removes** out-of-range values before drawing, so any bar above 55% is dropped
+entirely rather than truncated.
+
+The cap was inherited from the original notebook export (`04128bc`), where it
+presumably matched the data of the day. Once Fig3 moved to Fig2's shared SuSiE
+tables (`aed63c2`) the distribution shifted and the "1 colocalized signal" share
+rose to **66.0% (2,298 of 3,483 genes)** — so the single largest category
+vanished from the panel, leaving a bare axis tick at 1.
+
+It was invisible for two compounding reasons: ggplot reports the loss only as a
+"Removed 1 row containing missing values" warning among many, and panel B hides
+its y axis (`axis.text.y = element_blank()`), so a truncated bar cannot be read
+as truncated — it just isn't there.
+
+Replaced with `expand = expansion(mult = c(0, 0.05))` and no hard limit, so
+every bar is drawn at its true height. The percentages are unchanged; only the
+rendering was wrong.
+
+**The general rule, which bit three times in panel E as well:** use
+`coord_cartesian(ylim = )` to zoom and `scale_*_continuous(limits = )` only when
+dropping data is genuinely intended. `build_panelE_maf()` derives its x limits
+from the data for exactly this reason.
