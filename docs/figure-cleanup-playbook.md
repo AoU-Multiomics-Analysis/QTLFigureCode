@@ -2,10 +2,11 @@
 
 How a flat, notebook-exported figure script (`FigN/FigN.R`, `SuppFigN/SuppFigN.R`)
 becomes a modular, manifest-driven, tested pipeline in this repo. Written for a
-future contributor — human or AI — cleaning up the next figure (Fig5 is the
-remaining one). It records both the **workflow** and the **recurring bugs** the
-earlier cleanups (Fig1, Fig3, Fig4, SuppFig1) turned up, so you don't rediscover
-them.
+future contributor — human or AI. Every manuscript figure has now been through
+this process, so treat it as the reference for maintaining them and for cleaning
+up any figure added later. It records both the **workflow** and the **recurring
+bugs** the cleanups (Fig1, Fig3, Fig4, Fig5, SuppFig1) turned up, so you don't
+rediscover them.
 
 If you are running with the Superpowers skills, this is a companion to them, not
 a replacement: use `brainstorming` → `writing-plans` →
@@ -199,12 +200,12 @@ new figure to the published one.
 
 | Figure | State |
 |--------|-------|
-| Fig1 | cleaned, merged |
-| Fig2 | was already the modular template |
-| Fig3 | cleaned, merged |
-| Fig4 | cleaned (PR) |
-| SuppFig1 | cleaned (PR) |
-| Fig5 | empty — next candidate |
+| Fig1 | cleaned, merged (#1) |
+| Fig2 | was already the modular template; gained the input manifest in #10 |
+| Fig3 | cleaned, merged (#2); annotation input dropped in #12 |
+| Fig4 | cleaned, merged (#5) |
+| SuppFig1 | cleaned, merged (#6) |
+| Fig5 | cleaned, merged (#11) |
 
 Notebooks (`FigN.ipynb`) + the generator are shared; each cleaned figure commits
 its own notebook in its PR.

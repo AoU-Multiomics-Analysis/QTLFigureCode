@@ -26,6 +26,17 @@
 /data/
 /susie_local/
 
+# Inputs whose manifest local_subpath is a bare filename, so they stage at the
+# repo root rather than under a directory. The SuSiE tables are shared by Fig1,
+# Fig2 and Fig3; the ancestry predictions are per-participant.
+/COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz
+/COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz
+/COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz
+/echo_v4_r2.ancestry_preds.tsv
+/gencode.v*.annotation.gtf.gz
+/interactions.tsv
+/41588_2024_1820_MOESM4_ESM.xlsx
+
 # Figure outputs. Each figure's assemble.R writes into its OWN directory
 # (FIG<N>_OUTDIR, default fig<n>/), so the outputs are ignored there. The
 # bare-root entries are kept as well: FIG<N>_OUTDIR can still be pointed at the

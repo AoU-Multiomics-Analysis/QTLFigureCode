@@ -1,13 +1,29 @@
 # Supplemental Figure 1 — notes and deferred work
 
-## Result-affecting change: the TF double log (Panel C)
+Panel letters below are the **rendered** tags: `panelA.R` → A, B; `panelB.R`
+(GO) → C; `panelC.R` (TF) → D; `panelD.R` (lncRNA) → E, F. See
+[`README.md`](README.md) for why four panel files yield six tags.
+
+## Result-affecting change: the TF double log (rendered Panel D, `panels/panelC.R`)
 
 `SuppFig1.R` applied `log2(x+1)` to the TF TPM columns in `TF_genes`
 (`SuppFig1.R:173`), then applied `log2(·+1)` **again** in the boxplot
-(`:184`), the `lm` (`:179`) and the paired `t.test` (`:192`) — so Panel C plotted
-and tested `log2(log2(TPM+1)+1)` while the axis read `log2(TPM + 1)`. The cleanup
-returns raw TPMs from `tf_expression_table()` and logs exactly once, so Panel C's
-values and the reported lm / t-test change.
+(`:184`), the `lm` (`:179`) and the paired `t.test` (`:192`) — so the TF panel
+plotted and tested `log2(log2(TPM+1)+1)` while the axis read `log2(TPM + 1)`. The
+cleanup returns raw TPMs from `tf_expression_table()` and logs exactly once, so
+rendered Panel D's values and the reported lm / t-test change.
+
+## Open question: the lncRNA panel's two thresholds disagree (rendered E/F)
+
+`panels/panelD.R` pre-filters lncRNAs to `mean_TPM_AoU > 0.1 | mean_TPM_GTEx > 0.1`
+but calls `plot_gene_comparison()` with the default `detection_threshold = 1`, so
+the correlation hex (rendered E) is drawn over genes above 0.1 TPM while the
+cohort-specific detection counts beside it (rendered F) are cut at 1 TPM. The
+coding panel uses 1 for both (`panels/panelA.R` filters at `> 1`), so A/B are
+internally consistent and E/F are not. This mirrors the original
+(`SuppFig1.R:199–201`, same `.1` filter with the default threshold) and is
+left unchanged pending a decision on which threshold the lncRNA panel should use;
+changing either would change the plotted counts.
 
 ## Dropped: the isoform histogram
 
@@ -47,7 +63,7 @@ effect.
 
 ## Layout: the lncRNA panel's extra margin was dropped
 
-The original's bottom row was `TF_gene_comparison | lncRNA_comparison & theme(plot.margin = margin(l = 2, t = 5, unit = "cm"))`. Because `&` binds tighter than `|`, that margin applied only to the lncRNA panel — a notebook artifact rather than a deliberate choice. `assemble.R` uses `P$C | P$D` with no extra margin, so panel D (lncRNA) sits slightly tighter than in the original. This is a layout-spacing difference only; no plotted or tested value changes.
+The original's bottom row was `TF_gene_comparison | lncRNA_comparison & theme(plot.margin = margin(l = 2, t = 5, unit = "cm"))`. Because `&` binds tighter than `|`, that margin applied only to the lncRNA panel — a notebook artifact rather than a deliberate choice. `assemble.R` uses `P$C | P$D` with no extra margin, so the lncRNA pair (rendered E/F, built by `panels/panelD.R`) sits slightly tighter than in the original. This is a layout-spacing difference only; no plotted or tested value changes.
 
 ## Retained extras (not in the assembled figure)
 
