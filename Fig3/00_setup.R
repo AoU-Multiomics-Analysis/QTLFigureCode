@@ -37,6 +37,7 @@ dir.create(OBJ_DIR,  showWarnings = FALSE, recursive = TRUE)
 dir.create(OUTDIR,   showWarnings = FALSE, recursive = TRUE)
 
 source("common/manifest.R")
+source("common/vep.R")
 
 # --- Font: Inter via Google if reachable, else default sans -----------------
 FONT <- "sans"
@@ -413,6 +414,32 @@ coloc_cs_level <- function(refresh = FALSE)
          "disagreement upstream.", call. = FALSE)
   left_join(af, size, by = "variant")
 }
+
+# Cut-points for the binarized covariates. Conventional defaults, NOT tuned --
+# if a result turns on the exact value that is a finding about fragility and
+# belongs in NOTES.md.
+PHYLOP_CONSERVED <- 2
+TSS_PROXIMAL_BP  <- 2000
+
+# Columns that are logical but are NOT features (outcomes or bookkeeping).
+NON_FEATURE_LOGICAL <- c("Coloc", "coloc", "flagged")
+
+# Turn the raw annotation columns into the binary feature set: four binarized
+# covariates plus one logical column per VEP consequence term.
+build_feature_matrix <- function(d) {
+  d %>%
+    mutate(
+      rare           = !is.na(max_af)    & max_af   <  0.01,
+      conserved      = !is.na(phylop)    & phylop   >  PHYLOP_CONSERVED,
+      # Sign-agnostic: distTSS is signed by strand, proximity is not.
+      tss_proximal   = !is.na(distTSS)   & abs(distTSS) < TSS_PROXIMAL_BP,
+      protein_coding = !is.na(gene_type) & gene_type == "protein_coding") %>%
+    expand_vep_consequences()
+}
+
+# Logical columns eligible as enrichment features.
+feature_names <- function(d)
+  setdiff(names(d)[vapply(d, is.logical, logical(1))], NON_FEATURE_LOGICAL)
 
 coloc_variant_level <- function(refresh = FALSE)
   build_or_cache("coloc_variant_level", refresh = refresh, {
