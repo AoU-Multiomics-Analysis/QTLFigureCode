@@ -56,7 +56,8 @@ the same treatment (see **SuppFig1**).
 FigN/
 ├── 00_setup.R        # libraries, env-overridable paths, font/DPI, theme + SZ_*,
 │                     #   folded helper functions, build_or_cache + builders
-├── inputs.tsv        # manifest: key, [metadata cols], local_subpath, gs_uri
+├── inputs.tsv        # manifest: key, [metadata cols], local_subpath, gs_uri,
+│                     #           source_repo, source_workflow
 ├── panels/
 │   └── panelA.R …    # each: source setup, load only its inputs, build ONE
 │                     #   ggplot object, saveRDS to objects/, message("Panel X built.")
@@ -85,8 +86,15 @@ stages a missing file **only if absent**, dispatching on the URI scheme:
 `gs://` → `gsutil cp`, `http(s)://` / `file://` → `download.file`. Reach inputs
 with `input_path(key)` (single file), `load_input(key)` (row-binds all files for
 a key and attaches metadata columns), `input_files(key)` (rows + resolved paths).
-Reserved columns are exactly `key`, `local_subpath`, `gs_uri`; any other column is
-metadata. Mark unknown origins `-` and list them in the README as needing a URI.
+Reserved columns are `key`, `local_subpath`, `gs_uri`, `source_repo`,
+`source_workflow`; any other column is metadata. `source_repo` /
+`source_workflow` record which upstream repository and workflow produced each
+file — an `AoU-Multiomics-Analysis/<repo>` pair, `external` for third-party
+references, or `-` where unattributed. **They must stay reserved**: a
+non-reserved column is attached to every row `load_input()` returns, so treating
+provenance as metadata would inject `source_repo` into every SuSiE and enloc
+table the figures read. Mark unknown origins `-` and list them in the README as
+needing a URI.
 
 **Memoized builders.** When panels share heavy upstream work, put it behind
 `build_or_cache(name, expr, refresh = FALSE)` — it caches to `data/<name>.rds`,

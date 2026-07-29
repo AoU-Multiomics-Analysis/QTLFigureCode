@@ -12,7 +12,12 @@
 # local copy is missing (gs:// via gsutil; http(s):// or file:// via
 # download.file — see .stage_uri), so a pre-staged file is never re-fetched.
 # =============================================================================
-.MANIFEST_RESERVED <- c("key", "local_subpath", "gs_uri")
+# Columns the loader treats as manifest STRUCTURE, never as data. Anything else
+# is a metadata column and load_input() attaches it to every row of the loaded
+# table -- so provenance columns must live here, or `source_repo` would appear
+# as a column inside every SuSiE / enloc table Fig1-5 read.
+.MANIFEST_RESERVED <- c("key", "local_subpath", "gs_uri",
+                        "source_repo", "source_workflow")
 
 .manifest_env <- new.env(parent = emptyenv())
 

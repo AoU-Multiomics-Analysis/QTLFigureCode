@@ -99,8 +99,10 @@ system was layered on across the later cleanups:
 **Manifest-driven inputs** (`common/manifest.R`). Each figure's `inputs.tsv`
 maps a logical `key` to one or more files: a `local_subpath` (relative to a
 staging root that defaults to the working directory) and, where known, a `gs://`
-origin. Any other column is treated as metadata and attached to the rows a load
-returns. A file is fetched **only when the local copy is missing** — via
+origin, plus `source_repo` / `source_workflow` recording which upstream
+repository and workflow produced the file (`-` where unattributed, `external`
+for third-party references). Any other column is treated as metadata and
+attached to the rows a load returns. A file is fetched **only when the local copy is missing** — via
 `gsutil` for `gs://`, or `download.file` for `http(s)://` and `file://` — so
 pre-staged inputs skip the copy. Panels reach inputs through `input_path(key)`,
 `load_input(key)` and `input_files(key)`, and each panel declares only what it
