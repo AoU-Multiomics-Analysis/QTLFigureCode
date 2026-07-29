@@ -1,7 +1,7 @@
-key	local_subpath	gs_uri
-coloc_gene	Fig4Data/high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz	-
-coloc_rate	Fig4Data/high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv	-
-r2_twas	Fig4Data/R2_TWAS_combined.tsv	-
-conditional_twas	Fig4Data/ConditionalTWAS.cleaned.tsv.gz	-
-drug_interactions	interactions.tsv	-
-clingen	Fig4Data/evidence_clingen	-
+key	local_subpath	gs_uri	source_repo	source_workflow
+coloc_gene	Fig4Data/high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz	-	AoU-Multiomics-Analysis/FastEnlocTrait	workflows/tasks/harmonize.wdl
+coloc_rate	Fig4Data/high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv	-	AoU-Multiomics-Analysis/FastEnlocTrait	workflows/tasks/summarize.wdl
+r2_twas	Fig4Data/R2_TWAS_combined.tsv	-	AoU-Multiomics-Analysis/TWAS	workflows/aggregate_TWAS.wdl
+conditional_twas	Fig4Data/ConditionalTWAS.cleaned.tsv.gz	-	AoU-Multiomics-Analysis/TWAS	workflows/conditional_rare_TWAS.wdl
+drug_interactions	interactions.tsv	-	external	DGIdb
+clingen	Fig4Data/evidence_clingen	-	external	ClinGen

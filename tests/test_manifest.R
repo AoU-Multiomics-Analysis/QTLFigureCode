@@ -90,4 +90,31 @@ run_file_staging_test()
 expect_error("unsupported gs_uri scheme errors when staging is attempted",
              input_files("badscheme"))
 
+
+# --- provenance columns are STRUCTURE, not data -----------------------------
+# `source_repo` / `source_workflow` record which upstream repo and workflow
+# produced each input. They must stay in .MANIFEST_RESERVED: load_input()
+# attaches every NON-reserved column to each row of the table it reads, so if
+# these were treated as metadata they would appear as columns inside every
+# SuSiE and enloc table Fig1-Fig5 load.
+prov_rows <- data.frame(key = "k", local_subpath = "f.tsv", gs_uri = NA,
+                        type = "eQTL-pQTL", source_repo = "org/repo",
+                        source_workflow = "workflows/W.wdl", path = "f.tsv",
+                        stringsAsFactors = FALSE)
+ok("source_repo is reserved, not a metadata column",
+   !"source_repo" %in% manifest_meta_cols(prov_rows))
+ok("source_workflow is reserved, not a metadata column",
+   !"source_workflow" %in% manifest_meta_cols(prov_rows))
+ok("genuine metadata columns are still attached",
+   "type" %in% manifest_meta_cols(prov_rows))
+
+# Every shipped manifest carries the columns, so provenance is never silently
+# absent for a figure.
+for (fig in c("Fig1", "Fig2", "Fig3", "Fig4", "Fig5", "SuppFig1")) {
+  h <- names(read.delim(file.path(fig, "inputs.tsv"), nrows = 1,
+                        colClasses = "character"))
+  ok(paste0(fig, "/inputs.tsv declares source_repo and source_workflow"),
+     all(c("source_repo", "source_workflow") %in% h))
+}
+
 cat("test_manifest.R: all assertions passed\n")

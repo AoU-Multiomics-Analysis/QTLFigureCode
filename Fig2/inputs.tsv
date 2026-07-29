@@ -1,7 +1,7 @@
-key	Assay	local_subpath	gs_uri
-susie_eqtl	Expression	COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz	-
-susie_sqtl	Splicing	COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz	-
-susie_pqtl	Proteomics	COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz	-
-burden_enrichment	-	Fig2Data/QTLBurdenOutlierEnrichment.tsv	-
-median_ko	-	Fig2Data/MedianKOSummary.tsv	-
-burden_count	-	Fig2Data/QTLBurdenOutlierCount.rds	-
+key	Assay	local_subpath	gs_uri	source_repo	source_workflow
+susie_eqtl	Expression	COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz	-	AoU-Multiomics-Analysis/susieR	workflows/AggregateSusie.wdl
+susie_sqtl	Splicing	COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz	-	AoU-Multiomics-Analysis/susieR	workflows/AggregateSusie.wdl
+susie_pqtl	Proteomics	COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz	-	AoU-Multiomics-Analysis/susieR	workflows/AggregateSusie.wdl
+burden_enrichment	-	Fig2Data/QTLBurdenOutlierEnrichment.tsv	-	AoU-Multiomics-Analysis/QuantifyQTLBurden	workflows/CleanQTLBurden.wdl
+median_ko	-	Fig2Data/MedianKOSummary.tsv	-	AoU-Multiomics-Analysis/QuantifyQTLBurden	workflows/CleanQTLBurden.wdl
+burden_count	-	Fig2Data/QTLBurdenOutlierCount.rds	-	AoU-Multiomics-Analysis/QuantifyQTLBurden	workflows/CleanQTLBurden.wdl
