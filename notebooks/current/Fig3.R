@@ -1,7 +1,5 @@
 # %% Read the current cross-QTL panels
-#| The saved objects contain the current fitted results and plot data. This step
-#| rebuilds their display. It does not rerun FastENLOC or the source coefficient tests.
-#| The full upstream pipeline remains in Fig3/00_setup.R and Fig3/panels/.
+#| Read the cross-QTL results for gene sharing, signal components, molecular effects, and variant annotations.
 suppressPackageStartupMessages({
   library(ggh4x)
   library(ggrepel)
@@ -114,6 +112,6 @@ fig3 <- (top_row / bottom_row) + plot_annotation(tag_levels = "A") &
 save_plot(fig3, "Fig3/Figure3_rebuilt", 184, 130)
 print(fig3)
 
-# %% Exact submission reference
-#| This archived PNG is the Figure 3 image embedded in the November 2 manuscript.
+# %% Reference figure
+#| Complete figure layout.
 show_reference(3)

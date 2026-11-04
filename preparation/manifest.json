@@ -1,0 +1,2665 @@
+{
+  "schema_version": 1,
+  "description": "Scripts that prepare the inputs used by the figure notebooks. Input and generated data remain outside Git.",
+  "steps": [
+    {
+      "key": "fig1_gene_reference",
+      "script": "preparation/Fig1/00_gene_reference.R",
+      "description": "Extract the GENCODE v48 gene records and stable IDs from the raw GTF.",
+      "figures": [
+        "Fig1",
+        "S4",
+        "S14"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "gencode.v48.annotation.gtf.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/gene_reference.tsv",
+          "required": false,
+          "role": "comparison_only",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/gene_reference.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig1/inputs.tsv",
+          "sha256": "fc23e4e4ef929aa1855684abd1b4946abc1212f002ee2a605b902f3ed9c3168f"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "gene_records": 78686,
+        "saved_gene_reference_differences": 0
+      }
+    },
+    {
+      "key": "fig1_novelty",
+      "script": "preparation/Fig1/01_novelty.R",
+      "description": "Rebuild same-assay reference sets, corrected UKBB protein identities, gene filters and current COMB novelty.",
+      "figures": [
+        "Fig1"
+      ],
+      "dependencies": [
+        "fig1_gene_reference"
+      ],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/COMB.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/COMB.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_COMB_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/Whole_Blood.v10.eGenes.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/Whole_Blood.v10.sGenes.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/INTERVAL_eQTL_summary.xlsx"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/INTERVAL_cis_sQTL_summary.xlsx"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/Whole_blood.maf0001.100.permutations.txt"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/41586_2023_6592_MOESM3_ESM.xlsx"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/gene_reference.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/annotations/hgnc_complete_set_2026-10-15.txt"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/paper_known_genes_by_study.tsv",
+          "required": false,
+          "role": "comparison_only",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/paper_novelty_by_trait.tsv",
+          "required": false,
+          "role": "comparison_only",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/target_gene_map.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/uniprot_identity_mapping.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/ambiguous_target_symbols.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/unmapped_ukbb_targets.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/ukbb_target_mapping_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/ukbb_panel_coverage.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/paper_known_genes_by_study.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/paper_known_genes_by_study.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/paper_novelty_by_trait.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/paper_novelty_by_trait.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/novelty_counts_in_C_format.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/novelty_counts_in_C_format.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/novel_genes_by_biotype.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/novel_genes_by_biotype.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/novel_pqtl_reference_coverage.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/novel_pqtl_reference_coverage.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/novelty_provenance.json"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "scripts/prepare_corrected_qtl_novelty.R",
+          "sha256": "ecbf83f851d47a695bd95b2101b4ee92706ac9dd69ca0267db0a547a984888da"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/load_ukbb_pqtl_targets.R",
+          "sha256": "87fb18e303d14e5cfcda521cd36ac78a8260e5b62e7f5b184c48a7d766c7e2ec"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/audit_novel_qtl_counts.R",
+          "sha256": "345e318d7cc617a5926f45cc97c481e0c7daed0c2fd0c37fe7bf736e7cf760d2"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/L_noncoding_highlights/prepare_noncoding.R",
+          "sha256": "154024f998212cfda5e1fcaa75b8ef269f9d47119c6e32e43072718daed50c79"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "raw_records": 44421,
+        "saved_novelty_call_differences": 0,
+        "source_q_value_differences": 0,
+        "reference_set_differences": 0,
+        "novel_genes": {
+          "eQTL": 10148,
+          "sQTL": 2450,
+          "pQTL": 1143
+        },
+        "novel_protein_measured_no_cis": 347,
+        "novel_protein_outside_panel": 796,
+        "saved_comparisons_optional": true,
+        "without_saved_answers_test": "passed: isolated paper root had only frozen HGNC annotations; no saved gene reference, known set, novelty flags or labels; counts reproduced and skipped comparisons recorded as not_run/null"
+      }
+    },
+    {
+      "key": "fig1_circos",
+      "script": "preparation/Fig1/02_circos.R",
+      "description": "Build reconciled circos lead points, capped radial scores, selected labels, axes and connector coordinates.",
+      "figures": [
+        "Fig1"
+      ],
+      "dependencies": [
+        "fig1_novelty"
+      ],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/COMB.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/COMB.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_COMB_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/gene_reference.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/paper_novelty_by_trait.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/L_noncoding_highlights/label_anchors.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/plotted_lead_variants.tsv.gz",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/L_noncoding_highlights/gene_labels.tsv"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/biotype_filter_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/filter_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/novel_selection_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/gene_labels.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/selected_gene_evidence.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/gene_label_dot_types.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/plotted_lead_variants.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/label_anchors.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/highlighted_gene_signals.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/axis_scales.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/axis_positions.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/axis_ticks.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/gene_connector_segments.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/legend_layout.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/panel_connector_vertices.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/build_circos.R",
+          "sha256": "b4f5fe5e3841d6781bf5c50b2a137a0785991763d2f7984bcc7ec0544fb05646"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/prepare_figure1B_reconciled.py",
+          "sha256": "d51cd886b5e1ed72724cb4c7ff53645f6a0bd25807258f22cb412e9f317092e2"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "lead_points": 13741,
+        "selected_labels": 26,
+        "assay_dots": 40,
+        "maximum_coordinate_difference": 0.0,
+        "final_vector_label_gaps": "Display-only archived composition; not rerun in data preparation."
+      }
+    },
+    {
+      "key": "fig1_categories",
+      "script": "preparation/Fig1/03_categories.R",
+      "description": "Rebuild the seven annotation categories from raw frozen reference annotations, including RNA mapping, histones, GO unions and clinical drug status.",
+      "figures": [
+        "Fig1"
+      ],
+      "dependencies": [
+        "fig1_novelty"
+      ],
+      "inputs": [
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/M_corrected_targets/paper_novelty_by_trait.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/gene_reference.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/annotations/hgnc_complete_set_2026-10-15.txt"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/annotations/ncg_v7.2_cancer_drivers.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/annotations/epifactors_v2.1_proteins.csv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/annotations/human_tfs_ensembl_v1.01.txt"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/annotations/gnomad_v2.1.1_by_gene.txt.bgz"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/evidence_clingen.parquet"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/annotations/human_RNA_processing.gaf"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/annotations/download_manifest.json"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/drug_target_counts/annotations/chembl_clinical_molecules_2026-10-16.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/drug_target_counts/annotations/drug_mechanism_of_action_26.09.parquet"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/drug_target_counts/annotations/drug_molecule_26.09.parquet"
+        },
+        {
+          "root": "paper",
+          "path": "output/uncategorized_novel_egenes_20261027/annotations/go-basic_GO_release_2026-08-05.json.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/uncategorized_novel_egenes_20261027/annotations/HUMAN-uniprot_GO_release_2026-08-05.gaf.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_counts_by_assay.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_gene_lists.tsv",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/assay_totals.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/rna_processing_annotation_mapping.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/rna_processing_gene_mapping.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/cancer_mapping_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/epifactors_mapping_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/clingen_qualifying_gene_ids.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/approval_annotation_discrepancies.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/drug_target_counts/all_opentargets_drug_target_status.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/category_definitions.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/novel_coding_gene_annotations.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/category_counts_by_assay.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/category_gene_lists.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/distinct_category_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/reconciled_20261027/distinct_category_gene_lists.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/gene_identity_mapping.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/histone_gene_mapping.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/membrane_signaling_annotation_evidence.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/membrane_signaling_gene_union.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/novel_coding_gene_annotations.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_definitions.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_counts_by_assay.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/distinct_category_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_gene_lists.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/distinct_category_gene_lists.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/coverage_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/union_deduplication_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/assay_totals.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/manuscript_sentence.txt"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/seven_categories_20261027/data_audit.json"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "output/figure1_novel_gene_categories/build_categories.R",
+          "sha256": "1ab93a70a2c2f6ca9fb8c385c7ce6aff667ddfa96d88764cb432746c0d67c34b"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/count_novel_qtl_drug_targets.R",
+          "sha256": "7aa608dfab4f46cc97be380c371da58ef9045af1b8a29205b57c0c35edfd6d58"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/reconcile_figure1C_categories.R",
+          "sha256": "32d4653f5c1664a088b01edd7376da5db1e55746f2422c779305aff21680a38e"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/expand_figure1C_seven_categories.py",
+          "sha256": "167003b4adf98ac1fed22b732e84c315e9947b585e12aa111d7044eb13824afe"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "coding_genes_by_assay": {
+          "eQTL": 1207,
+          "sQTL": 2035,
+          "pQTL": 1143
+        },
+        "distinct_coding_genes": 4146,
+        "count_cells_compared": 21,
+        "gene_membership_differences": 0,
+        "distinct_category_counts": [
+          159,
+          541,
+          741,
+          499,
+          199,
+          1495,
+          304
+        ]
+      }
+    },
+    {
+      "key": "fig1_finemapping",
+      "script": "preparation/Fig1/04_finemapping.R",
+      "description": "Aggregate each raw credible set once, preserve its source size, compute maximum PIP and tie count, and prepare main D/E plus S11 inputs.",
+      "figures": [
+        "Fig1",
+        "S11",
+        "S12",
+        "S13"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_COMB_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_AFR_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_AMR_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_EUR_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_SAS_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "env:QTL_FIG1_EAS_EQTL_FILE",
+          "path": "",
+          "fallback_root": "input",
+          "alternatives": [
+            "Fig1Data/PopulationLevelFinemapping/eQTL/EAS_20261102.eQTL_SusieMerged.tsv"
+          ]
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_MID_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_COMB_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_AFR_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_AMR_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_EUR_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_SAS_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_EAS_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/sQTL/AoU_MID_9k_sQTL_SusieMerged.annotated.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/pQTL/pQTL_fm_data_10k.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/credible_sets.tsv.gz",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/lead_variant_pips.tsv.gz",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/science_print_size/three_assay_D/credible_set_count_curves.tsv",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/credible_set_counts/credible_sets_per_molecular_trait.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/credible_set_counts/histogram_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/credible_set_counts/population_credible_set_count_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/credible_sets_per_molecular_trait.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/histogram_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/population_credible_set_count_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/credible_sets.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/lead_variant_pips.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/credible_set_traits.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/EAS_source_manifest.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_population_credible_set_counts/credible_sets_per_molecular_trait.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/science_print_size/three_assay_D/credible_set_count_curves.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/bottom_row_density_options/combined_PIP_percent_inset_display.rds"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/bottom_row_density_options/combined_lead_PIP_summary.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "scripts/prepare_eas_fine_mapping_supplements.R",
+          "sha256": "2205ecd87b0b4a8410156e0bd83bb36c2dac765f018e9198a9b077079afc22a7"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/build_figure1D_three_assays.R",
+          "sha256": "42f8cd626bf9254b013dbe947c86346f19390748bf4f9a542b2b3ad6e60bdf1e"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/build_eas_credible_set_counts.R",
+          "sha256": "8e213f1ff7d91990a0e037858f1190984be2da4c204f5c6489cd7d042261121d"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/build_combined_pip_inset.R",
+          "sha256": "95b179157ee2f8a5aa35890eac0b4ff0b2c82d51075a411a8e980f61e6735511"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "credible_sets_compared": 457883,
+        "assay_population_groups": 21,
+        "set_size_differences": 0,
+        "lead_pip_differences": 0,
+        "lead_variant_differences": 0,
+        "lead_tie_count_differences": 0,
+        "main_curve_points_compared": 15,
+        "combined_set_counts": [
+          143512,
+          17674,
+          11922
+        ],
+        "combined_high_pip_counts": [
+          70246,
+          8301,
+          6284
+        ]
+      }
+    },
+    {
+      "key": "fig1_supplements",
+      "script": "preparation/Fig1/05_supplements.R",
+      "description": "Prepare exact S12 size summaries and gene-cluster analytic contrasts plus S13 bounded PIP density grids and summaries.",
+      "figures": [
+        "S12",
+        "S13"
+      ],
+      "dependencies": [
+        "fig1_finemapping"
+      ],
+      "inputs": [
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/credible_sets.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "output/eas_fine_mapping_2026-11-02/data/lead_variant_pips.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/AFR_mean_size_differences.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/population_credible_set_summary.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/lead_pip_summary.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/lead_pip_density_curves.tsv.gz",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/figure_display.rds"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/population_credible_set_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/credible_sets.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/UKBB_reference_marker.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/AFR_mean_size_differences.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/gene_cluster_summaries.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/figure_display.rds"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/lead_variant_pips.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/lead_pip_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/lead_pip_density_curves.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/density_area_checks.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "scripts/build_eas_credible_set_sizes.R",
+          "sha256": "36017b4f8ababfefcbe4ae3be4423061213b09505df8ef05a1107b23bd40463b"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/build_eas_lead_pip.R",
+          "sha256": "5436af5c920a07dfe18f797a8d5fc853b9cf436f13713cc11554fc899a365dfa"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "size_summary_groups_compared": 21,
+        "analytic_contrast_rows_compared": 21,
+        "pip_summary_groups_compared": 21,
+        "density_grid_points_compared": 43008,
+        "numeric_tolerance": 1e-10,
+        "fine_mapping_models_refitted": false,
+        "resampling_performed": false
+      }
+    },
+    {
+      "key": "fig1_population_discovery",
+      "script": "preparation/Fig1/06_population_discovery.R",
+      "description": "Recompute the historical S4 BH discovery proportions within each raw permutation-result file; count the shared reference-cohort samples.",
+      "figures": [
+        "S4"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/COMB.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/AFR.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/AMR.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/EAS.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/EUR.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/SAS.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/eQTL/MID.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/COMB.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/AFR.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/AMR.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/EAS.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/EUR.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/SAS.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/sQTL/MID.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_COMB_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_AFR_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_AMR_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_EAS_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_EUR_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_SAS_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/pQTL/AoU_10750_MID_pQTL.cis_qtl.txt.gz"
+        },
+        {
+          "root": "input",
+          "path": "reference/COMB_eQTL_9k_sample_list.tsv"
+        },
+        {
+          "root": "input",
+          "path": "echo_v4_r2.ancestry_preds.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_QTL_discovery_by_population/population_QTL_discovery_data.tsv",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_QTL_discovery_by_population/population_QTL_discovery_data.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_population_qtl_discovery/population_QTL_discovery_data.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig1/panels/panelC.R",
+          "sha256": "895c67b7d91418839bc3983bafd70989fa0bdbc85c9274ee7603a13ddd093519"
+        },
+        {
+          "root": "source",
+          "path": "Fig1/00_setup.R",
+          "sha256": "dbf657169778b8106d9ec17403bcb06f87d19f5ff278b0343089bb3adc2314fc"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/build_population_qtl_discovery_supplement.R",
+          "sha256": "a52f4415771cea3805ba99c4f21da298249d925a7937d35f4306a640fc86f1fa"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "assay_population_summaries_compared": 21,
+        "saved_proportion_differences": 0,
+        "tested_row_count_differences": 0,
+        "significant_row_count_differences": 0,
+        "reference_sample_count_differences": 0,
+        "method": "BH of pval_beta within each source file, distinct from main-figure source qval."
+      }
+    },
+    {
+      "key": "fig1_cohort_counts",
+      "script": "preparation/Fig1/07_cohort_counts.R",
+      "description": "Read supplied pre-QC aggregate availability counts and recount post-QC RNA/proteome samples from the actual list and headers.",
+      "figures": [
+        "Fig1"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/science_print_size/cohort_counts_2026-10-26.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/science_print_size/Figure1_Science_184mm_seven_categories_postQC_20261027_cohort_totals.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "input",
+          "path": "reference/COMB_eQTL_9k_sample_list.tsv"
+        },
+        {
+          "root": "env:QTL_FIG1_PROTEIN_BED_FILE",
+          "path": "",
+          "fallback_root": "input",
+          "alternatives": [
+            "reference/AoU_comb_10750_pQTL.bed.gz"
+          ]
+        },
+        {
+          "root": "env:QTL_FIG1_PROTEIN_COVARIATES_FILE",
+          "path": "",
+          "fallback_root": "input",
+          "alternatives": [
+            "reference/AoU_COMB_10750_pQTL_covars_no_genetic_pcs.tsv"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/science_print_size/cohort_counts_2026-10-26.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure1_flowchart_draft/science_print_size/Figure1_Science_184mm_seven_categories_postQC_20261027_cohort_totals.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "scripts/add_figure1A_post_qc_counts.py",
+          "sha256": "4beacfc1c04afb1a40895c8c9c701e421237279c38b3da6fb1a0b7d375af5974"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/update_figure1A_assay_counts.py",
+          "sha256": "e4ab7646a7c1f960df9d23b0a7f13fdba43a599201141a6bd9217e190adaa3e8"
+        }
+      ],
+      "verification": {
+        "status": "passed",
+        "pre_QC_totals": [
+          9130,
+          10056
+        ],
+        "recounted_post_QC_totals": [
+          8895,
+          9581
+        ],
+        "protein_covariate_ID_set_matches_BED": true,
+        "participant_identifiers_written": false,
+        "limitation": "The upstream participant availability export for the pre-QC aggregate source is not available; those supplied aggregate counts are preserved."
+      }
+    },
+    {
+      "key": "fig2_data",
+      "script": "preparation/Fig2/build.R",
+      "description": "Prepare current frequency bins, unique-variant ancestry tests, consequence-priority aFC data and regressions, cumulative aFC summaries, outlier statistics from contingency counts, protein-coding medians, and S16 ancestry bins.",
+      "figures": [
+        "Fig2",
+        "S16"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "input",
+          "path": "COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": [
+            "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz"
+          ]
+        },
+        {
+          "root": "input",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "susie",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "susie",
+          "path": "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz",
+          "alternatives": [
+            "COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz"
+          ]
+        },
+        {
+          "root": "susie",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "input",
+          "path": "Fig2Data/QTLBurdenOutlierEnrichment.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig2Data/MedianKOSummary.tsv"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig2/data/A.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/E.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/F.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/S_ancestry_stacked.rds"
+        },
+        {
+          "root": "paper",
+          "path": "output/frequency_bins/frequency_bin_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/frequency_bins/input_qc.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure2D_recalculation_20261102/prepared_display_percentages.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure2_ancestry_bins/stacked_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure2_ancestry_bins/shared_curve.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig2/00_setup.R",
+          "sha256": "437c873b9d46083870e2779f2d1262d7eec1585f067127fd9dab01aa29bd0e5f"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/01_prep_data.R",
+          "sha256": "ed305a16f83e06f3e237691598ce073aed33386a8e8f88c24b6a3a639b557d8a"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/supp_ancestry_stacked.R",
+          "sha256": "0ee4557730163dc4ef60fd4d83efaa41b27d7d7667ff8e7eee9840532f271513"
+        },
+        {
+          "root": "paper",
+          "path": "output/frequency_bins/plot_frequency_bins.R",
+          "sha256": "3c722dc6ea4c69061c423f8973b5df42287e1343da51c4488bd6669e598cd701"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/recalculate_figure2D_afc.R",
+          "sha256": "202b605bff91de55a64a3e6a82f975d54d336ddd7334dc6827821eaecd54f368"
+        }
+      ],
+      "verification": "Synthetic RED-to-GREEN checks passed. Full source-result preparation ran locally. Current frequency-bin counts and caches B-F/S16 matched the saved source data; A row order was then aligned with the original assay order. E OR/CI/Fisher statistics reproduce the source. F starts at upstream aggregate quantile results, not participant rows. No raw association model was rerun."
+    },
+    {
+      "key": "fig3_coloc",
+      "script": "preparation/Fig3/build.R",
+      "description": "Read FastENLOC result tables, assign per-pair Bayesian FDR calls, join validated variant/gene annotations and strongest posterior representatives, build credible-set components, fit current concordance and MAF-rate models, and derive S20-S23 summaries.",
+      "figures": [
+        "Fig3",
+        "S20",
+        "S21",
+        "S22",
+        "S23"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "input",
+          "path": "COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": [
+            "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz"
+          ]
+        },
+        {
+          "root": "input",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_pQTL.enloc.gene.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/sQTL_pQTL.enloc.gene.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_sQTL.enloc.gene.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_pQTL.enloc.sig.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/sQTL_pQTL.enloc.sig.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_sQTL.enloc.sig.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_pQTL.enloc.snp.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/sQTL_pQTL.enloc.snp.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_sQTL.enloc.snp.out"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig3/data/susie_finemapping.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_gene_level.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_cs_level.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_variant_level.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_cs_components.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_model_input.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_cs_rate.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_maf_rate.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_A.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/S20_threshold_counts.tsv"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/S21_gene_rates.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig3/00_setup.R",
+          "sha256": "15a1eafa7f1a40d6b6f0702ff89a98ae651cc1f5cc8c617e17f340d8d8492e1b"
+        },
+        {
+          "root": "source",
+          "path": "common/vep.R",
+          "sha256": "bb62db86ffcce0b4a72546f4b6b2bf6f03f86242fa1e5b79522750f63736e5b9"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelA.R",
+          "sha256": "266ee89fadf60d285789b47c77d71350bd31ee4364a4e5db0b89e1ce6d35c6ff"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelB.R",
+          "sha256": "89f21d9c412863f621a662ff8c60456889fd8a62b8d345ad7ee0d98857f56435"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelC.R",
+          "sha256": "24d36500791608ee201a5c426fc1beb0bd9f6dbe89b7b19acc095d90c906d75a"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelD.R",
+          "sha256": "ce69518ec37b6d13251a534d49b2c451cc9ffe670c35f53d5141c42b71ddd57c"
+        }
+      ],
+      "verification": "Full local preparation passed. All eight scientific caches match the current original caches within 1e-10: SuSiE, gene/CS/variant FastENLOC levels, components, model inputs, Wilson rates, and MAF regression. Synthetic RED-to-GREEN tests cover FDR ties, AF folding/missingness, annotation cutpoints, Wilson limits, count pooling, and MAF scaling. Preserved signed-log1p models emit their original NaN warnings; no new model was substituted."
+    },
+    {
+      "key": "fig3_annotations",
+      "script": "preparation/Fig3/build_annotations.R",
+      "description": "Reconstruct the symmetric two-layer credible-set background, clean coding annotations with canonical target-gene CDS/SpliceAI/cCRE criteria, collapse duplicate variants with geometric-mean PIP weights, and fit current MAF annotation models.",
+      "figures": [
+        "Fig3"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "input",
+          "path": "COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": [
+            "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz"
+          ]
+        },
+        {
+          "root": "input",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_pQTL.enloc.sig.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/sQTL_pQTL.enloc.sig.out"
+        },
+        {
+          "root": "input",
+          "path": "Fig3Data/eQTL_sQTL.enloc.sig.out"
+        },
+        {
+          "root": "input",
+          "path": "gencode.v48.annotation.gtf.gz"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig3/data/symmetric_universe.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_maf_enrichment.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_E.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig3/00_setup.R",
+          "sha256": "15a1eafa7f1a40d6b6f0702ff89a98ae651cc1f5cc8c617e17f340d8d8492e1b"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/symmetric.R",
+          "sha256": "9c547667761ab08f7c76882c453fdab5b4c813d91e25c003435e2cd7af67dfc1"
+        },
+        {
+          "root": "source",
+          "path": "common/vep.R",
+          "sha256": "bb62db86ffcce0b4a72546f4b6b2bf6f03f86242fa1e5b79522750f63736e5b9"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelE.R",
+          "sha256": "07af11f048d4b5596664043a98f77b1d5c2a518ca136ec92078ba63a9e288e66"
+        }
+      ],
+      "verification": "Full local source-result preparation passed. Symmetric universe and all 23 annotation-model fits match the original caches within 1e-10. Canonical GTF selection is equivalent with a direct compressed-file reader. The source reports unrecoverable partner credible sets in the other assay pairs; current E uses recoverable eQTL-pQTL only. No sequence model or FastENLOC job was run."
+    },
+    {
+      "key": "fig4_traits",
+      "script": "preparation/Fig4/build_traits.R",
+      "description": "Count distinct colocalizing genes by trait/category, join lenient union colocalization rates, then apply the current count/category/top-10 filters.",
+      "figures": [
+        "Fig4"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "Fig4Data/high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig4Data/high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig4/data/coloc_by_trait.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_A.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig4/00_setup.R",
+          "sha256": "1c17e9353208d9ed08dbc3c1760491d0b75a1a5ab0052a3593d72c107aa4de08"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelA_labeled.R",
+          "sha256": "48fa9269172e0065f9c2199c99fcea78c53db73273a59b7aa0f35f99bc49ef6c"
+        }
+      ],
+      "verification": "SOURCE-ONLY GAP: the complete harmonized gene result with trait_category and any_coloc is missing locally. The similarly named three-trait export is not a substitute. Pure distinct-count/rate-join tests pass; no saved summary was substituted for the required result input."
+    },
+    {
+      "key": "fig4_twas",
+      "script": "preparation/Fig4/build.R",
+      "description": "Prepare heritability-normalized rare-variant R2 contrasts; remove conditional-TWAS artifacts; match control gene-trait pairs; derive QQ coordinates; join ClinGen/DGIdb sets; apply per-TWAS-path BH adjustment; collapse to genes and fit enrichment models.",
+      "figures": [
+        "Fig4"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "Fig4Data/R2_TWAS_combined.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig4Data/ConditionalTWAS.cleaned.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "interactions.tsv"
+        },
+        {
+          "root": "input",
+          "path": "Fig4Data/evidence_clingen/part-00000.snappy.parquet"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/conditional_twas.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/qq_match_source.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/gene_sets.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/gene_twas_data.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_D.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig4/00_setup.R",
+          "sha256": "1c17e9353208d9ed08dbc3c1760491d0b75a1a5ab0052a3593d72c107aa4de08"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelB.R",
+          "sha256": "91d1da9570e67d55aad85c08e917416cc5cfd7d4ab3d6db1c7b571fd630c76f6"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelC.R",
+          "sha256": "61138c97d4a022991dea10e6fbf78874719d113ff914e14ff07c76824020af21"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelD.R",
+          "sha256": "9d1871dfa9a7b7f93523c93c53174f98ff0deaa61080ad60d144a21e27360de3"
+        }
+      ],
+      "verification": "Full local B-D preparation passed. All plotted data for B, C, and D match the current saved objects within 1e-10, including matched QQ coordinates and profiled enrichment intervals. Synthetic R2/QQ/zero-P checks pass. Source result tables, not raw association or conditional-TWAS models, are the upstream boundary."
+    },
+    {
+      "key": "fig4_loci",
+      "script": "preparation/Fig4/build_loci.R",
+      "description": "Build exclusive UpSet intersections from unique gene-trait membership and join CD40 SuSiE variants to participating GWAS/QTL signals with original locus offsets and credible-set labels.",
+      "figures": [
+        "S24",
+        "S25"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "high_level_coloc_outputs/final_summaries/colocalizing_genes_long.tsv",
+          "alternatives": [
+            "Fig4Data/high_level_coloc_outputs/final_summaries/colocalizing_genes_long.tsv"
+          ],
+          "environment_variable": "QTL_FIG4_MEMBERSHIP"
+        },
+        {
+          "root": "input",
+          "path": "high_level_coloc_outputs/harmonized/harmonized_coloc.signal.tsv.gz",
+          "alternatives": [
+            "Fig4Data/high_level_coloc_outputs/harmonized/harmonized_coloc.signal.tsv.gz"
+          ],
+          "environment_variable": "QTL_FIG4_SIGNAL"
+        },
+        {
+          "root": "susie",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        },
+        {
+          "root": "susie",
+          "path": "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz",
+          "alternatives": [
+            "COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz"
+          ]
+        },
+        {
+          "root": "susie",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+          "alternatives": []
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig4/coloc_upset_intersection_counts.tsv"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/coloc_upset_gene_trait_membership.tsv"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/cd40_coloc_locus_plot_data.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig4/plot_coloc_upset.R",
+          "sha256": "c06e377d51c148508fc802c3b92b095a97001dde58a2f16942c91e119b06787e"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/plot_cd40_coloc_locus.R",
+          "sha256": "766958831f2cf1c67640aa340f570b49a5a5cd0427ad27e74a7d7726c50b6169"
+        }
+      ],
+      "verification": "Full local preparation passed with exact current input-file overrides. All seven S24 intersections and all 84 S25 display rows match the saved originals within 1e-10. Current high_level_coloc_outputs membership has 1617 multilayer pairs; the stale PaperFigures/Fig4Data snapshot has 1502 and is rejected. Synthetic union exclusion, deduplication, and participating-CS/locus-offset tests pass."
+    },
+    {
+      "key": "fig2_notebook",
+      "script": "preparation/Fig2/connect_notebook.R",
+      "description": "Connect newly prepared A-F data, fitted regression annotations, cumulative percentages, and S16 bins/rolling curve to the exact plot-object files read by current notebooks.",
+      "figures": [
+        "Fig2",
+        "S16"
+      ],
+      "dependencies": [
+        "fig2_data"
+      ],
+      "inputs": [
+        {
+          "root": "source",
+          "path": "Fig2/data/A.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/E.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/F.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig2/data/S_ancestry_stacked.rds"
+        },
+        {
+          "root": "paper",
+          "path": "output/frequency_bins/frequency_bin_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure2_binned_draft/science_print_size/Science_display_plots.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure2_ancestry_enrichment_REM/Supplemental_Figure_S16_ancestry_enrichment_REM.rds",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/figure2_binned_draft/science_print_size/Science_display_plots.rds"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure2_ancestry_enrichment_REM/Supplemental_Figure_S16_ancestry_enrichment_REM.rds"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "output/figure2_binned_draft/science_print_size/build_panels.R",
+          "sha256": "d19a562747757bf7724bb5eb64605a91a4891d6d8fb499b02f38fc53a18d40da"
+        }
+      ],
+      "verification": "Executed successfully. Each scientific frame and data-bearing statistical layer matched the accepted reference before replacement. Original RDS objects supply layout, scales, and fixed explanatory annotations only; new data replace source rows and regression/count/percentage layers. Generated overlay is the actual notebook input contract."
+    },
+    {
+      "key": "fig3_notebook",
+      "script": "preparation/Fig3/connect_notebook.R",
+      "description": "Connect newly derived A-E scientific tables to current notebook object contracts. Replace gene-sharing annotation, B wrapped component/rate data, C interaction fits, D transformed data/slopes, and E significant annotated model rows.",
+      "figures": [
+        "Fig3"
+      ],
+      "dependencies": [
+        "fig3_coloc",
+        "fig3_annotations"
+      ],
+      "inputs": [
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_A.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/current_panel_D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/data/coloc_maf_enrichment.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/A.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/B.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/C.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/D.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/E.rds",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig3/objects/A.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/objects/E.rds"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelA.R",
+          "sha256": "266ee89fadf60d285789b47c77d71350bd31ee4364a4e5db0b89e1ce6d35c6ff"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelB.R",
+          "sha256": "89f21d9c412863f621a662ff8c60456889fd8a62b8d345ad7ee0d98857f56435"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelC.R",
+          "sha256": "24d36500791608ee201a5c426fc1beb0bd9f6dbe89b7b19acc095d90c906d75a"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelD.R",
+          "sha256": "ce69518ec37b6d13251a534d49b2c451cc9ffe670c35f53d5141c42b71ddd57c"
+        },
+        {
+          "root": "source",
+          "path": "Fig3/panels/panelE.R",
+          "sha256": "07af11f048d4b5596664043a98f77b1d5c2a518ca136ec92078ba63a9e288e66"
+        }
+      ],
+      "verification": "Executed successfully. All data/statistic comparisons passed before source objects were saved to the generated notebook overlay. The saved objects provide accepted rendering geometry; scientific frames and derived statistical annotations are replaced from rebuilt results."
+    },
+    {
+      "key": "fig4_notebook",
+      "script": "preparation/Fig4/connect_notebook.R",
+      "description": "Connect current B-D R2, matched QQ, and refitted enrichment data to notebook objects. A has an explicit conditional connector recipe, used only if its missing source-result preparation can run.",
+      "figures": [
+        "Fig4"
+      ],
+      "dependencies": [
+        "fig4_twas"
+      ],
+      "inputs": [
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/B.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/C.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/D.rds",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/data/current_panel_A.tsv",
+          "required": false
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/A_labeled.rds",
+          "required": false,
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig4/objects/B.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/C.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/objects/A_labeled.rds",
+          "required": false
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelB.R",
+          "sha256": "91d1da9570e67d55aad85c08e917416cc5cfd7d4ab3d6db1c7b571fd630c76f6"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelC.R",
+          "sha256": "61138c97d4a022991dea10e6fbf78874719d113ff914e14ff07c76824020af21"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelD.R",
+          "sha256": "9d1871dfa9a7b7f93523c93c53174f98ff0deaa61080ad60d144a21e27360de3"
+        },
+        {
+          "root": "source",
+          "path": "Fig4/panels/panelA_labeled.R",
+          "sha256": "48fa9269172e0065f9c2199c99fcea78c53db73273a59b7aa0f35f99bc49ef6c"
+        }
+      ],
+      "verification": "Executed B-D successfully; each fresh scientific table matches its accepted reference before replacement. Fig4A has no generated object because the full harmonized gene result is unavailable. The connector does not copy saved A into the overlay to hide that gap."
+    },
+    {
+      "key": "fig5-select",
+      "script": "preparation/Fig5/select_all_assays.R",
+      "description": "Select the rare all-assay rows and comparator-gene rows from raw SuSiE inputs and original ClinGen evidence.",
+      "figures": [
+        "Fig5"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "part-00000-006c7897-e219-4036-abbf-af4482a5177e-c000.snappy.parquet"
+        },
+        {
+          "root": "susie",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "susie",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "susie",
+          "path": "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/rare_variant_count_bars_all_assays_unfiltered/input_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/rare_variant_count_bars_all_assays_unfiltered/selected_pairs.tsv"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/preparation/all_assay_context.rds"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/rare_variant_count_bars_all_assays_unfiltered/plot.R",
+          "sha256": "058d85f18e5d3a8885bdc44e7da61e4fd14e9364cd754c7eefc9ec8bcbc87e54"
+        }
+      ],
+      "verification": "Executed locally from all three raw tables. No new PIP or effect threshold is applied to A/B."
+    },
+    {
+      "key": "fig5-main",
+      "script": "preparation/Fig5/prepare_main.R",
+      "description": "Build A-E counts, ClinVar classes, population assignments, AR funnel, selected effects, and Fisher tests.",
+      "figures": [
+        "Fig5"
+      ],
+      "dependencies": [
+        "fig5-select"
+      ],
+      "inputs": [
+        {
+          "root": "source",
+          "path": "Fig5/preparation/all_assay_context.rds"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/data/A_counts.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/data/A_clinvar_proportions.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/data/B_coverage.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/stage_counts.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/stacked_left_arrows_REM/data/D_display.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/stacked_left_arrows_REM/data/E_display.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/pooled_non_EUR_vs_EUR.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/individual_groups_vs_EUR.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/unique_variants_non_EUR_vs_EUR.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/all_tests.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/stage_enrichment_tests/primary_enrichment_tests.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/stage_enrichment_tests/secondary_incremental_test.tsv",
+          "role": "validation",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panels/AB_variant_assignments_v16.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panels/AB_allele_frequencies_v16.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panels/A_counts_v17_data.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panels/A_clinvar_variant_classes_v21.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panels/A_clinvar_proportions_v21.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panels/B_clinvar_coverage_v16_data.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/data/A_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/data/A_clinvar_proportions.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/data/B_coverage.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_posterior_splicing_comparison/rare_all_pairs.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/stage_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/gene_filter_audit.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/shared_genes.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/selected_variant_gene_pairs.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/stacked_left_arrows_REM/data/D_display.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/science_print_size/stacked_left_arrows_REM/data/E_display.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/hexa_pmm2_galm_effects/benign_pip09_variants.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/pathogenic_effect_comparisons_current.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/pooled_non_EUR_vs_EUR.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/individual_groups_vs_EUR.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/unique_variants_non_EUR_vs_EUR.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/panel_B_fisher_tests/all_tests.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/stage_enrichment_tests/primary_enrichment_tests.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/stage_enrichment_tests/secondary_incremental_test.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/stage_enrichment_tests/verified_stage_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/stage_enrichment_tests/variant_stage_membership.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/build_all_qtl_panels_v16.R",
+          "sha256": "5da863ce844694272f0d3cc6ab00b3a2906f970feade193134219218235c7746"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/build_count_panel_v17.R",
+          "sha256": "266ec3c19f64f99bb92d60f2840492481b878ba6f324bfd232f91159ae0bdf0a"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/build_panel_A_v21.R",
+          "sha256": "ab6d3e550af17405d3b230bd3715aeff7cff9bbdd6b394623230d95c877cf3fd"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_posterior_splicing_comparison/counts.R",
+          "sha256": "18eba304ba2fea4b5f597697904df37ce9797b7d35a426d3b6c8275eb1504b25"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/plot.R",
+          "sha256": "ac36c94096184603202c533c3df7f9ee697c0437a4caa97ea3b66e9a68951d88"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/hexa_pmm2_galm_effects/plot.R",
+          "sha256": "9c24f43a8598721c4726b612131d441603538534625edd7e69ba22f47d49beee"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/compare_pathogenic.R",
+          "sha256": "c2542f9f5cf02481263a2ede72d81a53c3e4023f59661d122df39de143ae2928"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/grouped_effect_plot.R",
+          "sha256": "004cb439755495cdb97484e5d7519878839e78724923fd9bd0cae1332be31071"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/slide_with_benign.R",
+          "sha256": "a90bee3f556fb110e8f02723586eed0ce53326fd1f4521c4f70adbb394adb77c"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/negative_effects_six_genes/plot.R",
+          "sha256": "ae551be84b7fe3a16ba55a8f55aaef7d95d38ed7df18002ca29d3f04722ea4b2"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/build_science_panels.R",
+          "sha256": "bd81a2ef2929a9a2dad60adc3fbbae63831d855cb8b6d1d26c0d95828937ccce"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/regenerate_figure5_REM.py",
+          "sha256": "f92d232d780c9c0d9037ded21e25f5a04142b5b8da5950774dd6eef53baeb6ff"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/test_panel_B_clinvar_coverage.R",
+          "sha256": "aadfb9ae98f39f6f937329f67167953b1ce7946130e1f3b8394d3e12a3e3da02"
+        },
+        {
+          "root": "paper",
+          "path": "output/figure5_combined_draft/test_funnel_enrichment.R",
+          "sha256": "d637da038f6b11ed0ea92329231ed1ebb04c645292124ae192562cb2dd8a2573"
+        }
+      ],
+      "verification": "Executed locally from the raw-input selection context. All A-E tables, all thirteen coverage tests, both primary enrichment tests, and the secondary incremental test match accepted summaries. Source inputs are unchanged."
+    },
+    {
+      "key": "fig5-s28",
+      "script": "preparation/Fig5/prepare_s28.R",
+      "description": "Rebuild the historical rare high-PIP ClinGen eQTL set and expression-reduction thresholds.",
+      "figures": [
+        "S28"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "part-00000-006c7897-e219-4036-abbf-af4482a5177e-c000.snappy.parquet"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_curve.tsv",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_counts.tsv",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_curve.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_counts.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/reproduce_574_original_opentargets_selected.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/rare_eqtl_afc_thresholds/v2/distinct_variant_effects.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/reproduce_574.R",
+          "sha256": "649ba8d2be3a299d25a772c975e6dcd5b40bb75f8dd104a1cb06068a9adec6f2"
+        },
+        {
+          "root": "paper",
+          "path": "output/clingen_inheritance/rare_eqtl_afc_thresholds/build_figure_v2.R",
+          "sha256": "a5eb2224d84e6ce2abf45abc355474bc98b49e061b06951d028e4c7f3b59f7c1"
+        }
+      ],
+      "verification": "Executed locally. Both accepted threshold tables match: 574 distinct variants at 453 genes; 45 exceed 50% reduction."
+    },
+    {
+      "key": "fig5-s30",
+      "script": "preparation/Fig5/prepare_s30.R",
+      "description": "Partial recovery of four trait ranks from the original supplied count/formula expression.",
+      "figures": [
+        "S30"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "paper",
+          "path": "plot_compact_percentiles_four_genes.R",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_trait_prioritization/trait_prioritization_data.tsv",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_trait_prioritization/trait_prioritization_data.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "plot_compact_percentiles_four_genes.R",
+          "sha256": "2ffcc74392db1da341c86f751e0303e6378845f28bdb8d0ae596e7d679c9d010"
+        }
+      ],
+      "verification": "Executed locally; all four summaries match. The genome-wide ranking calculation and source records are unavailable."
+    },
+    {
+      "key": "fig5-s31",
+      "script": "preparation/Fig5/prepare_s31.R",
+      "description": "Prepare ACVRL1 source rows and prediction windows; rebuild E and update every D QTL plotting frame in the accepted locus renderer; save the D/E objects consumed by S31.",
+      "figures": [
+        "S31"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "susie",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/reference/acvrl1_promoterAI.tsv"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/objects/E.rds",
+          "role": "validation",
+          "read_mode": "original"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/objects/D.rds",
+          "role": "renderer",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig5/data/S31_qtl.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/data/S31_variant_freq.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/data/S31_promoter_locus.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/data/S31_promoter_facets.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/objects/D.rds"
+        },
+        {
+          "root": "source",
+          "path": "Fig5/objects/E.rds"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "source",
+          "path": "Fig5/00_setup.R",
+          "sha256": "a92e9eaa9750d1da3a598ac2ad4e7bed3d271e9d68a6be87a854d1693866708f"
+        }
+      ],
+      "verification": "Executed locally. All prediction values, facet labels, and built E plot layers match the accepted panel. All regional/inset D QTL frames are replaced from prepared inputs. Renderer guards and the inclusive locus PIP boundary pass tests; source inputs are unchanged. The existing S31 notebook rendered successfully with QTL_PREP_ROOT; both D/E inputs were resolved from the prepared overlay. Retained renderer warnings concern clipped source markers and patchwork annotation themes."
+    },
+    {
+      "key": "s14_discovery",
+      "script": "preparation/S14/prepare_discovery.R",
+      "description": "Count source AoU, GTEx, INTERVAL and TOPMed credible sets; select the shared coding-gene intersection; count cohort samples; fit descriptive curves and prepare GTEx envelopes.",
+      "figures": [
+        "S14"
+      ],
+      "dependencies": [
+        "fig1_gene_reference"
+      ],
+      "inputs": [
+        {
+          "root": "paper",
+          "path": "output/qtl_circos_simplified_options/gene_reference.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/eqtl_credible_set_discovery/external_context/reference/gtex_v10_susie/*.parquet"
+        },
+        {
+          "root": "paper",
+          "path": "output/eqtl_credible_set_discovery/external_context/reference/gtex_v10_covariates/*.txt"
+        },
+        {
+          "root": "paper",
+          "path": "output/eqtl_credible_set_discovery/external_context/reference/QTD001000.credible_sets.parquet"
+        },
+        {
+          "root": "paper",
+          "path": "output/eqtl_credible_set_discovery/external_context/reference/INTERVAL_RNA_dataset_metadata.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/eqtl_credible_set_discovery/external_context/reference/TOPMed_full_text.xml"
+        },
+        {
+          "root": "input",
+          "path": "reference/COMB_eQTL_9k_sample_list.tsv"
+        },
+        {
+          "root": "input",
+          "path": "echo_v4_r2.ancestry_preds.tsv"
+        },
+        {
+          "root": "env:QTL_FIG1_EAS_EQTL_FILE",
+          "path": "",
+          "fallback_root": "input",
+          "alternatives": [
+            "Fig1Data/PopulationLevelFinemapping/eQTL/EAS_20261102.eQTL_SusieMerged.tsv"
+          ]
+        },
+        {
+          "root": "env:QTL_TOPMED_CS_FILE",
+          "path": "",
+          "fallback_root": "input",
+          "alternatives": [
+            "Fig1Data/external/Whole_blood.maf0001.cs.txt"
+          ]
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_COMB_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_AFR_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_AMR_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_EUR_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_SAS_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "Fig1Data/PopulationLevelFinemapping/eQTL/AoU_MID_9k_eQTL_SusieMerged.tsv.gz"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_A/plot.rds",
+          "role": "layout template and accepted-value comparison",
+          "read_mode": "original"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_B/plot.rds",
+          "role": "layout template and accepted-value comparison",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_A/plot.rds"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/panel_A_plotted_points.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/panel_A_regression_curve.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/panel_A_gtex_v10_tissue_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_B/plot.rds"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/panel_B_plotted_points.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/panel_B_regression_curve.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/panel_B_gtex_v10_tissue_summary.tsv"
+        },
+        {
+          "root": "paper",
+          "path": "output/eqtl_credible_set_discovery/external_context/protein_coding/three_study_shared_genes/shared_genes.tsv"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "paper",
+          "path": "scripts/prepare_protein_coding_eqtl_discovery.R",
+          "sha256": "fa84f4cdd168c9785afbe34e4e475145e48454078c1d0cfc13152e0184e1de9b"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/prepare_shared_gene_eqtl_discovery.R",
+          "sha256": "2349cd483ea0a39a187cc1e12410a00d8156890b66cd9c2c5abbbc204e2e8f96"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/build_eqtl_discovery_external_context.R",
+          "sha256": "665159777ea94aa2619a2ab5a6dce623b69d4865f68b6257cb29ba3af7bc50a7"
+        },
+        {
+          "root": "paper",
+          "path": "scripts/build_eas_eqtl_discovery_s14.R",
+          "sha256": "a7503604cb6943649aeadd67a072248be77587817d190eb6dd4d410da5d41021"
+        }
+      ],
+      "verification": "Executed locally from source result tables. All nine study/population points, 10,881 shared genes, descriptive curves and 50 GTEx tissue envelopes match the accepted figure. Source inputs unchanged."
+    },
+    {
+      "key": "s15_enrichment",
+      "script": "preparation/S15/prepare_enrichment.R",
+      "description": "Fit the original annotation-on-PIP logistic models, adjust P values across slopes, and prepare the enrichment plot input.",
+      "figures": [
+        "S15"
+      ],
+      "dependencies": [],
+      "inputs": [
+        {
+          "root": "input",
+          "path": "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "COMB.splicing_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "input",
+          "path": "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz"
+        },
+        {
+          "root": "source",
+          "path": "Fig1/objects/H.rds",
+          "required": false,
+          "role": "accepted-value comparison",
+          "read_mode": "original"
+        }
+      ],
+      "outputs": [
+        {
+          "root": "source",
+          "path": "Fig1/objects/enrichment_glm.tsv"
+        },
+        {
+          "root": "source",
+          "path": "Fig1/objects/H.rds"
+        }
+      ],
+      "original_sources": [
+        {
+          "root": "repository",
+          "path": "Fig1/enrichment_glm_fit.R",
+          "sha256": "e3168cd1e3a7c3980ad0df5d7d4a850925456c4e6640d3a41a3167dee480c4a4"
+        },
+        {
+          "root": "repository",
+          "path": "Fig1/panels/panelH.R",
+          "sha256": "079ab0bc8241539e80a0b98bababfcd7c5f4d1986b4d56f4feab5002780d2690"
+        },
+        {
+          "root": "repository",
+          "path": "Fig1/00_setup.R",
+          "sha256": "518169982866c98a438b30819a86aedb188d6d5c2db7a09eab0bfa0fcb761ebc"
+        }
+      ],
+      "verification": "Full source-table refit executed locally. All plotted annotation-model coefficients, errors, P values, adjusted P values and intervals match the accepted H input within 1e-7. Original model fixtures pass and source inputs remained unchanged."
+    }
+  ]
+}

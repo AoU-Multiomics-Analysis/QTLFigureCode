@@ -1,7 +1,7 @@
 {
   "S4": {
     "title": "Figure S4: QTL discovery by population",
-    "overview": "Draw the 21 saved population and assay summaries, including EAS. Preserve the discovery proportions and the source reference sample counts.",
+    "overview": "QTL discovery proportions across ancestry groups and molecular assays.",
     "status": "included",
     "sources": [
       {
@@ -19,7 +19,7 @@
   },
   "S11": {
     "title": "Figure S11: Credible sets per molecular trait",
-    "overview": "Draw the complete 1–10 credible-set histogram from the current EAS aggregate table. Check that its totals reproduce the saved summary.",
+    "overview": "Credible-set counts per molecular trait across ancestry groups and assays.",
     "status": "included",
     "sources": [
       {
@@ -42,7 +42,7 @@
   },
   "S12": {
     "title": "Figure S12: Credible-set sizes and differences from AFR",
-    "overview": "Restore the current EAS size boxplots and the saved mean contrasts against AFR. Preserve the UKBB pQTL reference marker.",
+    "overview": "Credible-set size distributions and mean-size differences relative to AFR.",
     "status": "included",
     "sources": [
       {
@@ -61,7 +61,7 @@
   },
   "S13": {
     "title": "Figure S13: Lead-variant PIP and causal resolution",
-    "overview": "Restore the current EAS density curves, mean lead PIP, and percentage above PIP 0.9 from saved plot data.",
+    "overview": "Lead-variant PIP distributions, mean PIP, and the fraction of credible sets with lead PIP above 0.9.",
     "status": "included",
     "sources": [
       {
@@ -79,7 +79,7 @@
   },
   "S14": {
     "title": "Figure S14: eQTL discovery across studies",
-    "overview": "Restore the current nine-point EAS study comparison in the all-target and shared protein-coding panels. Preserve saved fitted curves and GTEx reference envelopes.",
+    "overview": "eQTL credible-set discovery across sample sizes in All of Us, INTERVAL, and TOPMed, with GTEx tissue comparisons and a shared protein-coding gene analysis.",
     "status": "included",
     "sources": [
       {
@@ -102,7 +102,7 @@
   },
   "S15": {
     "title": "Figure S15: Fine-mapping annotation enrichment",
-    "overview": "Draw the saved logistic-model estimates from the Figure 1 enrichment plot as odds ratios on a log10 axis. Preserve the saved estimates, intervals, and adjusted P values.",
+    "overview": "Functional annotation enrichment estimates and confidence intervals from the PIP regression models.",
     "status": "included",
     "sources": [
       {
@@ -120,7 +120,7 @@
   },
   "S16": {
     "title": "Figure S16: Ancestry enrichment across allele frequencies",
-    "overview": "Restore the current saved REM ancestry-frequency display and export its aggregate frequency-bin counts.",
+    "overview": "Ancestry enrichment and cross-population allele sharing across allele-frequency bins.",
     "status": "included",
     "sources": [
       {
@@ -138,7 +138,7 @@
   },
   "S20": {
     "title": "Figure S20: Cross-QTL posterior distributions",
-    "overview": "Recalculate density displays and strict posterior-threshold counts from saved gene, credible-set, and variant colocalization results.",
+    "overview": "Gene-level, credible-set-level, and variant-level colocalization posterior distributions and threshold counts.",
     "status": "included",
     "sources": [
       {
@@ -167,7 +167,7 @@
   },
   "S21": {
     "title": "Figure S21: Gene-level colocalization rates",
-    "overview": "Calculate assay-pair proportions from the saved gene-level Bayesian FDR calls and draw the three aggregate bars.",
+    "overview": "Gene-level colocalization proportions for each molecular-assay pair.",
     "status": "included",
     "sources": [
       {
@@ -185,7 +185,7 @@
   },
   "S22": {
     "title": "Figure S22: Credible-set pairing colocalization rates",
-    "overview": "Draw saved pair-level rates and a count-pooled Overall bar. Preserve saved Wilson intervals and calculate a pooled Wilson interval with the current original builder formula.",
+    "overview": "Colocalized credible-set pairings by assay pair and their pooled rate.",
     "status": "included",
     "sources": [
       {
@@ -204,7 +204,7 @@
   },
   "S23": {
     "title": "Figure S23: MAF and colocalization odds",
-    "overview": "Draw saved logistic-model odds ratios per tenfold decrease in MAF, with saved 95% intervals and P values.",
+    "overview": "Colocalization odds ratios per tenfold decrease in minor allele frequency.",
     "status": "included",
     "sources": [
       {
@@ -222,7 +222,7 @@
   },
   "S24": {
     "title": "Figure S24: Colocalization across QTL classes",
-    "overview": "Rebuild a native UpSet layout from the seven saved exclusive intersection counts. Check the 1,617 multilayer gene–trait pairs.",
+    "overview": "Exclusive QTL-class intersections among colocalized gene-trait pairs.",
     "status": "included",
     "sources": [
       {
@@ -234,13 +234,13 @@
       "QTL_SOURCE_ROOT/Fig4/coloc_upset_intersection_counts.tsv"
     ],
     "limitations": [
-      "Counts use unique gene–trait pairs and exclude the internal union summary layer.",
+      "Counts use unique gene\u2013trait pairs and exclude the internal union summary layer.",
       "The layout is redrawn with ggplot and patchwork. It uses the same exclusive counts as the original UpSetR plot and does not reconstruct individual membership rows."
     ]
   },
   "S25": {
     "title": "Figure S25: CD40 colocalization locus",
-    "overview": "Draw the CD40 locus from saved display coordinates. Preserve the assay, credible-set, CLPP, and trait encodings.",
+    "overview": "CD40 fine-mapped variants and trait colocalization across molecular assays.",
     "status": "included",
     "sources": [
       {
@@ -253,12 +253,12 @@
     ],
     "limitations": [
       "Positions are hg38 chromosome 20 coordinates. PIP, RCP, and CLPP are posterior-based statistics, not association P values.",
-      "Source variant records can repeat across GWAS loci. Only trait–assay aggregate audits are exported. Harmonization, fine-mapping, and colocalization are not repeated."
+      "Source variant records can repeat across GWAS loci. Only trait\u2013assay aggregate audits are exported. Harmonization, fine-mapping, and colocalization are not repeated."
     ]
   },
   "S28": {
     "title": "Figure S28: Rare eQTL expression-reduction thresholds",
-    "overview": "Draw the saved distinct-variant threshold counts for the historical 574-variant ClinGen set. Preserve the 105/574 and 45/574 reference points.",
+    "overview": "Rare eQTL variant counts across expression-reduction thresholds at disease genes.",
     "status": "included",
     "sources": [
       {
@@ -282,7 +282,7 @@
   },
   "S30": {
     "title": "Figure S30: Trait prioritization for four genes",
-    "overview": "Draw four saved signed-effect percentile summaries for F10, ANGPTL3, SERPINF2, and IFT80.",
+    "overview": "Trait-association effect percentiles for selected variant-gene-trait examples.",
     "status": "included",
     "sources": [
       {
@@ -300,7 +300,7 @@
   },
   "S31": {
     "title": "Figure S31: ACVRL1 fine-mapping and PromoterAI predictions",
-    "overview": "Restore the saved ACVRL1 locus and three PromoterAI windows as a two-panel figure.",
+    "overview": "ACVRL1 locus fine-mapping and PromoterAI substitution predictions.",
     "status": "included",
     "sources": [
       {

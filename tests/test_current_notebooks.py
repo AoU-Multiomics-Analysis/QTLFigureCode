@@ -103,6 +103,28 @@ class CurrentNotebooksTest(unittest.TestCase):
         for entry in index.values():
             self.assertNotIn("/Users/", json.dumps(entry))
 
+    def test_notebook_links_to_actual_preparation_scripts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entry = self.fixture(root)
+            entry["preparation"] = [{"key": "fig1_novelty", "script": "preparation/Fig1/prepare_novelty.R",
+                                     "description": "Filter source QTL tables and count novel genes."}]
+            path, _ = current.build("Fig1", entry, root=root)
+            text = path.read_text()
+            self.assertIn("prepare_novelty.R", text)
+            self.assertIn("QTL_PREP_ROOT", text)
+
+    def test_scope_boilerplate_is_not_shown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entry = self.fixture(root)
+            entry["limitations"] = ["Internal provenance note for the source guide."]
+            path, _ = current.build("Fig1", entry, root=root)
+            sources = "".join("".join(c["source"]) for c in json.loads(path.read_text())["cells"]
+                              if c["cell_type"] == "markdown")
+            self.assertNotIn("## Scope", sources)
+            self.assertNotIn("Internal provenance note", sources)
+
 
 if __name__ == "__main__":
     unittest.main()

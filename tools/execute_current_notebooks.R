@@ -69,7 +69,9 @@ for (key in targets) {
   }
   records <- as.list(env$input_records)
   for (record in records) {
-    root <- if (record$root == "QTL_SOURCE_ROOT") env$source_root else env$paper_root
+    root <- switch(record$root, QTL_SOURCE_ROOT = env$source_root,
+                   QTL_PAPER_ROOT = env$paper_root, QTL_PREP_ROOT = env$prepared_root,
+                   stop("Unknown recorded input root: ", record$root))
     file <- file.path(root, record$path)
     stopifnot(identical(unname(tools::md5sum(file)), record$md5))
   }

@@ -1,0 +1,31 @@
+# Check path isolation and source preservation without controlled inputs.
+fixture <- tempfile("preparation roots with spaces ")
+dir.create(fixture)
+input <- file.path(fixture, "input")
+output <- file.path(fixture, "output")
+dir.create(input)
+writeLines("value\n1", file.path(input, "source.tsv"))
+Sys.setenv(QTL_INPUT_ROOT = input, QTL_PAPER_ROOT = input,
+           QTL_SOURCE_ROOT = input, QTL_PREP_ROOT = output)
+source("preparation/common.R")
+before <- tools::md5sum(file.path(input, "source.tsv"))
+stopifnot(identical(prep_input("input", "source.tsv"), normalizePath(file.path(input, "source.tsv"))))
+stopifnot(identical(prep_input_any("input", c("absent.tsv", "source.tsv")),
+                    normalizePath(file.path(input, "source.tsv"))))
+message_for <- function(expr) tryCatch({force(expr); ""}, error = conditionMessage)
+stopifnot(grepl("Missing", message_for(prep_input("input", "absent.tsv"))))
+stopifnot(grepl("relative", message_for(prep_output("paper", "../source.tsv")), ignore.case = TRUE))
+stopifnot(grepl("namespace", message_for(prep_output("input", "source.tsv")), ignore.case = TRUE))
+prep_write_tsv(tibble::tibble(value = 2L), "paper", "derived.tsv")
+stopifnot(file.exists(file.path(output, "paper", "derived.tsv")),
+          !file.exists(file.path(input, "derived.tsv")))
+prep_write_tsv(tibble::tibble(value = 3L), "paper", "source.tsv")
+text <- tibble::tibble(label = c("a\nb", "a\tb"), value = c(1L, 2L))
+prep_write_tsv(text, "paper", "quoted.tsv")
+restored <- readr::read_tsv(file.path(output, "paper", "quoted.tsv"), show_col_types = FALSE)
+stopifnot(identical(restored$label, text$label), identical(as.integer(restored$value), text$value))
+stopifnot(identical(prep_input("paper", "source.tsv"),
+                    normalizePath(file.path(output, "paper", "source.tsv"))))
+stopifnot(identical(before, tools::md5sum(file.path(input, "source.tsv"))))
+unlink(fixture, recursive = TRUE)
+message("Preparation path tests passed.")

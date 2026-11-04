@@ -1,8 +1,5 @@
 # %% Inputs and plotting rules
-#| This notebook rebuilds Figure 1 plots from the saved November 2 submission inputs.
-#| The association tests, novelty calls, annotations, and fine-mapping models are saved results.
-#| No model is fitted here. Each displayed value is an aggregate or a variant-trait statistic.
-#| The last cell shows the exact submitted image. The R panels make the saved plot steps explicit.
+#| Read the cohort summaries, QTL results, gene annotations, and plot coordinates for panels A-E.
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(patchwork))
 assays <- c("eQTL", "sQTL", "pQTL")
@@ -20,13 +17,12 @@ fig1_theme <- theme_classic(base_size = 8, base_family = "Arial") +
         axis.ticks = element_line(linewidth = .25, colour = "#53616A"),
         legend.title = element_blank(), plot.title = element_blank(),
         plot.subtitle = element_blank())
-message("Figure 1 uses saved results from the November 2, 2026 submission.")
+message("Figure 1 inputs loaded.")
 
 # %% Panel A: Cohort counts and analysis workflow
 #| Read the saved counts by ancestry group. These counts are before quality control (QC).
 #| The separate cohort table records 8,895 RNA samples and 9,581 proteome samples after QC.
 #| REM means remaining. The input table retains its original ancestry code, oth.
-#| This R schematic shows the counts and analysis steps. The exact submitted icon artwork and vector layout are in the final reference image.
 ancestry_levels <- c("AFR", "AMR", "EAS", "EUR", "MID", "SAS", "REM")
 ancestry_colours <- c(AFR = "#8D6EAB", AMR = "#D98A38", EAS = "#6AA6A1",
                       EUR = "#6B94C4", MID = "#C56D85", SAS = "#83A86C", REM = "#A5A5A5")
@@ -92,7 +88,6 @@ print(p1A)
 #| The pQTL novelty calls use the corrected UKBB protein target identities.
 #| Source P values of zero stay censored. Radial scores are capped at 200 for eQTLs and sQTLs, and 150 for pQTLs.
 #| This cell rebuilds the circos layers from the reconciled points, axes, and label tables.
-#| The archived vector composition adds the final measured label gaps. The final reference retains those exact changes.
 lead_points <- read_figure_tsv(file.path(fig1_circos, "plotted_lead_variants.tsv.gz"),
   col_types = cols(source_pval_nominal = col_character(),
                    source_pval_beta = col_character(), source_qval = col_character())) %>%
@@ -320,7 +315,6 @@ p1E <- p1E_density + inset_element(p1E_inset, left = .01, bottom = .50, right = 
 save_plot(p1E, "Fig1_E_rebuilt", width_mm = 124, height_mm = 70)
 print(p1E)
 
-# %% Exact November 2 submission reference
-#| This is the submitted Figure 1, including the vector artwork, final label spacing, seven categories, post-QC totals, and REM label.
-#| The preceding R panels expose the saved plotting steps. This image is the exact composition used in the submission.
+# %% Reference figure
+#| Complete figure layout.
 show_reference(1)

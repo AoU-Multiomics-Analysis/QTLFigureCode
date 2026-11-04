@@ -1,5 +1,5 @@
 # %% Read the current EAS study comparisons
-#| Restore the saved November 2 S14 panels. Their nine-point descriptive curves and GTEx reference envelopes are reused. This notebook does not rerun fine-mapping, count participants, or fit a new discovery curve.
+#| Plot the eQTL discovery comparisons. Their nine-point descriptive curves and GTEx reference envelopes are reused. This notebook does not rerun fine-mapping, count participants, or fit a new discovery curve.
 base <- "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS"
 saved <- purrr::map(c("A", "B"), function(id) readRDS(paper_file(file.path(base, paste0("source_", id), "plot.rds"))))
 purrr::walk(saved, function(x) {
