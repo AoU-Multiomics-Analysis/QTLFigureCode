@@ -47,7 +47,7 @@ The notebooks link to these steps and can read their outputs explicitly.
 - [x] Regenerate and execute supported notebooks without changing their scientific results.
 - [x] Add preparation tests and syntax checks to GitHub Actions.
 - [x] Review code and stage named paths only.
-- Publish to PR 23. The live check state is recorded on GitHub.
+- Publish a follow-up PR after the merge of PR 23. The live check state is recorded on GitHub.
 
 Local verification: all 21 notebooks executed with the prepared-input overlay;
 all main reference image hashes match; the full R suite and 14 Python tests pass.

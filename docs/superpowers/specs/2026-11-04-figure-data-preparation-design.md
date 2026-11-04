@@ -34,5 +34,5 @@ Use tidyverse in R. Use explicit local roots and safe argument passing. Check
 readability before computation. Write only under the preparation output root.
 Add fixture tests for substantive filtering and counting rules. Compare locally
 recomputed results with current saved outputs wherever inputs are available.
-Keep the original local checkout and paper files unchanged. Update PR 23 and
-its GitHub Actions checks. Do not merge main or submit cloud jobs.
+Keep the original local checkout and paper files unchanged. Open a follow-up PR after the merge of PR 23 and check
+GitHub Actions. Do not merge main or submit cloud jobs.
