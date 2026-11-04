@@ -12,6 +12,6 @@ enloc_variant	eQTL-pQTL	Fig3Data/eQTL_pQTL.enloc.snp.out	-	AoU-Multiomics-Analys
 enloc_variant	sQTL-pQTL	Fig3Data/sQTL_pQTL.enloc.snp.out	-	AoU-Multiomics-Analysis/FastEnlocTrait	workflows/tasks/fastenloc.wdl
 enloc_variant	eQTL-sQTL	Fig3Data/eQTL_sQTL.enloc.snp.out	-	AoU-Multiomics-Analysis/FastEnlocTrait	workflows/tasks/fastenloc.wdl
 gene_gtf	-	gencode.v48.annotation.gtf.gz	-	external	GENCODE v48
-protein_lod	-	reference/LOD_proportions_per_proteins.tsv	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/LOD_proportions_per_proteins.tsv	-	-
+protein_lod	-	reference/LOD_proportions_per_proteins.tsv	-	-	-
 median_tpm	-	reference/median_tpms.tsv.gz	-	-	-
 genebayes_shet	-	41588_2024_1820_MOESM4_ESM.xlsx	-	external	GeneBayes supplement

@@ -1449,7 +1449,7 @@ It is a curated list, not an ontology mapping.
 ## Inputs still missing a `gs://` origin
 
 `inputs.tsv` records these local-only. The two `high_level_coloc_outputs/`
-tables are extracted from `gs://fc-secure-…/high_level_coloc_outputs.tar.gz`
+tables are extracted from `PRIVATE_GCS_URI`
 (README documents the staging command); `R2_TWAS_combined.tsv`,
 `ConditionalTWAS.cleaned.tsv.gz`, `reference/interactions.tsv` and the ClinGen
 parquet need URIs or pre-staging.
@@ -1514,7 +1514,7 @@ R ≥ 4.3, and CRAN packages `tidyverse`, `data.table`, `patchwork`, `ggh4x`,
 Every input is declared in `fig4/inputs.tsv`. The two `high_level_coloc_outputs/`
 tables come from a single archive:
 
-    gsutil cp gs://fc-secure-…/high_level_coloc_outputs.tar.gz .
+    gsutil cp PRIVATE_GCS_URI .
     tar -xf high_level_coloc_outputs.tar.gz
 
 The ClinGen `reference/evidence_clingen/` parquet, `reference/interactions.tsv`,

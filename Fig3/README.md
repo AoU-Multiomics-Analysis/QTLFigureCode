@@ -61,7 +61,11 @@ variant level, and whether that sharing depends on allele frequency.
 
 **Staged inputs** (`common/manifest.R`) — `inputs.tsv` maps each logical input
 (a `key`) to one or more files: a `local_subpath` relative to the staging root
-(the cwd by default) and, where known, a `gs://` origin. A file is fetched with
+(the cwd by default). The public manifest omits private GCS addresses.
+Supply those inputs at their listed local paths. A separate local manifest can
+retain the original addresses; see the
+[private manifest guide](../docs/private-input-manifests.md).
+When that manifest supplies a GCS address, a file is fetched with
 `gsutil` **only when the local copy is missing**, so pre-staged files skip the
 copy entirely. Panels reach inputs through `input_path(key)`,
 `load_input(key)` and `input_files(key)`.
@@ -118,12 +122,7 @@ Force a full rebuild of the derived tables:
 rm -rf fig3/data && Rscript fig3/run_all.R
 ```
 
-Upload finished figures (the scripts no longer do this themselves):
-
-```bash
-gsutil cp Figure3.pdf gs://fc-secure-.../PaperFigures/
-gsutil cp FigS_*.pdf  gs://fc-secure-.../PaperFigures/SupplementalFigures/CrossQTL/
-```
+Finished figures remain in the local output directory.
 
 ### Tests
 
@@ -174,10 +173,10 @@ an automatic fallback to the default sans font. Output DPI is matched to the
 
 ## Data & inputs
 
-Every input is declared in **`fig3/inputs.tsv`**, which is also the record of
-each file's origin. Columns: `key`, `type` (assay pair, `-` where not
+Every input is declared in **`fig3/inputs.tsv`**.
+Columns: `key`, `type` (assay pair, `-` where not
 applicable), `local_subpath` (relative to the staging root, overridable via
-`FIG3_INPUT`), `gs_uri` (`-` = local-only).
+`FIG3_INPUT`), `gs_uri` (`-` = no public download address).
 
 | Manifest key | Files | Used by |
 |---|---|---|
@@ -196,8 +195,8 @@ consequence is visible in the pipeline: the shared splicing table is
 intron-level and not pre-deduplicated, so `posteriors()` collapses duplicate
 (variant, gene) rows — see [`NOTES.md`](NOTES.md).
 
-**Only `protein_lod` currently carries a `gs://` URI.** The
-rest are local-only and must be pre-staged; a missing one fails with a
+**The public manifest contains no private GCS addresses.**
+Supply the local inputs before running; a missing one fails with a
 message naming the file and the key. See [`NOTES.md`](NOTES.md) for the full
 list.
 

@@ -204,7 +204,7 @@ the builders (the manifest records paths only).
 
 | key | local_subpath | reader | origin |
 |---|---|---|---|
-| `coloc_gene` | `high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz` | `read_any` | extracted from `gs://fc-secure-…/high_level_coloc_outputs.tar.gz` |
+| `coloc_gene` | `high_level_coloc_outputs/harmonized/harmonized_coloc.gene.tsv.gz` | `read_any` | extracted from `PRIVATE_GCS_URI` |
 | `coloc_rate` | `high_level_coloc_outputs/final_summaries/coloc_rate_by_trait.tsv` | `read_any` | same tar.gz |
 | `r2_twas` | `R2_TWAS_combined.tsv` | `fread` | `-` — URI needed |
 | `conditional_twas` | `ConditionalTWAS.cleaned.tsv.gz` | `read_any` | `-` — URI needed |

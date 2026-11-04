@@ -203,11 +203,11 @@ local-only). Readers other than `data.table::fread` are applied in the builders.
 
 | key | local_subpath | reader | origin |
 |---|---|---|---|
-| `aou_tpms` | `expression/aou_rnaseq_121624.gene_tpm.fixed.gct.gz` | `fread(skip = 2)` | `gs://fc-secure-…/QTL_5500_subset/expression/aou_rnaseq_121624.gene_tpm.fixed.gct.gz` (controlled-access) |
+| `aou_tpms` | `expression/aou_rnaseq_121624.gene_tpm.fixed.gct.gz` | `fread(skip = 2)` | `PRIVATE_GCS_URI` (controlled-access) |
 | `gtex_tpms` | `external/gene_tpm_v10_whole_blood.gct.gz` | `fread(skip = 2)` | `https://storage.googleapis.com/adult-gtex/bulk-gex/v10/rna-seq/tpms-by-tissue/gene_tpm_v10_whole_blood.gct.gz` (public) |
 | `gencode_gtf` | `reference/gencode.v45.annotation.gtf.gz` | `rtracklayer::import` | `https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz` (public) |
 | `tf_list` | `reference/TF_names_v_1.01.txt` | `fread(header = FALSE)` | `https://humantfs.ccbr.utoronto.ca/download/v_1.01/TF_names_v_1.01.txt` (public) |
-| `go_annotations` | `reference/GO_annotations.csv` | `fread` | `gs://fc-secure-…/annotations/GO_annotations.csv` (hook only — see §7.3) |
+| `go_annotations` | `reference/GO_annotations.csv` | `fread` | `PRIVATE_GCS_URI` (hook only — see §7.3) |
 
 Only `aou_tpms` (and `go_annotations`) are controlled-access; the three public
 `https` inputs self-stage via the loader extension (§4). `external/` and

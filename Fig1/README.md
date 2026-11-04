@@ -68,8 +68,8 @@ Standalone; requires the MetaSoft Java tool.
 
 **Inputs are manifest-driven.** `fig1/inputs.tsv` maps each logical input (a
 `key`) to one or more files — a `local_subpath` (relative to the staging root,
-which defaults to the current working directory) and, where applicable, a
-`gs://` origin. Each panel declares and loads **only the inputs it needs** via
+which defaults to the current working directory). The public manifest omits
+private GCS addresses. Each panel declares and loads **only the inputs it needs** via
 helpers in `00_setup.R`:
 
 - `input_path(key)` → local path for a single-file key (staged if missing)
@@ -77,7 +77,10 @@ helpers in `00_setup.R`:
   `group` / `Assay` from the manifest
 - `input_files(key)` → the manifest rows plus resolved local `path`s
 
-When a file is absent locally and the manifest has a `gs://` URI, the loader
+Supply the private input files at their listed local paths before running.
+A separate local manifest can retain the original addresses; see the
+[private manifest guide](../docs/private-input-manifests.md).
+When a file is absent locally and that manifest has a `gs://` URI, the loader
 copies it down with `gsutil` **once**, into `<cwd>/<local_subpath>` (the local
 copy then acts as the cache); pre-staged files skip the copy entirely. Staged
 inputs therefore appear under the working directory, mostly beneath `Fig1Data/`
@@ -154,12 +157,12 @@ External tool (supplemental only): **MetaSoft**
 
 ## Data & inputs
 
-Every input is declared in **`fig1/inputs.tsv`** (the manifest), which is also the
-single record of each file's `gs://` origin. Columns: `key`, `group`, `Assay`,
+Every input is declared in **`fig1/inputs.tsv`** (the manifest).
+Columns: `key`, `group`, `Assay`,
 `local_subpath` (relative to the staging root — the cwd by default, overridable
-via `FIG1_INPUT`), `gs_uri` (`-` = local-only). Missing files with a `gs_uri`
-are staged under the cwd on demand; pre-stage them at `<cwd>/<local_subpath>`
-(or point `FIG1_INPUT` at an existing folder) to skip `gsutil`.
+via `FIG1_INPUT`), `gs_uri` (`-` = no public download address).
+Supply the files at `<FIG1_INPUT>/<local_subpath>`, or use the working directory
+when `FIG1_INPUT` is unset.
 
 | Manifest key | Files | Used by |
 |--------------|-------|---------|

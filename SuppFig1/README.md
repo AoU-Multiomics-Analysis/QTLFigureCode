@@ -60,7 +60,10 @@ R ≥ 4.3, and CRAN/Bioconductor packages `tidyverse`, `data.table`, `rtracklaye
 ## Data & inputs
 
 Every input is declared in `suppfig1/inputs.tsv`; the three public inputs
-self-stage over https. See [`NOTES.md`](NOTES.md), in particular the
+self-stage over https. Private GCS addresses are omitted. Supply `aou_tpms`
+and `go_annotations` at their listed local paths, or use a separate local
+manifest as described in the [private manifest guide](../docs/private-input-manifests.md).
+See [`NOTES.md`](NOTES.md), in particular the
 result-affecting TF double-log fix (rendered Panel D, built by
 `panels/panelC.R`).
 

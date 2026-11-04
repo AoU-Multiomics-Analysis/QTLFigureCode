@@ -311,8 +311,8 @@ nine `mutate(type = '…')` calls in the original disappear.
 | `enloc_gene` | 3 | `enloc/{eQTL_pQTL,sQTL_pQTL,eQTL_sQTL}.enloc.gene.out` | `-` — URI needed |
 | `enloc_cs` | 3 | `enloc/{eQTL_pQTL,sQTL_pQTL,eQTL_sQTL}.enloc.sig.out` | `-` — URI needed |
 | `enloc_variant` | 3 | `enloc/{eQTL_pQTL,sQTL_pQTL,eQTL_sQTL}.enloc.snp.out` | `-` — URI needed |
-| `annotations` | 1 | `annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz` | `gs://fc-secure-…/checkpoints/` |
-| `protein_lod` | 1 | `reference/LOD_proportions_per_proteins.tsv` | `gs://fc-secure-…/` |
+| `annotations` | 1 | `annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz` | `PRIVATE_GCS_URI` |
+| `protein_lod` | 1 | `reference/LOD_proportions_per_proteins.tsv` | `PRIVATE_GCS_URI` |
 | `median_tpm` | 1 | `reference/median_tpms.tsv.gz` | `-` — URI needed; deferred analysis |
 | `genebayes_shet` | 1 | `reference/41588_2024_1820_MOESM4_ESM.xlsx` (sheet 2) | `-` — URI needed; deferred analysis |
 
