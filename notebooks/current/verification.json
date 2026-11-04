@@ -10,6 +10,7 @@
       "code_cells": 8,
       "images": 6,
       "input_files": 17,
+      "prepared_input_files": 16,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -18,6 +19,7 @@
       "code_cells": 14,
       "images": 7,
       "input_files": 2,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -26,6 +28,7 @@
       "code_cells": 8,
       "images": 7,
       "input_files": 8,
+      "prepared_input_files": 7,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -34,6 +37,7 @@
       "code_cells": 8,
       "images": 2,
       "input_files": 5,
+      "prepared_input_files": 3,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -42,6 +46,7 @@
       "code_cells": 8,
       "images": 7,
       "input_files": 10,
+      "prepared_input_files": 9,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -50,6 +55,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -58,6 +64,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 2,
+      "prepared_input_files": 2,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -66,6 +73,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -74,6 +82,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -82,6 +91,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 2,
+      "prepared_input_files": 2,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -90,6 +100,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -98,6 +109,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -106,6 +118,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 3,
+      "prepared_input_files": 3,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -114,6 +127,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -122,6 +136,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -130,6 +145,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -138,6 +154,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -146,6 +163,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -154,6 +172,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 2,
+      "prepared_input_files": 2,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -162,6 +181,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
+      "prepared_input_files": 1,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     },
@@ -170,6 +190,7 @@
       "code_cells": 4,
       "images": 1,
       "input_files": 2,
+      "prepared_input_files": 2,
       "source_inputs_unchanged": true,
       "R": "4.3.1"
     }
@@ -179,11 +200,25 @@
     "all_main_reference_hashes_match": true,
     "all_source_hashes_unchanged": true,
     "generation_preserves_outputs_and_provenance": true,
-    "generator_unit_tests": 6,
+    "generator_unit_tests": 8,
     "repository_R_suite": "passed",
     "R_syntax": "passed",
     "independent_review": "material_findings_fixed",
-    "controlled_data_not_committed": true
+    "controlled_data_not_committed": true,
+    "preparation_runner_tests": 6,
+    "preparation_fixture_files": 5,
+    "preparation_manifest_steps": 24,
+    "preparation_CLI_local_execution": "passed",
+    "notebook_scope_boilerplate_removed": true
   },
-  "scope": "Saved-result plot reconstruction. Upstream association, annotation and fine-mapping analyses were not repeated."
+  "preparation": {
+    "steps": 24,
+    "steps_executed_locally": 23,
+    "manifest": "../../preparation/manifest.json",
+    "unavailable_inputs": [
+      "Figure 1 pre-QC participant availability export; supplied aggregate counts retained.",
+      "Figure 4A full harmonized gene-level result; code included, step not executed.",
+      "S30 upstream genome-wide ranking procedure and records; recorded aggregate formulas reproduced."
+    ]
+  }
 }

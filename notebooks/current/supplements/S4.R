@@ -1,5 +1,5 @@
 # %% Read the saved population summaries
-#| Rebuild the November 2 S4 display from the saved association summaries. This notebook does not rerun QTL discovery. The sample sizes are common reference-cohort counts that the original source reused across assays.
+#| Plot QTL discovery by ancestry group and assay. This notebook does not rerun QTL discovery. The sample sizes are common reference-cohort counts that the original source reused across assays.
 s4 <- readr::read_tsv(paper_file("Supplemental Figures/01_Supplemental_drafts/Figure1_QTL_discovery_by_population/population_QTL_discovery_data.tsv"), show_col_types = FALSE)
 stopifnot(nrow(s4) == 21L, all(dplyr::between(s4$proportion_significant, 0, 1)),
           !anyDuplicated(s4[c("assay", "population")]))

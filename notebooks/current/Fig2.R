@@ -1,5 +1,5 @@
 # %% Read the saved plot inputs
-#| These are the saved source plots for the compact November 2 figure. The code below applies the current display changes. It does not rerun QTL mapping.
+#| Read the allele-frequency, ancestry-enrichment, allelic-effect, outlier, and gene-burden inputs.
 # Reflow the figure around readable plot areas at the final print width.
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -208,13 +208,12 @@ save_plot(ef, "Fig2/panels_EF", 183, 90)
 print(ef)
 
 # %% Rebuild the compact layout
-#| The R layout shows the current A-F panels. The archived submission uses separate vector composition for clipping and panel-letter placement.
 layout_plots <- plots
 layout_plots$C <- wrap_elements(full = c_artwork)
 fig2 <- wrap_plots(layout_plots, design = "AB\nCD\nEE\nFF", widths = c(81, 98), heights = c(48, 62, 24, 33)) + plot_annotation(tag_levels = "A")
 save_plot(fig2, "Fig2/Figure2_rebuilt", 183, 188)
 print(fig2)
 
-# %% Exact submission reference
-#| This is the archived image embedded in the November 2 manuscript. It is separate from the rebuilt plots above.
+# %% Reference figure
+#| Complete figure layout.
 show_reference(2)

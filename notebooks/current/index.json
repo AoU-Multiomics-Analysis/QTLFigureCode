@@ -2,226 +2,359 @@
   "Fig1": {
     "path": "Fig1/Fig1.ipynb",
     "script": "notebooks/current/Fig1.R",
-    "title": "Figure 1: Multi-omic cis-QTL discovery and fine-mapping",
-    "overview": "Current Figure 1 from the November 2, 2026 Science submission. The notebook rebuilds plots from saved results. It does not repeat association testing, novelty annotation, or fine-mapping. The final cell shows the exact submitted image.",
-    "limitations": [
-      "The notebook replots saved results. It does not validate or rerun upstream association tests, novelty calls, annotation downloads, or SuSiE fits.",
-      "Panel A is an R schematic of the saved counts and workflow. The exact submitted icons and vector layout are in the reference image and archived SVG.",
-      "Panel B uses the reconciled current data and saved layer coordinates. Its R reconstruction precedes the final measured gene-label spacing in the archived composition.",
-      "The rebuilt panels expose plotting code and saved values. The exact reference is the authoritative submitted page layout.",
-      "Novel target-gene status does not establish a new independent signal or a disease mechanism. Annotation categories can overlap."
-    ],
-    "reference_sha256": "49bd44b592651c103a0d7201c5d91c5e9f9a9852158dfebacc7e5d20e4258fc4"
+    "title": "Figure 1: Multi-omic QTL discovery and fine-mapping",
+    "overview": "Cohort composition, novel target genes, functional gene categories, credible-set counts, and lead-variant PIP across molecular assays.",
+    "reference_sha256": "49bd44b592651c103a0d7201c5d91c5e9f9a9852158dfebacc7e5d20e4258fc4",
+    "preparation": [
+      {
+        "key": "fig1_gene_reference",
+        "script": "preparation/Fig1/00_gene_reference.R",
+        "description": "Extract the GENCODE v48 gene records and stable IDs from the raw GTF."
+      },
+      {
+        "key": "fig1_novelty",
+        "script": "preparation/Fig1/01_novelty.R",
+        "description": "Rebuild same-assay reference sets, corrected UKBB protein identities, gene filters and current COMB novelty."
+      },
+      {
+        "key": "fig1_circos",
+        "script": "preparation/Fig1/02_circos.R",
+        "description": "Build reconciled circos lead points, capped radial scores, selected labels, axes and connector coordinates."
+      },
+      {
+        "key": "fig1_categories",
+        "script": "preparation/Fig1/03_categories.R",
+        "description": "Rebuild the seven annotation categories from raw frozen reference annotations, including RNA mapping, histones, GO unions and clinical drug status."
+      },
+      {
+        "key": "fig1_finemapping",
+        "script": "preparation/Fig1/04_finemapping.R",
+        "description": "Aggregate each raw credible set once, preserve its source size, compute maximum PIP and tie count, and prepare main D/E plus S11 inputs."
+      },
+      {
+        "key": "fig1_cohort_counts",
+        "script": "preparation/Fig1/07_cohort_counts.R",
+        "description": "Read supplied pre-QC aggregate availability counts and recount post-QC RNA/proteome samples from the actual list and headers."
+      }
+    ]
   },
   "Fig2": {
     "path": "Fig2/Fig2.ipynb",
     "script": "notebooks/current/Fig2.R",
-    "title": "Figure 2: November 2 submission",
-    "overview": "Rebuild the current figure panels from saved local results. The final reference cell shows the exact image in the November 2, 2026 submission package.",
-    "limitations": [
-      "The code rebuilds plots from saved results. It does not repeat the upstream QTL analysis.",
-      "The archived submission image is a reference. See each section for the code and the scope of the plot reconstruction."
-    ],
-    "reference_sha256": "fc44f65749de8d36a9a398707df3c4cf0d0027cbd568103ab6556a3be8211cfc"
+    "title": "Figure 2: Allele frequency, ancestry, and molecular effects",
+    "overview": "Allele-frequency distributions, ancestry enrichment, allelic fold changes, cumulative effects, expression outliers, and gene burden.",
+    "reference_sha256": "fc44f65749de8d36a9a398707df3c4cf0d0027cbd568103ab6556a3be8211cfc",
+    "preparation": [
+      {
+        "key": "fig2_data",
+        "script": "preparation/Fig2/build.R",
+        "description": "Prepare current frequency bins, unique-variant ancestry tests, consequence-priority aFC data and regressions, cumulative aFC summaries, outlier statistics from contingency counts, protein-coding medians, and S16 ancestry bins."
+      },
+      {
+        "key": "fig2_notebook",
+        "script": "preparation/Fig2/connect_notebook.R",
+        "description": "Connect newly prepared A-F data, fitted regression annotations, cumulative percentages, and S16 bins/rolling curve to the exact plot-object files read by current notebooks."
+      }
+    ]
   },
   "Fig3": {
     "path": "Fig3/Fig3.ipynb",
     "script": "notebooks/current/Fig3.R",
-    "title": "Figure 3: November 2 submission",
-    "overview": "Rebuild the current figure panels from saved local results. The final reference cell shows the exact image in the November 2, 2026 submission package.",
-    "limitations": [
-      "The code rebuilds plots from saved results. It does not repeat the upstream QTL analysis.",
-      "The archived submission image is a reference. See each section for the code and the scope of the plot reconstruction."
-    ],
-    "reference_sha256": "b6a2c416caf13e9763ed4ad1dd1ff07d3d2234d53cba6fbb0054bb8f25b675a3"
+    "title": "Figure 3: Colocalization across molecular layers",
+    "overview": "Gene-level and signal-level sharing across expression, splicing, and protein QTLs, with effect-size and variant-annotation comparisons.",
+    "reference_sha256": "b6a2c416caf13e9763ed4ad1dd1ff07d3d2234d53cba6fbb0054bb8f25b675a3",
+    "preparation": [
+      {
+        "key": "fig3_coloc",
+        "script": "preparation/Fig3/build.R",
+        "description": "Read FastENLOC result tables, assign per-pair Bayesian FDR calls, join validated variant/gene annotations and strongest posterior representatives, build credible-set components, fit current concordance and MAF-rate models, and derive S20-S23 summaries."
+      },
+      {
+        "key": "fig3_annotations",
+        "script": "preparation/Fig3/build_annotations.R",
+        "description": "Reconstruct the symmetric two-layer credible-set background, clean coding annotations with canonical target-gene CDS/SpliceAI/cCRE criteria, collapse duplicate variants with geometric-mean PIP weights, and fit current MAF annotation models."
+      },
+      {
+        "key": "fig3_notebook",
+        "script": "preparation/Fig3/connect_notebook.R",
+        "description": "Connect newly derived A-E scientific tables to current notebook object contracts. Replace gene-sharing annotation, B wrapped component/rate data, C interaction fits, D transformed data/slopes, and E significant annotated model rows."
+      }
+    ]
   },
   "Fig4": {
     "path": "Fig4/Fig4.ipynb",
     "script": "notebooks/current/Fig4.R",
-    "title": "Figure 4: November 2 submission",
-    "overview": "Rebuild the current figure panels from saved local results. The final reference cell shows the exact image in the November 2, 2026 submission package.",
-    "limitations": [
-      "The code rebuilds plots from saved results. It does not repeat the upstream QTL analysis.",
-      "The archived submission image is a reference. See each section for the code and the scope of the plot reconstruction."
-    ],
-    "reference_sha256": "a842c4fc94327f39fd9fe4b35363194ad384228c94874af2b7086e0d3b21fcad"
+    "title": "Figure 4: Trait colocalization and rare-variant prediction",
+    "overview": "Trait-associated QTL genes, contributions from rare variants, conditional TWAS comparisons, and gene-set enrichment.",
+    "reference_sha256": "a842c4fc94327f39fd9fe4b35363194ad384228c94874af2b7086e0d3b21fcad",
+    "preparation": [
+      {
+        "key": "fig4_traits",
+        "script": "preparation/Fig4/build_traits.R",
+        "description": "Count distinct colocalizing genes by trait/category, join lenient union colocalization rates, then apply the current count/category/top-10 filters."
+      },
+      {
+        "key": "fig4_twas",
+        "script": "preparation/Fig4/build.R",
+        "description": "Prepare heritability-normalized rare-variant R2 contrasts; remove conditional-TWAS artifacts; match control gene-trait pairs; derive QQ coordinates; join ClinGen/DGIdb sets; apply per-TWAS-path BH adjustment; collapse to genes and fit enrichment models."
+      },
+      {
+        "key": "fig4_notebook",
+        "script": "preparation/Fig4/connect_notebook.R",
+        "description": "Connect current B-D R2, matched QQ, and refitted enrichment data to notebook objects. A has an explicit conditional connector recipe, used only if its missing source-result preparation can run."
+      }
+    ]
   },
   "Fig5": {
     "path": "Fig5/Fig5.ipynb",
     "script": "notebooks/current/Fig5.R",
-    "title": "Figure 5 — rare QTL variants at disease genes",
-    "overview": "Rebuild the five current Figure 5 panels from the accepted aggregate data. A shows rare-variant counts and ClinVar classes; B shows ClinVar coverage; C shows the selection funnel and pathogenic enrichment; D and E show posterior effects for nine genes with current REM labels. Build the stacked R layout, then display the exact November 2, 2026 submission image. The historical ACVRL1 and SPR main panels belong to the supplement and are not used here.",
-    "limitations": [
-      "This notebook repeats plotting and checks the saved aggregate tests. It does not rerun fine mapping, ClinGen curation, ClinVar annotation, population assignment, or variant selection.",
-      "The R layout is a reconstruction. Font metrics, text positions, endpoint label alignment, and the funnel frame can differ from the archived SVG. Only the final submission-reference cell shows the exact accepted layout.",
-      "Effect signs alone do not establish pathogenicity. Effect magnitudes from different molecular assays are not directly comparable."
-    ],
-    "reference_sha256": "df69615c4520c9ac8aeaf74e9a0588dc34848cf0d6c3f1a52f14044fbac93ed0"
+    "title": "Figure 5: Rare QTL variants at disease genes",
+    "overview": "Rare-variant counts, ClinVar coverage, pathogenic-variant enrichment, and molecular effects at selected disease genes.",
+    "reference_sha256": "df69615c4520c9ac8aeaf74e9a0588dc34848cf0d6c3f1a52f14044fbac93ed0",
+    "preparation": [
+      {
+        "key": "fig5-select",
+        "script": "preparation/Fig5/select_all_assays.R",
+        "description": "Select the rare all-assay rows and comparator-gene rows from raw SuSiE inputs and original ClinGen evidence."
+      },
+      {
+        "key": "fig5-main",
+        "script": "preparation/Fig5/prepare_main.R",
+        "description": "Build A-E counts, ClinVar classes, population assignments, AR funnel, selected effects, and Fisher tests."
+      }
+    ]
   },
   "S4": {
     "path": "notebooks/supplements/S4.ipynb",
     "script": "notebooks/current/supplements/S4.R",
     "title": "Figure S4: QTL discovery by population",
-    "overview": "Draw the 21 saved population and assay summaries, including EAS. Preserve the discovery proportions and the source reference sample counts.",
-    "limitations": [
-      "The source reuses common reference-cohort counts across assays. They are not assay-specific participant counts.",
-      "The field source_n_tested counts tested rows, not significant genes. No QTL analysis is repeated."
+    "overview": "QTL discovery proportions across ancestry groups and molecular assays.",
+    "preparation": [
+      {
+        "key": "fig1_gene_reference",
+        "script": "preparation/Fig1/00_gene_reference.R",
+        "description": "Extract the GENCODE v48 gene records and stable IDs from the raw GTF."
+      },
+      {
+        "key": "fig1_population_discovery",
+        "script": "preparation/Fig1/06_population_discovery.R",
+        "description": "Recompute the historical S4 BH discovery proportions within each raw permutation-result file; count the shared reference-cohort samples."
+      }
     ]
   },
   "S11": {
     "path": "notebooks/supplements/S11.ipynb",
     "script": "notebooks/current/supplements/S11.R",
     "title": "Figure S11: Credible sets per molecular trait",
-    "overview": "Draw the complete 1–10 credible-set histogram from the current EAS aggregate table. Check that its totals reproduce the saved summary.",
-    "limitations": [
-      "Traits with zero credible sets are absent from the source and are excluded.",
-      "Population analyses can include different detected traits. No fine-mapping fit is repeated."
+    "overview": "Credible-set counts per molecular trait across ancestry groups and assays.",
+    "preparation": [
+      {
+        "key": "fig1_finemapping",
+        "script": "preparation/Fig1/04_finemapping.R",
+        "description": "Aggregate each raw credible set once, preserve its source size, compute maximum PIP and tie count, and prepare main D/E plus S11 inputs."
+      }
     ]
   },
   "S12": {
     "path": "notebooks/supplements/S12.ipynb",
     "script": "notebooks/current/supplements/S12.R",
     "title": "Figure S12: Credible-set sizes and differences from AFR",
-    "overview": "Restore the current EAS size boxplots and the saved mean contrasts against AFR. Preserve the UKBB pQTL reference marker.",
-    "limitations": [
-      "The source boxplots use log10-transformed sizes. The contrasts use arithmetic mean size in variant counts.",
-      "Contrast intervals are plus or minus one gene-cluster standard error, including covariance with AFR. They are descriptive, not paired credible-set tests.",
-      "No fine-mapping or standard-error calculation is repeated."
+    "overview": "Credible-set size distributions and mean-size differences relative to AFR.",
+    "preparation": [
+      {
+        "key": "fig1_finemapping",
+        "script": "preparation/Fig1/04_finemapping.R",
+        "description": "Aggregate each raw credible set once, preserve its source size, compute maximum PIP and tie count, and prepare main D/E plus S11 inputs."
+      },
+      {
+        "key": "fig1_supplements",
+        "script": "preparation/Fig1/05_supplements.R",
+        "description": "Prepare exact S12 size summaries and gene-cluster analytic contrasts plus S13 bounded PIP density grids and summaries."
+      }
     ]
   },
   "S13": {
     "path": "notebooks/supplements/S13.ipynb",
     "script": "notebooks/current/supplements/S13.R",
     "title": "Figure S13: Lead-variant PIP and causal resolution",
-    "overview": "Restore the current EAS density curves, mean lead PIP, and percentage above PIP 0.9 from saved plot data.",
-    "limitations": [
-      "Density coordinates and their bandwidth choices remain those in the saved display. No density estimation or fine-mapping is repeated.",
-      "The high-PIP percentage uses a strict PIP > 0.9 cutoff. Population fits can contain different detected signals."
+    "overview": "Lead-variant PIP distributions, mean PIP, and the fraction of credible sets with lead PIP above 0.9.",
+    "preparation": [
+      {
+        "key": "fig1_finemapping",
+        "script": "preparation/Fig1/04_finemapping.R",
+        "description": "Aggregate each raw credible set once, preserve its source size, compute maximum PIP and tie count, and prepare main D/E plus S11 inputs."
+      },
+      {
+        "key": "fig1_supplements",
+        "script": "preparation/Fig1/05_supplements.R",
+        "description": "Prepare exact S12 size summaries and gene-cluster analytic contrasts plus S13 bounded PIP density grids and summaries."
+      }
     ]
   },
   "S14": {
     "path": "notebooks/supplements/S14.ipynb",
     "script": "notebooks/current/supplements/S14.R",
     "title": "Figure S14: eQTL discovery across studies",
-    "overview": "Restore the current nine-point EAS study comparison in the all-target and shared protein-coding panels. Preserve saved fitted curves and GTEx reference envelopes.",
-    "limitations": [
-      "Panel B uses the saved set of 10,881 shared protein-coding genes. GTEx reference tissues are excluded from the nine-point descriptive fit.",
-      "No participant list is read, no fine-mapping is run, and no curve is fitted here. Saved study-level associations do not establish a causal sample-size effect."
+    "overview": "eQTL credible-set discovery across sample sizes in All of Us, INTERVAL, and TOPMed, with GTEx tissue comparisons and a shared protein-coding gene analysis.",
+    "preparation": [
+      {
+        "key": "fig1_gene_reference",
+        "script": "preparation/Fig1/00_gene_reference.R",
+        "description": "Extract the GENCODE v48 gene records and stable IDs from the raw GTF."
+      },
+      {
+        "key": "s14_discovery",
+        "script": "preparation/S14/prepare_discovery.R",
+        "description": "Count source AoU, GTEx, INTERVAL and TOPMed credible sets; select the shared coding-gene intersection; count cohort samples; fit descriptive curves and prepare GTEx envelopes."
+      }
     ]
   },
   "S15": {
     "path": "notebooks/supplements/S15.ipynb",
     "script": "notebooks/current/supplements/S15.R",
     "title": "Figure S15: Fine-mapping annotation enrichment",
-    "overview": "Draw the saved logistic-model estimates from the Figure 1 enrichment plot as odds ratios on a log10 axis. Preserve the saved estimates, intervals, and adjusted P values.",
-    "limitations": [
-      "Odds ratios compare PIP 1 with PIP 0 within assay. Bars are saved 95% Wald intervals.",
-      "The notebook redraws saved model results. It does not rerun variant annotation, fine-mapping, or logistic regression."
+    "overview": "Functional annotation enrichment estimates and confidence intervals from the PIP regression models.",
+    "preparation": [
+      {
+        "key": "s15_enrichment",
+        "script": "preparation/S15/prepare_enrichment.R",
+        "description": "Fit the original annotation-on-PIP logistic models, adjust P values across slopes, and prepare the enrichment plot input."
+      }
     ]
   },
   "S16": {
     "path": "notebooks/supplements/S16.ipynb",
     "script": "notebooks/current/supplements/S16.R",
     "title": "Figure S16: Ancestry enrichment across allele frequencies",
-    "overview": "Restore the current saved REM ancestry-frequency display and export its aggregate frequency-bin counts.",
-    "limitations": [
-      "REM is the display label for source OTH. It is not a new ancestry estimate.",
-      "The nonzero-frequency shared curve uses its saved rolling mean with the original LOESS display layer. The unconstrained LOESS curve can exceed 100% and is a display smoother. The display layer is rendered again; enrichment tests and rolling summaries are not rerun."
+    "overview": "Ancestry enrichment and cross-population allele sharing across allele-frequency bins.",
+    "preparation": [
+      {
+        "key": "fig2_data",
+        "script": "preparation/Fig2/build.R",
+        "description": "Prepare current frequency bins, unique-variant ancestry tests, consequence-priority aFC data and regressions, cumulative aFC summaries, outlier statistics from contingency counts, protein-coding medians, and S16 ancestry bins."
+      },
+      {
+        "key": "fig2_notebook",
+        "script": "preparation/Fig2/connect_notebook.R",
+        "description": "Connect newly prepared A-F data, fitted regression annotations, cumulative percentages, and S16 bins/rolling curve to the exact plot-object files read by current notebooks."
+      }
     ]
   },
   "S20": {
     "path": "notebooks/supplements/S20.ipynb",
     "script": "notebooks/current/supplements/S20.R",
     "title": "Figure S20: Cross-QTL posterior distributions",
-    "overview": "Recalculate density displays and strict posterior-threshold counts from saved gene, credible-set, and variant colocalization results.",
-    "limitations": [
-      "The unit differs between GLCP, RCP, and SCP: genes, credible-set pairings, and variants. Posterior probabilities are not P values.",
-      "Density estimation and threshold counting are repeated, but FastENLOC and fine-mapping are not rerun. Only aggregate counts are exported.",
-      "The saved source has 15 GLCP values above 1 (maximum 1.008) and 2 RCP values above 1 (maximum 1.002). The notebook retains them as the original code does and exports a bounds audit. Their cause requires upstream review."
+    "overview": "Gene-level, credible-set-level, and variant-level colocalization posterior distributions and threshold counts.",
+    "preparation": [
+      {
+        "key": "fig3_coloc",
+        "script": "preparation/Fig3/build.R",
+        "description": "Read FastENLOC result tables, assign per-pair Bayesian FDR calls, join validated variant/gene annotations and strongest posterior representatives, build credible-set components, fit current concordance and MAF-rate models, and derive S20-S23 summaries."
+      }
     ]
   },
   "S21": {
     "path": "notebooks/supplements/S21.ipynb",
     "script": "notebooks/current/supplements/S21.R",
     "title": "Figure S21: Gene-level colocalization rates",
-    "overview": "Calculate assay-pair proportions from the saved gene-level Bayesian FDR calls and draw the three aggregate bars.",
-    "limitations": [
-      "The denominator includes all genes tested for each pair. It is not restricted to genes fine-mapped in all three assays.",
-      "A gene can have several credible sets. These rates are not the pairing-level rates in S22. No colocalization model is repeated."
+    "overview": "Gene-level colocalization proportions for each molecular-assay pair.",
+    "preparation": [
+      {
+        "key": "fig3_coloc",
+        "script": "preparation/Fig3/build.R",
+        "description": "Read FastENLOC result tables, assign per-pair Bayesian FDR calls, join validated variant/gene annotations and strongest posterior representatives, build credible-set components, fit current concordance and MAF-rate models, and derive S20-S23 summaries."
+      }
     ]
   },
   "S22": {
     "path": "notebooks/supplements/S22.ipynb",
     "script": "notebooks/current/supplements/S22.R",
     "title": "Figure S22: Credible-set pairing colocalization rates",
-    "overview": "Draw saved pair-level rates and a count-pooled Overall bar. Preserve saved Wilson intervals and calculate a pooled Wilson interval with the current original builder formula.",
-    "limitations": [
-      "The unit is a tested credible-set pairing. The pooled rate is the summed numerator divided by the summed denominator.",
-      "The source registry describes exact binomial intervals, but the actual saved intervals match Wilson intervals exactly. This notebook follows the saved values and current plot builder.",
-      "The 95% intervals describe saved calls and do not include fine-mapping or colocalization-model uncertainty. No new colocalization fit is run."
+    "overview": "Colocalized credible-set pairings by assay pair and their pooled rate.",
+    "preparation": [
+      {
+        "key": "fig3_coloc",
+        "script": "preparation/Fig3/build.R",
+        "description": "Read FastENLOC result tables, assign per-pair Bayesian FDR calls, join validated variant/gene annotations and strongest posterior representatives, build credible-set components, fit current concordance and MAF-rate models, and derive S20-S23 summaries."
+      }
     ]
   },
   "S23": {
     "path": "notebooks/supplements/S23.ipynb",
     "script": "notebooks/current/supplements/S23.R",
     "title": "Figure S23: MAF and colocalization odds",
-    "overview": "Draw saved logistic-model odds ratios per tenfold decrease in MAF, with saved 95% intervals and P values.",
-    "limitations": [
-      "The MAF model is unadjusted for fine-mapping quality and must be interpreted with that limit.",
-      "This estimates the odds of sharing, not effect-size concordance. No regression or colocalization fit is repeated."
+    "overview": "Colocalization odds ratios per tenfold decrease in minor allele frequency.",
+    "preparation": [
+      {
+        "key": "fig3_coloc",
+        "script": "preparation/Fig3/build.R",
+        "description": "Read FastENLOC result tables, assign per-pair Bayesian FDR calls, join validated variant/gene annotations and strongest posterior representatives, build credible-set components, fit current concordance and MAF-rate models, and derive S20-S23 summaries."
+      }
     ]
   },
   "S24": {
     "path": "notebooks/supplements/S24.ipynb",
     "script": "notebooks/current/supplements/S24.R",
     "title": "Figure S24: Colocalization across QTL classes",
-    "overview": "Rebuild a native UpSet layout from the seven saved exclusive intersection counts. Check the 1,617 multilayer gene–trait pairs.",
-    "limitations": [
-      "Counts use unique gene–trait pairs and exclude the internal union summary layer.",
-      "The layout is redrawn with ggplot and patchwork. It uses the same exclusive counts as the original UpSetR plot and does not reconstruct individual membership rows."
+    "overview": "Exclusive QTL-class intersections among colocalized gene-trait pairs.",
+    "preparation": [
+      {
+        "key": "fig4_loci",
+        "script": "preparation/Fig4/build_loci.R",
+        "description": "Build exclusive UpSet intersections from unique gene-trait membership and join CD40 SuSiE variants to participating GWAS/QTL signals with original locus offsets and credible-set labels."
+      }
     ]
   },
   "S25": {
     "path": "notebooks/supplements/S25.ipynb",
     "script": "notebooks/current/supplements/S25.R",
     "title": "Figure S25: CD40 colocalization locus",
-    "overview": "Draw the CD40 locus from saved display coordinates. Preserve the assay, credible-set, CLPP, and trait encodings.",
-    "limitations": [
-      "Positions are hg38 chromosome 20 coordinates. PIP, RCP, and CLPP are posterior-based statistics, not association P values.",
-      "Source variant records can repeat across GWAS loci. Only trait–assay aggregate audits are exported. Harmonization, fine-mapping, and colocalization are not repeated."
+    "overview": "CD40 fine-mapped variants and trait colocalization across molecular assays.",
+    "preparation": [
+      {
+        "key": "fig4_loci",
+        "script": "preparation/Fig4/build_loci.R",
+        "description": "Build exclusive UpSet intersections from unique gene-trait membership and join CD40 SuSiE variants to participating GWAS/QTL signals with original locus offsets and credible-set labels."
+      }
     ]
   },
   "S28": {
     "path": "notebooks/supplements/S28.ipynb",
     "script": "notebooks/current/supplements/S28.R",
     "title": "Figure S28: Rare eQTL expression-reduction thresholds",
-    "overview": "Draw the saved distinct-variant threshold counts for the historical 574-variant ClinGen set. Preserve the 105/574 and 45/574 reference points.",
-    "limitations": [
-      "The historical denominator uses the saved ClinVar-empty or uncertain-assertion selection and differs from current Figure 5A/B.",
-      "105/574 corresponds to log2(aFC) < -0.5, or approximately 29.3% reduction. A reduction greater than 50% gives 45/574.",
-      "Straight segments connect selected threshold points as a visual guide. No new aFC model, variant selection, or significance test is run."
+    "overview": "Rare eQTL variant counts across expression-reduction thresholds at disease genes.",
+    "preparation": [
+      {
+        "key": "fig5-s28",
+        "script": "preparation/Fig5/prepare_s28.R",
+        "description": "Rebuild the historical rare high-PIP ClinGen eQTL set and expression-reduction thresholds."
+      }
     ]
   },
   "S30": {
     "path": "notebooks/supplements/S30.ipynb",
     "script": "notebooks/current/supplements/S30.R",
     "title": "Figure S30: Trait prioritization for four genes",
-    "overview": "Draw four saved signed-effect percentile summaries for F10, ANGPTL3, SERPINF2, and IFT80.",
-    "limitations": [
-      "Upper-tail percentage is 100 minus percentile. Lower-tail percentage equals percentile. These ranks are not P values or individual disease-risk estimates.",
-      "VUS and unclassified labels retain the source classification. No association, clinical-classification, or ranking analysis is repeated."
+    "overview": "Trait-association effect percentiles for selected variant-gene-trait examples.",
+    "preparation": [
+      {
+        "key": "fig5-s30",
+        "script": "preparation/Fig5/prepare_s30.R",
+        "description": "Partial recovery of four trait ranks from the original supplied count/formula expression."
+      }
     ]
   },
   "S31": {
     "path": "notebooks/supplements/S31.ipynb",
     "script": "notebooks/current/supplements/S31.R",
     "title": "Figure S31: ACVRL1 fine-mapping and PromoterAI predictions",
-    "overview": "Restore the saved ACVRL1 locus and three PromoterAI windows as a two-panel figure.",
-    "limitations": [
-      "Saved hg38 locus annotations, focal variants, and the signed-square prediction axis are retained.",
-      "The saved locus scale windows omit point-layer rows outside their displayed ranges. R reports 5 rows and 1 row from the original layers; these can repeat variants and are not six distinct variant exclusions. The notebook retains the source windows and data.",
-      "The SP1 band is a saved manual annotation. No motif scan, fine-mapping, or sequence model is run.",
-      "Model predictions do not establish experimental regulatory activity or pathogenicity. Only per-window prediction summaries are exported."
+    "overview": "ACVRL1 locus fine-mapping and PromoterAI substitution predictions.",
+    "preparation": [
+      {
+        "key": "fig5-s31",
+        "script": "preparation/Fig5/prepare_s31.R",
+        "description": "Prepare ACVRL1 source rows and prediction windows; rebuild E and update every D QTL plotting frame in the accepted locus renderer; save the D/E objects consumed by S31."
+      }
     ]
   }
 }

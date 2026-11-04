@@ -1,6 +1,6 @@
 {
-  "title": "Figure 5 — rare QTL variants at disease genes",
-  "overview": "Rebuild the five current Figure 5 panels from the accepted aggregate data. A shows rare-variant counts and ClinVar classes; B shows ClinVar coverage; C shows the selection funnel and pathogenic enrichment; D and E show posterior effects for nine genes with current REM labels. Build the stacked R layout, then display the exact November 2, 2026 submission image. The historical ACVRL1 and SPR main panels belong to the supplement and are not used here.",
+  "title": "Figure 5 \u2014 rare QTL variants at disease genes",
+  "overview": "Rare-variant counts, ClinVar coverage, pathogenic-variant enrichment, and molecular effects at selected disease genes.",
   "notes": [
     "The panel map follows scripts/prepare_data_s1.R and the current Science print export. No controlled participant records are printed or copied.",
     "The plot code follows output/figure5_combined_draft/build_science_panels.R and build_panel_A_v21.R. All output files go through the shared output helper.",

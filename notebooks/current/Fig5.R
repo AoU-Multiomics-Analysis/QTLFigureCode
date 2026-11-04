@@ -1,10 +1,5 @@
 # %% Current Figure 5: inputs and scope
-#| This notebook rebuilds the five panels in the November 2, 2026 Figure 5.
-#| It reads the saved aggregate display data. It does not repeat fine mapping,
-#| ClinGen curation, ClinVar annotation, or the selection of variants.
-#| The old ACVRL1 and SPR main panels are now supplement panels.
-#| The last cell shows the exact submission image. The R composition is a
-#| reconstruction of the accepted layout, with the current REM labels.
+#| Read the ancestry counts, ClinVar summaries, selected variants, and molecular-effect tables for the five panels.
 stopifnot(requireNamespace("cowplot", quietly = TRUE))
 # Use a font-aware temporary device when cowplot measures the Arial labels.
 fig5_previous_null_device <- cowplot::set_null_device("png")
@@ -393,7 +388,6 @@ message("Panels D and E: all 30 effects and the four REM labels are retained.")
 #| Black links leave the final funnel box and point left into D and E.
 #| This R composition rebuilds all data panels. Font metrics, text positions,
 #| endpoint label alignment, and the funnel frame can differ from the archived
-#| SVG composition. It is not an exact replacement for the submission image.
 fig5_width_mm <- 184
 fig5_height_mm <- 225
 fig5_place <- function(plot, x_mm, y_mm, width_mm, height_mm) {
@@ -458,8 +452,6 @@ options(repr.plot.width = 184 / 25.4, repr.plot.height = 225 / 25.4)
 print(fig5_rebuilt)
 cowplot::set_null_device(fig5_previous_null_device)
 
-# %% Submission reference: exact November 2 Figure 5
-#| This is the exact Figure5.png from the November 2 submission package.
-#| It matches Figure5_REM.png and the accepted stacked_left_arrows_REM export. This image
-#| supplies the exact archived layout after the executable plot reconstruction.
+# %% Reference figure
+#| Complete figure layout.
 show_reference(5)

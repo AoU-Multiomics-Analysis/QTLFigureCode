@@ -1,8 +1,14 @@
 # November 2 figure notebooks
 
-The five main notebooks use the November 2, 2026 submission as their reference.
-They rebuild current plots from saved results. They also show the exact submitted
-image in a separate reference cell. This image is not a new analysis result.
+The [data preparation guide](../../preparation/README.md) lists the scripts that
+filter source results, join annotations, calculate counts and tests, and write
+the plot inputs. Each notebook links to its own producing scripts. Set
+`QTL_PREP_ROOT` to read a generated output tree while retaining the original
+input and layout directories.
+
+The five main notebooks use the November 2, 2026 figures as their reference.
+They read prepared inputs or the original result files. A separate cell shows
+the complete reference figure.
 
 Figure 1 now uses the post-QC schematic, circos plot, seven gene categories,
 three-assay credible-set curves, and combined lead-PIP plot. Figure 2 uses the
@@ -68,27 +74,21 @@ S27 control-set review. The section number follows the November 2 manuscript;
 earlier working drafts used different numbers.
 
 S11-S14 use the current EAS versions. Their population order is Combined, AFR,
-AMR, EUR, SAS, EAS, MID. S14 retains the fixed shared-gene set and the saved
-descriptive curves. These notebooks do not refit SuSiE models.
+AMR, EUR, SAS, EAS, MID. The S14 preparation script rebuilds the shared-gene
+set, study counts, descriptive curves, and GTEx tissue envelopes.
 
 S19 has saved event counts but lacks complete model results. S32 has the
 fine-mapping panel but lacks the complete Borzoi inputs. S27 has a recorded
 difference between the control set in the plot and the caption comparisons.
 These three sections do not have new notebooks in this update.
 
-## Scope and checks
+## Checks
 
-The notebooks preserve the recorded scientific results. They do not repeat
-association mapping, variant annotation, or model fitting unless the code
-section says so. Some sections restore a saved plot object. Others calculate
-summaries or rebuild plots from saved tables. Each section states its scope.
-Rendering evaluates ggplot statistics, such as densities and straight-line fits.
-This does not repeat the upstream association or fine-mapping analyses.
-The complex Figure 1 artwork and the final vector label positions are retained
-in the exact submission reference. The R reconstructions can have different
-spacing or font metrics.
+The preparation guide and manifest record the source inputs, comparisons, and
+remaining input gaps. The Figure 1 reference retains its final artwork and
+vector label positions. The R plots can have different spacing or font metrics.
 
 The local check executes each supported notebook, checks source file hashes,
 and allows aggregate images and status messages in outputs. The GitHub Actions
-smoke test checks the generated code, saved images, and R syntax. It does not
-have controlled data and does not rerun the scientific analyses.
+smoke test checks the generated code, saved images, R syntax, and synthetic
+filter/count tests. It runs without controlled inputs.
