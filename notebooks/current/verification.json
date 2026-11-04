@@ -2,223 +2,281 @@
   "reference_date": "2026-11-02",
   "main_notebooks": 5,
   "supplement_notebooks": 16,
-  "code_cells": 110,
-  "images": 45,
+  "code_cells": 172,
+  "images": 48,
   "notebooks": {
     "Fig1": {
       "path": "Fig1/Fig1.ipynb",
-      "code_cells": 8,
+      "code_cells": 25,
       "images": 6,
-      "input_files": 17,
-      "prepared_input_files": 16,
+      "input_files": 32,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "Fig2": {
       "path": "Fig2/Fig2.ipynb",
       "code_cells": 14,
       "images": 7,
-      "input_files": 2,
-      "prepared_input_files": 1,
+      "input_files": 10,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "Fig3": {
       "path": "Fig3/Fig3.ipynb",
-      "code_cells": 8,
+      "code_cells": 12,
       "images": 7,
-      "input_files": 8,
-      "prepared_input_files": 7,
+      "input_files": 15,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "Fig4": {
       "path": "Fig4/Fig4.ipynb",
-      "code_cells": 8,
-      "images": 2,
-      "input_files": 5,
-      "prepared_input_files": 3,
+      "code_cells": 20,
+      "images": 5,
+      "input_files": 6,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "Fig5": {
       "path": "Fig5/Fig5.ipynb",
-      "code_cells": 8,
+      "code_cells": 11,
       "images": 7,
-      "input_files": 10,
-      "prepared_input_files": 9,
+      "input_files": 5,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S4": {
       "path": "notebooks/supplements/S4.ipynb",
       "code_cells": 4,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 23,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S11": {
       "path": "notebooks/supplements/S11.ipynb",
-      "code_cells": 4,
+      "code_cells": 6,
       "images": 1,
-      "input_files": 2,
-      "prepared_input_files": 2,
+      "input_files": 15,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S12": {
       "path": "notebooks/supplements/S12.ipynb",
-      "code_cells": 4,
+      "code_cells": 7,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 15,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S13": {
       "path": "notebooks/supplements/S13.ipynb",
-      "code_cells": 4,
+      "code_cells": 6,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 15,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S14": {
       "path": "notebooks/supplements/S14.ipynb",
-      "code_cells": 4,
+      "code_cells": 9,
       "images": 1,
-      "input_files": 2,
-      "prepared_input_files": 2,
+      "input_files": 114,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S15": {
       "path": "notebooks/supplements/S15.ipynb",
-      "code_cells": 4,
+      "code_cells": 5,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 4,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S16": {
       "path": "notebooks/supplements/S16.ipynb",
-      "code_cells": 4,
+      "code_cells": 9,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 2,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S20": {
       "path": "notebooks/supplements/S20.ipynb",
       "code_cells": 4,
       "images": 1,
-      "input_files": 3,
-      "prepared_input_files": 3,
+      "input_files": 13,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S21": {
       "path": "notebooks/supplements/S21.ipynb",
       "code_cells": 4,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 4,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S22": {
       "path": "notebooks/supplements/S22.ipynb",
       "code_cells": 4,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 4,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S23": {
       "path": "notebooks/supplements/S23.ipynb",
       "code_cells": 4,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 7,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S24": {
       "path": "notebooks/supplements/S24.ipynb",
-      "code_cells": 4,
+      "code_cells": 5,
       "images": 1,
       "input_files": 1,
-      "prepared_input_files": 1,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S25": {
       "path": "notebooks/supplements/S25.ipynb",
-      "code_cells": 4,
+      "code_cells": 7,
       "images": 1,
-      "input_files": 1,
-      "prepared_input_files": 1,
+      "input_files": 4,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S28": {
       "path": "notebooks/supplements/S28.ipynb",
-      "code_cells": 4,
+      "code_cells": 5,
       "images": 1,
       "input_files": 2,
-      "prepared_input_files": 2,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S30": {
       "path": "notebooks/supplements/S30.ipynb",
       "code_cells": 4,
       "images": 1,
       "input_files": 1,
-      "prepared_input_files": 1,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     },
     "S31": {
       "path": "notebooks/supplements/S31.ipynb",
-      "code_cells": 4,
+      "code_cells": 7,
       "images": 1,
-      "input_files": 2,
-      "prepared_input_files": 2,
+      "input_files": 4,
+      "R": "4.3.1",
       "source_inputs_unchanged": true,
-      "R": "4.3.1"
+      "RDS_inputs": 0
     }
   },
   "checks": {
     "all_notebooks_executed": true,
     "all_main_reference_hashes_match": true,
     "all_source_hashes_unchanged": true,
+    "all_processing_code_embedded": true,
+    "no_RDS_inputs_or_prepared_overlay": true,
+    "no_runtime_source_calls": true,
     "generation_preserves_outputs_and_provenance": true,
-    "generator_unit_tests": 8,
-    "repository_R_suite": "passed",
-    "R_syntax": "passed",
-    "independent_review": "material_findings_fixed",
-    "controlled_data_not_committed": true,
+    "generator_unit_tests": 11,
     "preparation_runner_tests": 6,
-    "preparation_fixture_files": 5,
-    "preparation_manifest_steps": 24,
-    "preparation_CLI_local_execution": "passed",
-    "notebook_scope_boilerplate_removed": true
+    "inline_R_fixture_files": 8,
+    "repository_R_suite": "passed",
+    "R_syntax_files": 78,
+    "independent_review": "material_finding_fixed",
+    "controlled_data_not_committed": true
   },
-  "preparation": {
-    "steps": 24,
-    "steps_executed_locally": 23,
-    "manifest": "../../preparation/manifest.json",
-    "unavailable_inputs": [
-      "Figure 1 pre-QC participant availability export; supplied aggregate counts retained.",
-      "Figure 4A full harmonized gene-level result; code included, step not executed.",
-      "S30 upstream genome-wide ranking procedure and records; recorded aggregate formulas reproduced."
-    ]
-  }
+  "scientific_comparisons": {
+    "Fig1": {
+      "novelty_calls": 44421,
+      "circos_points": 13741,
+      "category_cells": 21,
+      "category_gene_membership": "exact",
+      "credible_sets": 457883,
+      "S11_histogram_bins": 210,
+      "S12_contrasts": "matched",
+      "S13_population_summaries": 21,
+      "S13_density_values": "matched"
+    },
+    "Fig2": {
+      "A_F_display_rows": [
+        12,
+        67568,
+        21000,
+        65376,
+        24,
+        13
+      ],
+      "S16_summary_rows": 217,
+      "S16_curve_rows": 31,
+      "comparison": "matched within 1e-10"
+    },
+    "Fig3": {
+      "shared_genes": 755,
+      "effect_rows": 1722,
+      "annotation_models": 23,
+      "recoverable_colocalizing_variants": 19217,
+      "comparison": "20 checks matched within 1e-12"
+    },
+    "Fig4": {
+      "B_rows": 6128,
+      "C_rows": 6584,
+      "D_enrichment_rows": 8,
+      "S24_intersections": 7,
+      "multilayer_gene_trait_pairs": 1617,
+      "S25_rows": 84,
+      "comparison": "matched within 1e-12"
+    },
+    "Fig5": {
+      "table_and_statistical_comparisons": 12,
+      "D_effect_rows": 14,
+      "E_effect_rows": 16,
+      "S28_historical_variants": 574,
+      "S31_QTL_frames": 8,
+      "S31_prediction_layers_and_gene_models": "matched within 1e-10"
+    },
+    "S14": {
+      "shared_coding_genes": 10881,
+      "study_points_per_panel": 9,
+      "GTEx_tissues": 50,
+      "curve_points_per_panel": 1000,
+      "envelope_points_per_panel": 721,
+      "comparison": "matched within 1e-10"
+    },
+    "S15": {
+      "refitted_slopes": 90,
+      "displayed_models": 36,
+      "maximum_absolute_difference": 5.33e-15
+    }
+  },
+  "input_boundaries": [
+    "Figure 1 pre-QC participant-availability export is absent; supplied aggregates retained and post-QC counts recalculated.",
+    "Figure 4A full harmonized gene result is absent; processing code shown and panel explicitly skipped.",
+    "S30 original genome-wide ranking inputs and procedure are absent; recorded aggregate formulas reproduced."
+  ]
 }

@@ -1,41 +1,28 @@
 # %% Inputs and plotting rules
-#| Read the cohort summaries, QTL results, gene annotations, and plot coordinates for panels A-E.
+#| Read source result tables, map gene annotations, and calculate the panel summaries in this R session.
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(patchwork))
 assays <- c("eQTL", "sQTL", "pQTL")
 assay_colours <- c(eQTL = "#00798C", sQTL = "#EDAE49", pQTL = "#D1495B")
-fig1_build <- "output/figure1_flowchart_draft"
-fig1_print <- file.path(fig1_build, "science_print_size")
-fig1_circos <- "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027"
-fig1_categories <- "output/figure1_novel_gene_categories/seven_categories_20261027"
-read_figure_tsv <- function(relative, ...) {
-  readr::read_tsv(paper_file(relative), show_col_types = FALSE, progress = FALSE, ...)
-}
 fig1_theme <- theme_classic(base_size = 8, base_family = "Arial") +
   theme(axis.text = element_text(colour = "#263B45"),
         axis.line = element_line(linewidth = .25, colour = "#53616A"),
         axis.ticks = element_line(linewidth = .25, colour = "#53616A"),
         legend.title = element_blank(), plot.title = element_blank(),
         plot.subtitle = element_blank())
-message("Figure 1 inputs loaded.")
+message("Figure 1 plotting rules loaded.")
+# @include notebooks/current/analysis/Fig1_helpers.R
 
 # %% Panel A: Cohort counts and analysis workflow
-#| Read the saved counts by ancestry group. These counts are before quality control (QC).
-#| The separate cohort table records 8,895 RNA samples and 9,581 proteome samples after QC.
+#| Read the supplied aggregate availability counts by ancestry group before quality control (QC).
+#| Recount RNA sample rows and protein matrix/covariate headers after QC.
 #| REM means remaining. The input table retains its original ancestry code, oth.
 ancestry_levels <- c("AFR", "AMR", "EAS", "EUR", "MID", "SAS", "REM")
 ancestry_colours <- c(AFR = "#8D6EAB", AMR = "#D98A38", EAS = "#6AA6A1",
                       EUR = "#6B94C4", MID = "#C56D85", SAS = "#83A86C", REM = "#A5A5A5")
-cohort <- read_figure_tsv(file.path(fig1_print, "cohort_counts_2026-10-26.tsv")) %>%
-  transmute(assay = recode(name, has_rna = "RNA", has_proteome = "Proteome"),
-            ancestry = recode(str_to_upper(ancestry_pred_other), OTH = "REM"), n) %>%
-  mutate(ancestry = factor(ancestry, levels = ancestry_levels))
-cohort_totals <- read_figure_tsv(file.path(fig1_print,
-  "Figure1_Science_184mm_seven_categories_postQC_20261027_cohort_totals.tsv"))
-stopifnot(sum(cohort$n[cohort$assay == "RNA"]) == 9130L,
-          sum(cohort$n[cohort$assay == "Proteome"]) == 10056L,
-          cohort_totals$RNA[cohort_totals$category == "Post-QC"] == 8895L,
-          cohort_totals$Proteome[cohort_totals$category == "Post-QC"] == 9581L)
+# @include notebooks/current/analysis/Fig1_cohort.R
+
+# %% Draw panel A: cohort counts and analysis workflow
 cohort_rows <- cohort %>% pivot_wider(names_from = assay, values_from = n) %>%
   arrange(ancestry) %>% mutate(label = as.character(ancestry)) %>%
   bind_rows(cohort_totals %>% mutate(label = category) %>% select(-category)) %>%
@@ -83,25 +70,15 @@ save_plot(p1A, "Fig1_A_rebuilt", width_mm = 184, height_mm = 58)
 print(p1A)
 
 # %% Panel B: Reconciled novel cis-QTL circos plot
-#| Each point is the saved lead cis-variant for one molecular trait with q < 0.05.
+#| Each point is the source lead cis-variant for one molecular trait with q < 0.05.
 #| Novelty is specific to the assay. It does not prove that an independent signal is new.
 #| The pQTL novelty calls use the corrected UKBB protein target identities.
 #| Source P values of zero stay censored. Radial scores are capped at 200 for eQTLs and sQTLs, and 150 for pQTLs.
-#| This cell rebuilds the circos layers from the reconciled points, axes, and label tables.
-lead_points <- read_figure_tsv(file.path(fig1_circos, "plotted_lead_variants.tsv.gz"),
-  col_types = cols(source_pval_nominal = col_character(),
-                   source_pval_beta = col_character(), source_qval = col_character())) %>%
-  mutate(assay = factor(assay, levels = assays))
-novelty <- read_figure_tsv(file.path(fig1_circos, "paper_novelty_by_trait.tsv"))
-anchors <- read_figure_tsv(file.path(fig1_circos, "label_anchors.tsv"))
-label_dots <- read_figure_tsv(file.path(fig1_circos, "gene_label_dot_types.tsv"))
-leaders <- read_figure_tsv(file.path(fig1_circos, "gene_connector_segments.tsv"))
-axis_positions <- read_figure_tsv(file.path(fig1_circos, "axis_positions.tsv"))
-axis_ticks <- read_figure_tsv(file.path(fig1_circos, "axis_ticks.tsv"))
-highlights <- read_figure_tsv(file.path(fig1_circos, "highlighted_gene_signals.tsv")) %>%
-  select(label, assay, phenotype_id) %>%
-  left_join(lead_points, by = c("assay", "phenotype_id"), relationship = "many-to-one") %>%
-  mutate(point_fill = unname(assay_colours[as.character(assay)]))
+#| This cell calculates point, axis, label-dot, and connector coordinates from source rows and label design inputs.
+# @include notebooks/current/analysis/Fig1_novelty.R
+# @include notebooks/current/analysis/Fig1_circos.R
+
+# %% Draw panel B: novel cis-QTL circos layers
 circos_counts <- lead_points %>% group_by(assay) %>%
   summarise(n_genes = n_distinct(gene_id), .groups = "drop")
 stopifnot(identical(circos_counts$n_genes, c(10148L, 2450L, 1143L)),
@@ -110,7 +87,7 @@ stopifnot(identical(circos_counts$n_genes, c(10148L, 2450L, 1143L)),
           all(is.finite(lead_points$y)),
           nrow(anti_join(lead_points, novelty %>% filter(novel_for_figure),
                         by = c("assay", "phenotype_id"))) == 0L)
-# Chromosome angles and radial coordinates were saved with each plotted point.
+# Chromosome angles and radial coordinates were calculated from source positions.
 chromosomes <- lead_points %>%
   distinct(chromosome, chromosome_index, length, span, theta_start, theta_end, theta_mid) %>%
   arrange(chromosome_index)
@@ -175,7 +152,7 @@ print(p1B)
 #| Count unique novel genes within each assay and GENCODE v48 biotype.
 #| The seven-category table counts unique stable gene IDs within each assay and category.
 #| Categories can overlap. These are annotation counts, not enrichment tests.
-#| The saved annotation sources and category definitions are retained beside the count tables.
+#| The category code reads each source annotation and constructs the histone and GO unions before counting.
 #| The gene-count axis is logarithmic. Zero counts have labels at the baseline and no bar.
 biotype_counts <- novelty %>% filter(novel_for_figure) %>%
   distinct(assay, gene_id, gene_type) %>%
@@ -192,10 +169,11 @@ category_order <- c("cancer_driver", "mendelian_disease", "lof_constrained",
 category_labels <- c("Cancer\ndrivers", "Mendelian\ndisease genes", "LoF-constrained\ngenes",
                      "Transcription/\nchromatin", "RNA processing/\nsplicing",
                      "Plasma membrane/\nsignal transduction", "Drug\ntargets")
-category_counts <- read_figure_tsv(file.path(fig1_categories, "category_counts_by_assay.tsv")) %>%
+# @include notebooks/current/analysis/Fig1_categories.R
+
+# %% Draw panel C: biotype and annotation counts
+category_counts <- category_counts %>%
   mutate(assay = factor(assay, levels = assays), category = factor(category, levels = category_order))
-category_genes <- read_figure_tsv(file.path(fig1_categories, "category_gene_lists.tsv"))
-category_definitions <- read_figure_tsv(file.path(fig1_categories, "category_definitions.tsv"))
 category_check <- category_genes %>% distinct(assay, category, gene_id) %>%
   count(assay, category, name = "recount") %>%
   right_join(category_counts, by = c("assay", "category"))
@@ -235,9 +213,11 @@ print(p1C)
 #| Each trait contributes once. Only combined-analysis traits with at least one credible set are included.
 #| The numerator counts traits with at least k sets. The denominator is all included traits in the assay.
 #| The final point, 5+, includes all traits with at least five sets. No fine-mapping model is rerun.
-credible_traits <- read_figure_tsv(
-  "output/figure1_population_credible_set_counts/credible_sets_per_molecular_trait.tsv.gz") %>%
-  filter(population == "COMB") %>% mutate(assay = factor(assay, levels = assays))
+fig1_groups <- "COMB"
+# @include notebooks/current/analysis/Fig1_finemapping.R
+
+# %% Draw panel D: credible-set count curves
+credible_traits <- traits
 credible_totals <- credible_traits %>% group_by(assay) %>%
   summarise(n_traits = n(), n_sets = sum(number_credible_sets), .groups = "drop")
 credible_curves <- map_dfr(1:5, function(k) {
@@ -245,13 +225,10 @@ credible_curves <- map_dfr(1:5, function(k) {
     summarise(k = k, numerator = sum(number_credible_sets >= k), denominator = n(),
               proportion = mean(number_credible_sets >= k), .groups = "drop")
 }) %>% arrange(assay, k)
-saved_curves <- read_figure_tsv(file.path(fig1_print, "three_assay_D/credible_set_count_curves.tsv")) %>%
-  mutate(assay = factor(assay, levels = assays)) %>% arrange(assay, k)
 stopifnot(identical(credible_totals$n_traits, c(29088L, 5763L, 2529L)),
           all(credible_totals$n_sets == c(143512L, 17674L, 11922L)),
           nrow(distinct(credible_traits, assay, molecular_trait_id)) == nrow(credible_traits),
-          all(credible_traits$number_credible_sets %in% 1:10),
-          isTRUE(all.equal(credible_curves, saved_curves, tolerance = 1e-12)))
+          all(credible_traits$number_credible_sets %in% 1:10))
 p1D <- ggplot(credible_curves, aes(k, proportion, colour = assay, shape = assay)) +
   geom_step(linewidth = .45, direction = "hv") + geom_point(size = 1.65, stroke = .25) +
   scale_colour_manual(values = assay_colours) +
@@ -267,14 +244,11 @@ save_plot(p1D, "Fig1_D_rebuilt", width_mm = 110, height_mm = 65)
 print(p1D)
 
 # %% Panel E: Combined lead-PIP density and high-PIP percentage
-#| Read one maximum variant PIP per credible set from the saved display object.
+#| Use the maximum variant PIP calculated from each source credible set.
 #| The density uses bandwidth 0.04 and reflection at 0 and 1, as in the submitted panel.
 #| Each credible set has equal weight. The inset uses unsmoothed counts with a strict PIP > 0.9 threshold.
 #| PIP is a posterior probability. It is not an association P value.
-saved_pip <- readRDS(paper_file(file.path(fig1_build,
-  "bottom_row_density_options/combined_PIP_percent_inset_display.rds")))
-lead_pip <- saved_pip$E$data %>% select(assay, cs_id, lead_pip, group) %>%
-  mutate(assay = factor(assay, levels = assays))
+lead_pip <- sets %>% select(assay, cs_id, lead_pip) %>% mutate(group = "COMB")
 pip_summary <- lead_pip %>% group_by(assay) %>%
   summarise(n_cs = n(), median_lead_pip = median(lead_pip),
             n_pip_above_09 = sum(lead_pip > .9), fraction = mean(lead_pip > .9), .groups = "drop") %>%
@@ -307,10 +281,6 @@ p1E_inset <- ggplot(pip_summary,
         axis.line.x = element_blank(), axis.line.y = element_blank(), axis.ticks = element_blank(),
         plot.background = element_rect(fill = "white", colour = NA),
         plot.margin = margin(1, 1, 1, 1, "mm"))
-rebuilt_density <- ggplot_build(p1E_density)$data[[1]]
-saved_density <- ggplot_build(saved_pip$E)$data[[1]]
-stopifnot(isTRUE(all.equal(rebuilt_density$x, saved_density$x, tolerance = 1e-12)),
-          isTRUE(all.equal(rebuilt_density$density, saved_density$density, tolerance = 1e-12)))
 p1E <- p1E_density + inset_element(p1E_inset, left = .01, bottom = .50, right = .43, top = .98)
 save_plot(p1E, "Fig1_E_rebuilt", width_mm = 124, height_mm = 70)
 print(p1E)

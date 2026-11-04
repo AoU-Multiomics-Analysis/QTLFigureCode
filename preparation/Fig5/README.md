@@ -45,22 +45,16 @@ that recorded table/formula expression and checks all four display rows. It does
 not recover the missing genome-wide ranking calculation or its input records.
 The supplied counts are not copied into this repository.
 
-`fig5-s31` reuses ten pure functions already tracked in `Fig5/00_setup.R`.
-It does not execute that file's setup, font download, or plotting commands.
-It prepares the ACVRL1 locus, frequency labels, PromoterAI locus, and causal
-windows. It then writes the `Fig5/objects/D.rds` and `E.rds` objects that the
-S31 notebook reads. E is rebuilt with the existing prediction plot function.
-All prediction values, coordinates, labels, and built plot layers must match
-the accepted panel.
+The S31 notebook now reads the ACVRL1 fine-mapping table, GENCODE gene/exon
+rows, public cCRE annotations, and supplied PromoterAI predictions directly.
+It computes the locus range, merged exon intervals, causal windows and frequency
+labels, then constructs both plots. Its visible helpers are in
+`notebooks/current/plots/Fig5_locus.R`.
 
-D uses the accepted `Fig5/objects/D.rds` as an explicit renderer dependency.
-Its cCREs, gene models, inset geometry, and axes are retained. Every regional
-and inset QTL plotting frame is replaced with the prepared source values.
-The code rejects missing or extra variants, changed coordinates, and changed
-PIPs. Thus the saved renderer cannot silently display different source data.
-Fine mapping, PromoterAI prediction, motif scanning, gene-model construction,
-and external annotation generation are not rerun. The original S31 plotting
-functions and reference tracks remain in `Fig5/`.
+The separate archived `fig5-s31` runner still writes an RDS overlay and retains
+its accepted D renderer. The notebook does not use that runner or those objects.
+Fine mapping, PromoterAI prediction, motif scanning and external annotation
+generation remain upstream inputs.
 
 Source paths and SHA-256 values are in `provenance.json`. The R test checks
 variant-versus-pair counts, inheritance overlap, ClinVar precedence, AF ties,

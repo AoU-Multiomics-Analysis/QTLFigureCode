@@ -1,157 +1,105 @@
-# %% Read the saved plot inputs
-#| Read the allele-frequency, ancestry-enrichment, allelic-effect, outlier, and gene-burden inputs.
-# Reflow the figure around readable plot areas at the final print width.
-suppressPackageStartupMessages({
-  library(tidyverse)
-  library(patchwork)
-  library(ggbeeswarm)
-  library(ggh4x)
-  library(ggdist)
-  library(grid)
-})
+# %% Source result methods
+#| Start from the combined-assay SuSiE result tables. These cells show the
+#| frequency filters, ancestry tests, annotation selection, aFC models, and
+#| contingency-table tests used for Figure 2. The QTL models are upstream inputs.
+# @include preparation/Fig2/methods.R
+# @include preparation/Fig2/current_methods.R
+# @include notebooks/current/plots/Fig2.R
 
-source <- readRDS(paper_file('output/figure2_binned_draft/science_print_size/Science_display_plots.rds'))
-showtext::showtext_auto(FALSE)
-pt <- ggplot2::.pt
-base_theme <- theme_classic(base_size = 8, base_family = 'Helvetica') +
-  theme(text = element_text(family = 'Helvetica', size = 8),
-        axis.title = element_text(size = 8),
-        axis.title.x = element_text(margin = margin(t = 4)),
-        axis.title.y = element_text(margin = margin(r = 4)),
-        axis.text = element_text(size = 7, color = 'black'),
-        axis.ticks = element_line(linewidth = .18),
-        axis.ticks.length = unit(1, 'mm'),
-        axis.line = element_line(linewidth = .18),
-        strip.text = element_text(size = 8, margin = margin(3, 0, 3, 0)),
-        strip.background = element_blank(),
-        legend.text = element_text(size = 7), legend.title = element_blank(),
-        panel.grid = element_blank(), plot.margin = margin(2, 2, 2, 2))
-theme_set(base_theme)
-plots <- map(source, ~.x + base_theme)
-for (letter in names(plots)) {
-  for (i in seq_along(plots[[letter]]$layers)) {
-    if (inherits(plots[[letter]]$layers[[i]]$geom, 'GeomText')) {
-      plots[[letter]]$layers[[i]]$aes_params$size <- 7 / pt
-      plots[[letter]]$layers[[i]]$aes_params$family <- 'Helvetica'
-    }
-  }
+# %% Read the source result tables
+#| Read expression, splicing, and protein QTL results. Keep each result row
+#| until the panel-specific selection below. Input paths are checked and hashed.
+prep_result_runtime("Fig2")
+read_qtl <- function(key, columns = NULL) {
+  as_tibble(data.table::fread(input_path(key), select = columns, nThread = 4, showProgress = FALSE))
 }
+ancestry_columns <- c("variant", "pip", "gvs_max_subpop", "gvs_max_af", "gvs_odds_ratio", "gvs_p_value")
+expression_columns <- c(ancestry_columns, "log2_aFC", "posterior_mean", "molecular_trait_id", "consequence",
+                        "FANTOM5", "pELS", "dELS", "PLS", "CTCF.bound", "DNase.H3K4me3", "CTCF.only")
+assays <- list(Expression = read_qtl("susie_eqtl", expression_columns),
+               Splicing = read_qtl("susie_sqtl", ancestry_columns),
+               Proteomics = read_qtl("susie_pqtl", ancestry_columns))
+message("Read three combined-assay SuSiE result tables.")
 
 # %% Four frequency bins
-#| The unit is a high-PIP variant-trait pair. Keep <1%, 1-<5%, 5-<10%, and 10-50% bins and the recorded percentages.
-plots$A <- plots$A +
-  labs(x = 'Population-max MAF (%)', y = 'Causal variants (%)') +
-  scale_x_discrete(labels = c('<1%', '1–<5%', '5–<10%', '10–50%'),
-                    drop = FALSE, expand = expansion(add = .5)) +
-  theme(axis.text.x = element_text(size = 7, angle = 0, hjust = .5),
-        axis.line.x = element_blank(), axis.ticks.x = element_blank(),
-        legend.position = 'inside', legend.position.inside = c(.02, 1),
-        legend.justification = c(0, 1), legend.direction = 'horizontal',
-        legend.key.size = unit(3, 'mm'), legend.spacing.x = unit(1, 'mm'),
-        legend.margin = margin(0, 0, 0, 0))
-
-plots$B$layers[[2]]$aes_params$size <- .20
-# Remove the common/rare annotation at the user's request.
-plots$B$layers[[7]]$data <- plots$B$layers[[7]]$data %>% slice(0)
-# %% Ancestry enrichment
-#| Retain the saved enrichment tests and rare/common split. Display OTH as REM.
-plots$B <- plots$B +
-  labs(x = 'Ancestry group',
-       y = 'Population enrichment') +
-  scale_x_discrete(labels = function(x) stringr::str_replace(x, '^OTH$', 'REM')) +
-  scale_y_continuous(transform = 'log10', breaks = 10^(0:4),
-                     labels = expression(10^0, 10^1, 10^2, 10^3, 10^4)) +
-  theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),
-        axis.text.x = element_text(margin = margin(t = 4)),
-        axis.text.y = element_text(size = 10))
-
-plots$C$layers[[2]]$aes_params$point_size <- 1.4
-plots$C$layers[[3]]$data <- plots$C$layers[[3]]$data %>%
-  mutate(label = str_replace(label, fixed('+-'), '−'), x = 2.04)
-# %% Allelic fold change
-#| Keep the recorded distributions and test results. Zoom to 0-2 without removing source values.
-plots$C <- plots$C +
-  labs(x = '|log2 aFC|') +
-  scale_x_continuous(breaks = seq(0, 2, .5), expand = expansion(mult = 0)) +
-  coord_cartesian(xlim = c(0, 2), clip = 'on') +
-  theme(axis.line.y = element_blank(), axis.ticks.y = element_blank(),
-        plot.margin = margin(2, 32, 2, 2))
-
-plots$D$layers[[2]]$aes_params$size <- .10
-# Keep annotation coordinates to preserve the axis ranges, but remove the text.
-plots$D$layers[[7]]$data <- plots$D$layers[[7]]$data %>% mutate(label = '')
-plots$D$facet$params$labeller <- as_labeller(c(
-  'Expression\ndecrease' = 'Decreasing variants',
-  'Expression\nincrease' = 'Increasing variants'))
-# %% Cumulative effects
-#| Keep the original expression cap below 400% and the pooled 4+ category. Thresholds are 60% and 150%.
-plots$D <- plots$D +
-  labs(x = 'Independent variants included',
-       y = 'Expected heterozygous expression (%)') +
-  theme(legend.position = 'none', axis.line.x = element_blank(),
-        axis.ticks.x = element_blank(), panel.spacing.y = unit(3, 'mm'),
-        plot.margin = margin(3, 2, 2, 2))
-
-endpoints <- as_tibble(plots$E$data) %>%
-  filter((type == 'Down' & focal_lower_bound == -100) |
-           (type == 'Up' & focal_lower_bound == 175))
-plots$E$layers[[4]]$aes_params$size <- 1.6
-plots$E$layers[[5]]$data$y <- endpoints %>% filter(type == 'Down') %>% pull(odds_ratio) / 6
-plots$E$layers[[6]]$data$y <- endpoints %>% filter(type == 'Up') %>% pull(odds_ratio) / 6
-for (i in c(5, 6)) {
-  plots$E$layers[[i]]$aes_params$hjust <- .5
-  plots$E$layers[[i]]$aes_params$vjust <- .5
-}
-# F uses equal-width categories. Use those same positions for E's bins.
-# E omits the central (-10, 10) reference bin, so that position stays empty.
-bin_lower <- sort(unique(plots$F$data$lower))
-bin_positions <- seq_along(bin_lower)
-bin_transform <- local({
-  boundaries <- bin_lower
-  positions <- bin_positions
-  scales::trans_new(
-    'expression_bin_centers',
-    transform = function(x) stats::approx(boundaries, positions, xout = x, rule = 2)$y,
-    inverse = function(x) stats::approx(positions, boundaries, xout = x, rule = 2)$y,
-    domain = range(boundaries))
+#| A counts high-PIP variant-trait pairs. The denominator is specific to each
+#| assay. Retain the current <1%, 1–<5%, 5–<10%, and 10–50% bins.
+#| A uses the separately retained source tables. The splicing file has a
+#| historical double dot. The alternative spelling is checked when needed.
+frequency_paths <- c(Expression = "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+                     Proteomics = "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+                     Splicing = "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz")
+frequency_inputs <- map(frequency_paths, function(path) {
+  candidates <- unique(c(path, sub("SusieMerged[.][.]annotated", "SusieMerged.annotated", path)))
+  readr::read_tsv(prep_input_any("susie", candidates),
+                  col_types = cols_only(variant = col_character(), molecular_trait_id = col_character(),
+                                        pip = col_double(), gvs_max_af = col_double()), progress = FALSE)
 })
-plots$E <- plots$E +
-  labs(y = 'Outlier\nenrichment') +
-  scale_x_continuous(transform = bin_transform, limits = range(bin_lower),
-                     expand = expansion(add = .6), breaks = NULL) +
-  scale_y_continuous(transform = 'log2', breaks = 2^c(-4, 0, 4, 8),
-                     labels = expression(2^"−4", 2^0, 2^4, 2^8)) +
-  theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),
-        axis.text.x = element_blank(), axis.title.x = element_blank(),
-        axis.text.y = element_text(size = 10),
-        plot.margin = margin(3, 2, 1, 2))
+frequency <- fig2_frequency_counts(frequency_inputs)
+plots <- list(A = fig2_plot_a(frequency$counts))
+readr::write_tsv(frequency$counts, output_file("Fig2/frequency_bin_counts.tsv"))
+readr::write_tsv(frequency$qc, output_file("Fig2/frequency_input_qc.tsv"))
+save_plot(plots$A, "Fig2/panel_A", 150, 105)
+print(plots$A)
+
+# %% Ancestry enrichment
+#| B keeps PIP >0.9 and one row per variant across assays. Recalculate BH FDR
+#| after that selection. An enriched variant has OR >5 and FDR <0.05.
+#| OR and P values come from the source ancestry-enrichment tests. Rare means
+#| population-max AF <1%. OTH is displayed as REM.
+ancestry <- fig2_ancestry_data(assays)
+plots$B <- fig2_plot_b(ancestry)
+save_plot(plots$B, "Fig2/panel_B", 150, 105)
+print(plots$B)
+
+# %% Allelic fold change
+#| C selects the highest-priority retained consequence for each high-PIP
+#| expression variant. Fit |log2 aFC| ~ rare within each consequence group and
+#| apply BH FDR across those estimates. The plot shows medians and quantiles.
+#| The 0–2 view clips the distributions but does not remove source values.
+afc <- fig2_afc_data(assays$Expression)
+plots$C <- fig2_plot_c(afc)
+c_artwork <- render_panel_C(plots$C)
+save_plot(c_artwork, "Fig2/panel_C", 150, 105)
+grid::grid.newpage()
+grid::grid.draw(c_artwork)
+
+# %% Cumulative effects
+#| D selects defined aFC values, as in the source calculation. In the current
+#| input, every defined value already has PIP >0.9. Order decreasing and
+#| increasing effects within each gene, then sum log2 aFC in each direction.
+#| Expected heterozygous expression is (1 + 2^cumulative_log2_aFC) / 2.
+#| Retain values below 400% before pooling steps into 4+. The label denominator
+#| is the displayed gene-step observations. The thresholds are 60% and 150%.
+cumulative <- assays$Expression %>% filter(!is.na(log2_aFC)) %>%
+  make_cumulative_afc_curve_both(gene_col = "molecular_trait_id")
+cumulative_display <- fig2_cumulative_display(cumulative)
+plots$D <- fig2_plot_d(cumulative_display)
+readr::write_tsv(cumulative_display$label_df, output_file("Fig2/cumulative_display_percentages.tsv"))
+save_plot(plots$D, "Fig2/panel_D", 150, 105)
+print(plots$D)
+
+# %% Outlier contingency tests
+#| E starts from the saved aggregate contingency counts. The association and
+#| outlier classifications are upstream inputs. Recalculate each OR with 0.5
+#| added to all four cells, its Wald interval, and a two-sided Fisher P value
+#| from the original integer counts. Omit the central reference bin from E.
+outlier_counts <- read_qtl("burden_enrichment")
+outliers <- fig2_outlier_statistics(outlier_counts)
+for (column in c("odds_ratio", "se_log_or", "ci_low", "ci_high", "p_value")) {
+  stopifnot(isTRUE(all.equal(outlier_counts[[column]], outliers[[column]], tolerance = 1e-10)))
+}
+message("Recalculated outlier odds ratios, confidence intervals, and Fisher tests.")
 
 # %% Gene burden
-#| Retain aggregate gene-count medians and intervals. Participant rows are not printed.
-plots$F <- plots$F +
-  labs(x = 'Expression change bin (%)', y = 'Median genes\nper individual') +
-  scale_x_discrete(labels = identity) +
-  theme(axis.line.x = element_blank(), axis.ticks.x = element_blank(),
-        axis.text.x = element_text(size = 7, angle = 0, hjust = .5,
-                                   lineheight = 1.1),
-        strip.text = element_text(size = 7), plot.margin = margin(3, 2, 2, 2))
-for (i in c(5, 6)) {
-  plots$F$layers[[i]]$aes_params$y <- 8000
-  plots$F$layers[[i]]$aes_params$vjust <- 1
-}
-for (i in c(8, 10)) {
-  plots$F$layers[[i]]$aes_params$y <- 1700
-}
-
-checks <- imap_dfr(plots, function(p, letter) {
-  stopifnot(identical(p$data, source[[letter]]$data))
-  tibble(panel = letter, data_identical = TRUE,
-         statistical_methods_identical = identical(map(p$layers, 'stat'),
-                                                    map(source[[letter]]$layers, 'stat')))
-})
-stopifnot(all(checks$statistical_methods_identical))
-write_tsv(checks, output_file('Fig2/data_preservation_checks.tsv'))
-
+#| F starts from aggregate per-bin medians and quartiles. Keep protein-coding
+#| genes, correct the recorded central-bin label, and derive each lower bound.
+#| Participant records are not used. The tail annotations sum bin medians.
+median <- fig2_median_data(read_qtl("median_ko"))
+plots$E <- fig2_plot_e(outliers, median)
+plots$F <- fig2_plot_f(median)
+bin_lower <- sort(unique(median$lower))
+bin_transform <- fig2_bin_transform(bin_lower)
 e_build <- ggplot_build(plots$E)
 f_build <- ggplot_build(plots$F)
 e_range <- e_build$layout$panel_params[[1]]$x.range
@@ -162,55 +110,17 @@ alignment <- tibble(lower_bound = sort(unique(plots$E$data$focal_lower_bound))) 
          F_fraction = (bin_position - f_range[[1]]) / diff(f_range),
          aligned = abs(E_fraction - F_fraction) < 1e-10)
 stopifnot(all(alignment$aligned))
-write_tsv(alignment, output_file('Fig2/EF_alignment_check.tsv'))
-
-
-# %% Render panel A
-save_plot(plots$A, "Fig2/panel_A", 150, 105)
-print(plots$A)
-
-# %% Render panel B
-save_plot(plots$B, "Fig2/panel_B", 150, 105)
-print(plots$B)
-
-# %% Render panel C
-#| Clip the distributions at 2. Keep the statistical labels in the right
-#| margin, as in the current vector export. Do not clip the entire panel grob.
-render_panel_C <- function(plot) {
-  result <- ggplot2::ggplotGrob(plot)
-  index <- which(result$layout$name == 'panel')
-  panel <- result$grobs[[index]]
-  is_text <- vapply(panel$children, inherits, logical(1), what = 'text')
-  stopifnot(sum(is_text) == 1)
-  geometry <- do.call(grid::grobTree,
-                     c(unname(as.list(panel$children[!is_text])),
-                       list(vp = grid::viewport(clip = 'on'))))
-  panel <- grid::setChildren(panel, do.call(grid::gList,
-                            c(list(geometry), unname(as.list(panel$children[is_text])))))
-  if (!is.null(panel$vp)) panel$vp$clip <- FALSE
-  result$grobs[[index]] <- panel
-  result$layout$clip[[index]] <- 'off'
-  result
-}
-c_artwork <- render_panel_C(plots$C)
-save_plot(c_artwork, "Fig2/panel_C", 150, 105)
-grid::grid.newpage()
-grid::grid.draw(c_artwork)
-
-# %% Render panel D
-save_plot(plots$D, "Fig2/panel_D", 150, 105)
-print(plots$D)
-
-# %% Outlier enrichment and burden
-#| Align E and F on the same expression-bin centers. The central reference bin is omitted from E.
+readr::write_tsv(alignment, output_file("Fig2/EF_alignment_check.tsv"))
 ef <- (plots$E / plots$F) + plot_layout(heights = c(24, 33))
 save_plot(ef, "Fig2/panels_EF", 183, 90)
 print(ef)
 
-# %% Rebuild the compact layout
+# %% Complete Figure 2
+#| Assemble the six freshly constructed panels at the current print width.
 layout_plots <- plots
 layout_plots$C <- wrap_elements(full = c_artwork)
-fig2 <- wrap_plots(layout_plots, design = "AB\nCD\nEE\nFF", widths = c(81, 98), heights = c(48, 62, 24, 33)) + plot_annotation(tag_levels = "A")
+fig2 <- wrap_plots(layout_plots, design = "AB\nCD\nEE\nFF", widths = c(81, 98),
+                   heights = c(48, 62, 24, 33)) + plot_annotation(tag_levels = "A")
 save_plot(fig2, "Fig2/Figure2_rebuilt", 183, 188)
 print(fig2)
 

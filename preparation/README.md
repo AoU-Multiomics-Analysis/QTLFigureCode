@@ -45,23 +45,20 @@ Git. Every generated file is placed in its `paper/` or `source/` namespace.
 The runner checks input hashes after each successful step and writes a record
 to `logs/`. Outputs cannot replace inputs read by the same step.
 
-## Connect the plots
+## Use the notebooks
 
-Set these variables in the R notebook session:
+The notebooks now perform these calculations in their own cells and construct
+their plots from the resulting in-memory tables. They do not read the RDS files
+produced by this separate preparation runner. See the
+[notebook guide](../notebooks/current/README.md) for their local input roots.
 
-```r
-Sys.setenv(
-  QTL_PAPER_ROOT = "/path/to/paper",
-  QTL_SOURCE_ROOT = "/path/to/figure/checkout",
-  QTL_PREP_ROOT = "/path/to/prepared"
-)
-```
+The original runner remains available for standalone preparation and archived
+comparison checks. Its connector steps can retain accepted plot templates;
+those connectors are not used by the notebooks. The new explicit plot builders
+are in `notebooks/current/plots/` and are expanded into the notebook cells.
 
-The notebook reads generated files from `QTL_PREP_ROOT` first. It reads other
-files, including layout references, from the original directories. Each
-notebook links to its producing scripts. The
-[manifest](manifest.json) gives the inputs, outputs, dependencies, original
-source paths, SHA-256 values, and local verification for every step.
+The [manifest](manifest.json) records the runner's inputs, outputs, dependencies,
+original source paths, SHA-256 values, and local checks.
 
 ## Input versions and overrides
 

@@ -1,4 +1,7 @@
-# %% Current Figure 5: inputs and scope
+# @include notebooks/current/analysis/Fig5_select.R
+# @include notebooks/current/analysis/Fig5_summaries.R
+
+# %% Figure 5 plotting settings
 #| Read the ancestry counts, ClinVar summaries, selected variants, and molecular-effect tables for the five panels.
 stopifnot(requireNamespace("cowplot", quietly = TRUE))
 # Use a font-aware temporary device when cowplot measures the Arial labels.
@@ -44,15 +47,10 @@ fig5_small_theme <- theme_classic(base_size = 6.5, base_family = "Arial") +
 #| is applied here. The class bars use counts pooled across populations.
 #| Class precedence in build_panel_A_v21.R is P/LP, then VUS, then B/LB.
 #| A variant with no ClinVar classification is unannotated.
-fig5_counts <- read_tsv(
-  paper_file(paste0(fig5_print, "/data/A_counts.tsv")),
-  show_col_types = FALSE
-) %>%
+fig5_counts <- summary$counts %>%
+  mutate(total = as.double(total)) %>%
   mutate(population = factor(population, levels = fig5_populations))
-fig5_proportions <- read_tsv(
-  paper_file(paste0(fig5_print, "/data/A_clinvar_proportions.tsv")),
-  show_col_types = FALSE
-) %>%
+fig5_proportions <- summary$proportions %>%
   mutate(clinvar_class = factor(
     clinvar_class, levels = c("P/LP", "VUS", "B/LB", "Unannotated")
   ))
@@ -147,19 +145,12 @@ message("Panel A: AD = 1,480 and AR = 3,074 distinct rare variants.")
 #| maximum frequency across the six populations. Other variants use the
 #| population with the highest frequency. The overall AD and AR totals match
 #| panel A, but some population totals differ. The dashed lines mark EUR.
-#| The code also checks the saved two-sided Fisher tests for pooled non-EUR
+#| The code also calculates two-sided Fisher tests for pooled non-EUR
 #| versus EUR. The figure itself has no test labels or confidence intervals.
-fig5_coverage <- read_tsv(
-  paper_file(paste0(fig5_print, "/data/B_coverage.tsv")),
-  show_col_types = FALSE
-) %>%
+fig5_coverage <- summary$coverage %>%
   mutate(population = factor(population, levels = fig5_populations),
     label = sprintf("%.1f", percent))
-fig5_B_tests_saved <- read_tsv(
-  paper_file(paste0(fig5_base,
-    "/panel_B_fisher_tests/pooled_non_EUR_vs_EUR.tsv")),
-  show_col_types = FALSE
-)
+fig5_B_tests_computed <- coverage_tests$pooled
 fig5_B_tests <- fig5_coverage %>%
   mutate(group = if_else(population == "eur", "EUR", "non_EUR")) %>%
   group_by(allelicRequirements, group) %>%
@@ -169,14 +160,14 @@ fig5_B_tests <- fig5_coverage %>%
   summarise(p_two_sided_rebuilt = fisher.test(cbind(
     annotated, unannotated
   ))$p.value, .groups = "drop") %>%
-  left_join(fig5_B_tests_saved %>% select(allelicRequirements, p_two_sided),
+  left_join(fig5_B_tests_computed %>% select(allelicRequirements, p_two_sided),
     by = "allelicRequirements")
 stopifnot(
   nrow(fig5_coverage) == 12L,
   all(abs(fig5_coverage$percent -
     100 * fig5_coverage$in_clinvar / fig5_coverage$total) < 1e-10),
   identical(fig5_coverage %>% group_by(allelicRequirements) %>%
-    summarise(total = sum(total), .groups = "drop") %>% pull(total), c(1480, 3074)),
+    summarise(total = sum(total), .groups = "drop") %>% pull(total) %>% as.double(), c(1480, 3074)),
   all(abs(log(fig5_B_tests$p_two_sided_rebuilt /
     fig5_B_tests$p_two_sided)) < 1e-8)
 )
@@ -201,7 +192,7 @@ fig5_B <- ggplot(fig5_coverage, aes(population, percent)) +
   theme(panel.spacing.y = grid::unit(6, "mm"))
 save_plot(fig5_B, "Fig5_B_rebuilt", 45, 84)
 print(fig5_B)
-message("Panel B: both saved pooled Fisher tests match the aggregate counts.")
+message("Panel B: both pooled Fisher tests use the aggregate counts.")
 
 # %% Panel C: variant selection and pathogenic enrichment
 #| The first three stages use the verified 2,928-variant starting pool.
@@ -209,16 +200,11 @@ message("Panel B: both saved pooled Fisher tests match the aggregate counts.")
 #| in that pool. The last box counts nine AR genes. It requires a P/LP
 #| reference and a distinct unclassified or VUS variant with high PIP.
 #| This last search permits either effect direction. It is not a fourth
-#| decreasing-effect filter. No new variant selection is run in this cell.
-fig5_stages <- read_tsv(paper_file(
-  "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/stage_counts.tsv"
-), show_col_types = FALSE)
-fig5_verified_stages <- read_tsv(paper_file(paste0(
-  fig5_base, "/stage_enrichment_tests/verified_stage_counts.tsv"
-)), show_col_types = FALSE)
-fig5_stage_tests_saved <- read_tsv(paper_file(paste0(
-  fig5_base, "/stage_enrichment_tests/primary_enrichment_tests.tsv"
-)), show_col_types = FALSE)
+#| decreasing-effect filter. The selection code is shown above.
+fig5_stages <- funnel$stages %>% mutate(across(where(is.integer), as.double))
+fig5_verified_stages <- fig5_stages %>% slice_head(n = 3) %>%
+  select(stage, variants, genes, pathogenic_variants)
+fig5_stage_tests_computed <- primary
 stopifnot(
   identical(fig5_stages$variants[1:3], c(2928, 526, 230)),
   identical(fig5_stages$genes, c(560, 375, 186, 9)),
@@ -247,7 +233,7 @@ fig5_stage_tests <- fig5_stage_geometry %>%
     21 - pathogenic_variants, 2928 - variants - (21 - pathogenic_variants)
   ), nrow = 2, byrow = TRUE))$p.value) %>%
   ungroup() %>%
-  left_join(fig5_stage_tests_saved %>% select(selected_stage, p_value_two_sided),
+  left_join(fig5_stage_tests_computed %>% select(selected_stage, p_value_two_sided),
     by = c("stage" = "selected_stage"))
 stopifnot(all(abs(log(fig5_stage_tests$p_rebuilt /
   fig5_stage_tests$p_value_two_sided)) < 1e-8))
@@ -315,10 +301,8 @@ message("Panel C: 2,928 -> 526 -> 230 variants; final endpoint = 9 AR genes.")
 #| effect magnitudes cannot be compared directly across all points.
 #| The tables supply the current REM and ASJ [REM] labels. Effect direction
 #| alone does not establish pathogenicity. No effect model is fitted here.
-fig5_D_data <- read_tsv(paper_file(paste0(fig5_rem, "/data/D_display.tsv")),
-  show_col_types = FALSE)
-fig5_E_data <- read_tsv(paper_file(paste0(fig5_rem, "/data/E_display.tsv")),
-  show_col_types = FALSE)
+fig5_D_data <- effects$D
+fig5_E_data <- effects$E
 stopifnot(
   nrow(fig5_D_data) == 14L, nrow(fig5_E_data) == 16L,
   n_distinct(fig5_D_data$variant) == 14L,

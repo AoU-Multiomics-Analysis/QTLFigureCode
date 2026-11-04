@@ -112,7 +112,54 @@ class CurrentNotebooksTest(unittest.TestCase):
             path, _ = current.build("Fig1", entry, root=root)
             text = path.read_text()
             self.assertIn("prepare_novelty.R", text)
-            self.assertIn("QTL_PREP_ROOT", text)
+            self.assertIn("QTL_INPUT_ROOT", text)
+
+    def test_includes_show_actual_processing_code(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entry = self.fixture(root)
+            helper = root / "notebooks/current/process.R"
+            helper.write_text('# %% Filter the source rows\nselected <- dplyr::filter(results, qval < 0.05)\n')
+            (root / entry["script"]).write_text('# @include notebooks/current/process.R\n# %% Plot\nmessage("plot")\n')
+            path, _ = current.build("Fig1", entry, root=root)
+            notebook = json.loads(path.read_text())
+            code = "\n".join("".join(c["source"]) for c in notebook["cells"] if c["cell_type"] == "code")
+            self.assertIn("dplyr::filter(results, qval < 0.05)", code)
+            self.assertNotIn("# @include", code)
+            self.assertIn("notebooks/current/process.R", notebook["metadata"]["qtl_source_files"])
+
+    def test_include_change_clears_downstream_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entry = self.fixture(root)
+            helper = root / "notebooks/current/process.R"
+            helper.write_text('selected <- 1\n')
+            (root / entry["script"]).write_text('# @include notebooks/current/process.R\n# %% Plot\nmessage("plot")\n')
+            path, _ = current.build("Fig1", entry, root=root)
+            nb = json.loads(path.read_text())
+            for c in nb["cells"]:
+                if c["cell_type"] == "code":
+                    c["outputs"] = [{"output_type": "stream", "name": "stdout", "text": "old"}]
+                    c["execution_count"] = 1
+            nb["metadata"]["qtl_execution"] = {"source_inputs_unchanged": True}
+            path.write_text(json.dumps(nb))
+            helper.write_text('selected <- 2\n')
+            current.build("Fig1", entry, root=root)
+            changed = json.loads(path.read_text())
+            self.assertNotIn("qtl_execution", changed["metadata"])
+            self.assertEqual([c for c in changed["cells"] if c["cell_type"] == "code"][-1]["outputs"], [])
+
+    def test_include_cycles_and_outside_paths_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entry = self.fixture(root)
+            script = root / entry["script"]
+            script.write_text('# @include notebooks/current/Fig1.R\n')
+            with self.assertRaisesRegex(ValueError, "cycle"):
+                current.build("Fig1", entry, root=root)
+            script.write_text('# @include ../outside.R\n')
+            with self.assertRaisesRegex(ValueError, "outside"):
+                current.build("Fig1", entry, root=root)
 
     def test_scope_boilerplate_is_not_shown(self):
         with tempfile.TemporaryDirectory() as directory:

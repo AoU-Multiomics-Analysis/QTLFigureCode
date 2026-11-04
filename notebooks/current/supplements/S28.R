@@ -1,8 +1,30 @@
-# %% Read the saved expression-reduction thresholds
-#| Rebuild S28 from saved distinct-variant threshold counts. The denominator is the historical set of 574 rare high-PIP eQTL variants at 453 ClinGen genes. It differs from the all-classification set in current Figure 5A/B. No variant selection or aFC model is repeated.
-base <- "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds"
-curve <- readr::read_tsv(paper_file(file.path(base, "threshold_curve.tsv")), show_col_types = FALSE)
-landmarks <- readr::read_tsv(paper_file(file.path(base, "threshold_counts.tsv")), show_col_types = FALSE)
+# %% Source selection and threshold functions
+# @include preparation/Fig5/functions.R
+
+# %% Select rare eQTL variants and calculate expression-reduction thresholds
+#| Keep PIP >0.9, maximum AF <1%, ClinGen targets, and uncertain or empty ClinVar records. Deduplicate variants after choosing the strongest decreasing effect.
+message("Read the original S28 expression and ClinGen inputs.")
+raw <- as_tibble(data.table::fread(prep_input("input",
+  "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz"),
+  select = c("variant", "molecular_trait_id", "gvs_max_af", "pip",
+    "clinvar_classification", "log2_aFC"), na.strings = "NA"))
+reference <- arrow::read_parquet(prep_input("input",
+  "part-00000-006c7897-e219-4036-abbf-af4482a5177e-c000.snappy.parquet")) %>%
+  as_tibble() %>% fig5_reference()
+selected <- raw %>%
+  mutate(clinvar_classification = replace_na(clinvar_classification, ""),
+    gene = str_extract(molecular_trait_id, "ENSG[0-9]+")) %>%
+  filter(gvs_max_af < 0.01, pip > 0.9,
+    str_detect(clinvar_classification, "uncertain") | clinvar_classification == "",
+    gene %in% reference$targetId) %>%
+  select(variant, gene, log2_aFC, clinvar_classification, pip, gvs_max_af)
+stopifnot(nrow(selected) == 576L, n_distinct(selected$variant) == 574L,
+  n_distinct(selected$gene) == 453L, all(is.finite(selected$log2_aFC)))
+curve_result <- fig5_threshold_tables(selected, seq(0, 100, by = 1))
+landmark_result <- fig5_threshold_tables(selected,
+  sort(unique(c(seq(0, 100, by = 5), 100 * (1 - 2^-0.5), 99))))
+curve <- curve_result$counts
+landmarks <- landmark_result$counts
 dots <- landmarks %>% filter(reduction_threshold_pct %in% c(0, 10, 20, 25, 40, 50, 60, 70, 75, 80, 90, 95, 100) |
                               abs(log2_afc_cutoff + 0.5) < 1e-10)
 half <- landmarks %>% filter(reduction_threshold_pct == 50)
@@ -10,7 +32,7 @@ legacy <- landmarks %>% filter(abs(log2_afc_cutoff + 0.5) < 1e-10)
 stopifnot(all(curve$total_assessed == 574L), all(diff(curve$variants) <= 0),
           half$variants == 45L, legacy$variants == 105L)
 
-# %% Draw the saved thresholds
+# %% Draw the calculated thresholds
 #| Expression reduction is 100 × (1 − 2^log2_aFC). A variant passes a threshold when at least one qualifying target has a strictly greater reduction. Straight lines join selected threshold points as in the current source figure; they do not estimate the intervening empirical counts.
 top_breaks <- 100 * (1 - 2^c(0, -0.5, -1, -2, -log2(10)))
 figure <- ggplot(dots, aes(reduction_threshold_pct, variants)) +
