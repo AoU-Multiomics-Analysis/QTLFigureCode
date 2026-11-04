@@ -1,8 +1,5 @@
 # QTLFigureCode
 
-The [current notebook guide](notebooks/current/README.md) describes the November 2,
-2026 main figures and the 16 supplement notebooks. The cells show source-result processing and plot construction. The guide lists
-local input paths, execution steps, and input coverage.
 The [data preparation guide](preparation/README.md) documents the filtering,
 identifier matching, counts, statistical summaries, and scripts that produce
 the plot inputs. 
