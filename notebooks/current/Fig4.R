@@ -1,5 +1,5 @@
 # %% Read current panel objects
-#| This code reproduces the Science print-size changes from the current saved panels. Source test results are retained.
+#| Read the trait-colocalization and TWAS inputs for the four panels.
 #!/usr/bin/env Rscript
 # Set Figure 4 text sizes at its final print width. Use the saved plot data.
 suppressPackageStartupMessages({
@@ -102,6 +102,6 @@ stopifnot(nrow(label_data) == 68L, identical(p$A_labeled$data, a$data))
 save_plot(fig, "Fig4/Figure4_rebuilt", 184, 190)
 print(fig)
 
-# %% Exact submission reference
-#| Display the exact archived image from the November 2 manuscript for comparison.
+# %% Reference figure
+#| Complete figure layout.
 show_reference(4)

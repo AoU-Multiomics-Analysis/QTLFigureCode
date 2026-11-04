@@ -1,0 +1,110 @@
+{
+  "scope": "Figure 5 A-E; S28; partial S30 recovery; S31 locus and prediction-window preparation",
+  "sources": [
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/rare_variant_count_bars_all_assays_unfiltered/plot.R",
+      "sha256": "058d85f18e5d3a8885bdc44e7da61e4fd14e9364cd754c7eefc9ec8bcbc87e54"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/build_all_qtl_panels_v16.R",
+      "sha256": "5da863ce844694272f0d3cc6ab00b3a2906f970feade193134219218235c7746"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/build_count_panel_v17.R",
+      "sha256": "266ec3c19f64f99bb92d60f2840492481b878ba6f324bfd232f91159ae0bdf0a"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/build_panel_A_v21.R",
+      "sha256": "ab6d3e550af17405d3b230bd3715aeff7cff9bbdd6b394623230d95c877cf3fd"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/ar_posterior_splicing_comparison/counts.R",
+      "sha256": "18eba304ba2fea4b5f597697904df37ce9797b7d35a426d3b6c8275eb1504b25"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/plot.R",
+      "sha256": "ac36c94096184603202c533c3df7f9ee697c0437a4caa97ea3b66e9a68951d88"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/hexa_pmm2_galm_effects/plot.R",
+      "sha256": "9c24f43a8598721c4726b612131d441603538534625edd7e69ba22f47d49beee"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/compare_pathogenic.R",
+      "sha256": "c2542f9f5cf02481263a2ede72d81a53c3e4023f59661d122df39de143ae2928"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/grouped_effect_plot.R",
+      "sha256": "004cb439755495cdb97484e5d7519878839e78724923fd9bd0cae1332be31071"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/ar_posterior_threshold_comparison/slide_with_benign.R",
+      "sha256": "a90bee3f556fb110e8f02723586eed0ce53326fd1f4521c4f70adbb394adb77c"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/negative_effects_six_genes/plot.R",
+      "sha256": "ae551be84b7fe3a16ba55a8f55aaef7d95d38ed7df18002ca29d3f04722ea4b2"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/build_science_panels.R",
+      "sha256": "bd81a2ef2929a9a2dad60adc3fbbae63831d855cb8b6d1d26c0d95828937ccce"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/regenerate_figure5_REM.py",
+      "sha256": "f92d232d780c9c0d9037ded21e25f5a04142b5b8da5950774dd6eef53baeb6ff"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/test_panel_B_clinvar_coverage.R",
+      "sha256": "aadfb9ae98f39f6f937329f67167953b1ce7946130e1f3b8394d3e12a3e3da02"
+    },
+    {
+      "root": "paper",
+      "path": "output/figure5_combined_draft/test_funnel_enrichment.R",
+      "sha256": "d637da038f6b11ed0ea92329231ed1ebb04c645292124ae192562cb2dd8a2573"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/reproduce_574.R",
+      "sha256": "649ba8d2be3a299d25a772c975e6dcd5b40bb75f8dd104a1cb06068a9adec6f2"
+    },
+    {
+      "root": "paper",
+      "path": "output/clingen_inheritance/rare_eqtl_afc_thresholds/build_figure_v2.R",
+      "sha256": "a5eb2224d84e6ce2abf45abc355474bc98b49e061b06951d028e4c7f3b59f7c1"
+    },
+    {
+      "root": "paper",
+      "path": "plot_compact_percentiles_four_genes.R",
+      "sha256": "2ffcc74392db1da341c86f751e0303e6378845f28bdb8d0ae596e7d679c9d010"
+    },
+    {
+      "root": "source",
+      "path": "Fig5/00_setup.R",
+      "sha256": "a92e9eaa9750d1da3a598ac2ad4e7bed3d271e9d68a6be87a854d1693866708f"
+    }
+  ],
+  "reused_repository_source": {
+    "path": "Fig5/00_setup.R",
+    "sha256": "c431560cd24e93a8f399d7e028d234763ee71b34d94fe136176322fd658453dd",
+    "note": "The full source differs from the original checkout only outside the ten reused S31 functions. All ten selected function definitions were checked and are identical."
+  },
+  "gaps": [
+    "S30 has supplied count/formula inputs and a fixed IFT80 percentile, but no saved genome-wide ranking procedure or raw rank inputs.",
+    "S31 D requires the accepted D.rds renderer for cCREs, gene models, axes, and inset layout. Every QTL data frame is replaced from prepared inputs and checked for equality. E is rebuilt from prepared prediction data. Prediction, motif scanning, gene-model construction, and external annotation generation are not rerun.",
+    "Controlled inputs and accepted reference summaries are read locally. No input table is copied into the repository."
+  ]
+}

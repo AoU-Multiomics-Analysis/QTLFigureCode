@@ -1,4 +1,4 @@
-# Shared setup for the November 2 figure notebooks.
+# Shared setup for the figure notebooks.
 suppressPackageStartupMessages({
   library(tidyverse)
   library(patchwork)
@@ -7,6 +7,7 @@ if (requireNamespace("showtext", quietly = TRUE)) showtext::showtext_auto(FALSE)
 
 paper_root <- Sys.getenv("QTL_PAPER_ROOT")
 source_root <- Sys.getenv("QTL_SOURCE_ROOT", getwd())
+prepared_root <- Sys.getenv("QTL_PREP_ROOT")
 notebook_output <- Sys.getenv("QTL_NOTEBOOK_OUTPUT", file.path(getwd(), "notebook_outputs"))
 input_records <- new.env(parent = emptyenv())
 
@@ -16,6 +17,16 @@ checked_input <- function(root, relative, variable) {
     stop("Input localization error: ", variable, " must be a local directory.", call. = FALSE)
   }
   path <- file.path(root, relative)
+  if (nzchar(prepared_root) && variable %in% c("QTL_PAPER_ROOT", "QTL_SOURCE_ROOT")) {
+    namespace <- if (variable == "QTL_PAPER_ROOT") "paper" else "source"
+    prepared_relative <- file.path(namespace, relative)
+    generated <- file.path(prepared_root, prepared_relative)
+    if (file.exists(generated)) {
+      path <- generated
+      variable <- "QTL_PREP_ROOT"
+      relative <- prepared_relative
+    }
+  }
   if (!file.exists(path) || file.access(path, 4) != 0) {
     stop("Missing or unreadable input: ", relative, ". Check ", variable, ".", call. = FALSE)
   }
@@ -50,7 +61,7 @@ display_image <- function(path) {
 }
 show_reference <- function(number) {
   path <- paper_file(paste0("output/Science_submission_package_20261102/Figures/Figure", number, ".png"))
-  message("Display the archived November 2 submission image for Figure ", number, ".")
+  message("Display reference Figure ", number, ".")
   display_image(path)
 }
 

@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,14 +50,30 @@ paper directory and `QTL_SOURCE_ROOT` to the figure checkout with staged inputs
 and saved objects. For example, set these variables in the R session before
 you run the cells. Paths can contain spaces.
 
-Run the cells from top to bottom. The notebook reads the recorded figure data.
-It does not rerun upstream QTL mapping unless a section explicitly says so.
-New PDFs and PNGs go to `notebook_outputs/`. Inputs stay in place.
-The source scripts are in `notebooks/current/`. Figures shown below are aggregate
-plots. Do not print participant tables into a saved notebook.
+Run the cells from top to bottom. The preparation links show the filters, joins,
+and counts used to produce the plot inputs. New PDFs and PNGs go to
+`notebook_outputs/`. The plotting scripts are in `notebooks/current/`.
 """, "run"))
-    if entry.get("limitations"):
-        cells.append(cell("markdown", "## Scope\n\n" + "\n\n".join(entry["limitations"]), "scope"))
+    if entry.get("preparation"):
+        notebook_dir = (root / entry["path"]).parent
+        links = []
+        for step in entry["preparation"]:
+            target = os.path.relpath(root / step["script"], notebook_dir)
+            links.append(f"- [{step['key']}]({target}): {step['description']}")
+        instructions = (
+            "## Prepare the plotted data\n\n"
+            "The scripts below prepare filters, joins, counts, and summaries from source result tables. "
+            "Their inputs and execution order are listed in `preparation/manifest.json`. "
+            "The source data are not included in Git.\n\n"
+            + "\n".join(links) + "\n\n"
+            "Run `python3 tools/prepare_figure_data.py --list` from the repository root. "
+            "Use the named root options described in `preparation/README.md`. "
+            "Set `QTL_PREP_ROOT` to that run's output directory before running this notebook. "
+            "The notebook then reads generated files from its `paper/` and `source/` folders. "
+            "Other inputs and reference images still come from the original roots. "
+            "A script with an unavailable source input is identified in the preparation manifest."
+        )
+        cells.append(cell("markdown", instructions, "preparation"))
     cells += [cell("markdown", "## Setup\n\nValidate the local input paths and load the plot libraries.", "setup-note"),
               cell("code", setup, "setup")]
     for index, (title, notes, body) in enumerate(script_sections(script)):

@@ -8,6 +8,9 @@ on:
       - 'notebooks/supplements/**'
       - 'tools/*current_notebooks*'
       - 'tools/build_notebooks.py'
+      - 'tools/prepare_figure_data.py'
+      - 'preparation/**'
+      - 'tests/test_preparation*'
       - 'tests/test_current_notebooks.py'
       - '.github/workflows/current-notebooks.yml'
   push:
@@ -18,6 +21,9 @@ on:
       - 'notebooks/supplements/**'
       - 'tools/*current_notebooks*'
       - 'tools/build_notebooks.py'
+      - 'tools/prepare_figure_data.py'
+      - 'preparation/**'
+      - 'tests/test_preparation*'
       - 'tests/test_current_notebooks.py'
       - '.github/workflows/current-notebooks.yml'
 
@@ -31,6 +37,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Check generator behavior
         run: python3 -m unittest discover -s tests -p test_current_notebooks.py
+      - name: Check preparation planning and manifest
+        run: |
+          python3 -m unittest discover -s tests -p test_preparation_runner.py
+          python3 tools/prepare_figure_data.py --check-manifest
       - name: Check source code and saved aggregate outputs
         run: python3 tools/check_current_notebooks.py --require-executed
       - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
@@ -39,5 +49,21 @@ jobs:
       - name: Parse the current R code
         run: >-
           Rscript -e 'files <- c(list.files("notebooks/current", pattern = "[.]R$",
+          recursive = TRUE, full.names = TRUE), list.files("preparation", pattern = "[.]R$",
           recursive = TRUE, full.names = TRUE), "tools/execute_current_notebooks.R");
           for (file in files) parse(file); message("All current R scripts parsed.")'
+      - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
+        with:
+          packages: |
+            any::tidyverse
+            any::data.table
+            any::igraph
+            any::patchwork
+          cache-version: preparation-1
+      - name: Test preparation with synthetic inputs
+        run: |
+          Rscript tests/test_preparation_paths.R
+          Rscript tests/test_preparation_fig1.R
+          Rscript tests/test_preparation_fig234.R
+          Rscript tests/test_preparation_fig5.R
+          Rscript tests/test_preparation_s14.R
