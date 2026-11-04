@@ -69,7 +69,6 @@ larger set of retained provenance and side analyses under
 ├── docs/
 │   ├── figure-cleanup-playbook.md   # the workflow for cleaning up a figure
 │   └── superpowers/                 # design specs + implementation plans per cleanup
-├── CLAUDE.md               # guidance for AI sessions working in this repo
 └── README.md               # (this file)
 ```
 
@@ -227,8 +226,7 @@ Every figure was refactored from a single flat notebook export into the modular
 pipeline above. The workflow for doing another one is written up in
 [`docs/figure-cleanup-playbook.md`](docs/figure-cleanup-playbook.md), with the
 per-cleanup design specs and implementation plans under
-[`docs/superpowers/`](docs/superpowers/). [`CLAUDE.md`](CLAUDE.md) points AI
-sessions at the same material.
+[`docs/superpowers/`](docs/superpowers/).
 
 Each cleaned figure's `NOTES.md` records deferred work and any deliberate
 difference from the original analysis — including several changes that affect
