@@ -1,0 +1,33 @@
+figure	source_data_status	notebook	note
+S1	Missing		Gene-level mean-expression tables, GO enrichment results and TF comparison tests.
+S2	Missing		Assay QC summaries and replicate-density bin counts. Use aggregate bins for participant and replicate panels.
+S3	Missing		Subcellular-location regression estimates, confidence intervals and P values.
+S4	Included	notebooks/supplements/S4.ipynb	Saved figure data and recorded test results, where applicable.
+S5	Missing		Saved MetaSoft M-values and gene-level meta-analysis P values.
+S6	Missing		eQTL reciprocal replication data, pi1 estimates and input P values.
+S7	Missing		sQTL reciprocal replication data, pi1 estimates and input P values.
+S8	Missing		Per-assay LOD summaries and cis-pQTL discovery-bin counts.
+S9	Missing		Gene-level noncoding RNA comparison values and tests.
+S10	Missing		Gene-level hemoglobin expression comparison values and tests.
+S11	Included	notebooks/supplements/S11.ipynb	Saved figure data and recorded test results, where applicable.
+S12	Included	notebooks/supplements/S12.ipynb	Saved figure data and recorded test results, where applicable.
+S13	Included	notebooks/supplements/S13.ipynb	Saved figure data and recorded test results, where applicable.
+S14	Included	notebooks/supplements/S14.ipynb	Saved figure data and recorded test results, where applicable.
+S15	Included	notebooks/supplements/S15.ipynb	Saved figure data and recorded test results, where applicable.
+S16	Included	notebooks/supplements/S16.ipynb	Saved figure data and recorded test results, where applicable.
+S17	Missing		Strongest-aFC-per-gene plotted values, frequency classes and dosage-like counts.
+S18	Missing		Proteomic outlier enrichment counts, odds ratios, CIs and P values for the current plot.
+S19	Partial		Event counts and the six P values reported in the main text are included. Full model output, unreported tests and FDR values are missing.
+S20	Included	notebooks/supplements/S20.ipynb	Saved figure data and recorded test results, where applicable.
+S21	Included	notebooks/supplements/S21.ipynb	Saved figure data and recorded test results, where applicable.
+S22	Included	notebooks/supplements/S22.ipynb	Saved figure data and recorded test results, where applicable.
+S23	Included	notebooks/supplements/S23.ipynb	Saved figure data and recorded test results, where applicable.
+S24	Included	notebooks/supplements/S24.ipynb	Saved figure data and recorded test results, where applicable.
+S25	Included	notebooks/supplements/S25.ipynb	Saved figure data and recorded test results, where applicable.
+S26	Missing		ClinVar-class eQTL effect values and full linear-model test results.
+S27	Review needed		Both saved data sets are included. The plotted control means use the original controls. Caption comparisons use corrected controls.
+S28	Included	notebooks/supplements/S28.ipynb	Saved figure data and recorded test results, where applicable.
+S29	Missing		HEXA locus PIPs and gene annotations, plus genotype-group aggregate summaries or density bins for the four expression plots.
+S30	Included	notebooks/supplements/S30.ipynb	Saved figure data and recorded test results, where applicable.
+S31	Included	notebooks/supplements/S31.ipynb	Saved figure data and recorded test results, where applicable.
+S32	Partial		S32A is included. S32B requires the underlying Borzoi arrays and contribution scores.

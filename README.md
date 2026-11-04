@@ -1,5 +1,9 @@
 # QTLFigureCode
 
+The [current notebook guide](notebooks/current/README.md) describes the November 2,
+2026 main figures and the 16 supplement notebooks. It lists local input paths,
+execution steps, source-data coverage, and the limits of each reconstruction.
+
 R code that generates the figures for a multi-omic **molecular-QTL** manuscript:
 cis-QTL discovery, fine-mapping, and cross-assay colocalization of **expression
 (eQTL)**, **protein (pQTL)** and **splicing (sQTL)** QTLs across genetic-ancestry

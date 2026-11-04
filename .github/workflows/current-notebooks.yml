@@ -1,0 +1,43 @@
+name: Current figure notebooks
+
+on:
+  pull_request:
+    paths:
+      - 'Fig*/Fig*.ipynb'
+      - 'notebooks/current/**'
+      - 'notebooks/supplements/**'
+      - 'tools/*current_notebooks*'
+      - 'tools/build_notebooks.py'
+      - 'tests/test_current_notebooks.py'
+      - '.github/workflows/current-notebooks.yml'
+  push:
+    branches: [main, 'codex/**']
+    paths:
+      - 'Fig*/Fig*.ipynb'
+      - 'notebooks/current/**'
+      - 'notebooks/supplements/**'
+      - 'tools/*current_notebooks*'
+      - 'tools/build_notebooks.py'
+      - 'tests/test_current_notebooks.py'
+      - '.github/workflows/current-notebooks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  notebook-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check generator behavior
+        run: python3 -m unittest discover -s tests -p test_current_notebooks.py
+      - name: Check source code and saved aggregate outputs
+        run: python3 tools/check_current_notebooks.py --require-executed
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          use-public-rspm: true
+      - name: Parse the current R code
+        run: >-
+          Rscript -e 'files <- c(list.files("notebooks/current", pattern = "[.]R$",
+          recursive = TRUE, full.names = TRUE), "tools/execute_current_notebooks.R");
+          for (file in files) parse(file); message("All current R scripts parsed.")'
