@@ -103,9 +103,9 @@ R ≥ 4.3, and CRAN packages `tidyverse`, `data.table`, `patchwork`, `ggh4x`,
 ## Data & inputs
 
 Every input is declared in `fig4/inputs.tsv`. The two `high_level_coloc_outputs/`
-tables come from a single archive:
+tables come from a single archive. Obtain `high_level_coloc_outputs.tar.gz`
+through your authorized data access, then extract it under the input root:
 
-    gsutil cp gs://fc-secure-…/high_level_coloc_outputs.tar.gz .
     tar -xf high_level_coloc_outputs.tar.gz
 
 The ClinGen `reference/evidence_clingen/` parquet, `reference/interactions.tsv`,

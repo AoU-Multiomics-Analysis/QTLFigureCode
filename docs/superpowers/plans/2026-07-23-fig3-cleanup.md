@@ -379,8 +379,8 @@ enloc_cs	eQTL-sQTL	enloc/eQTL_sQTL.enloc.sig.out	-
 enloc_variant	eQTL-pQTL	enloc/eQTL_pQTL.enloc.snp.out	-
 enloc_variant	sQTL-pQTL	enloc/sQTL_pQTL.enloc.snp.out	-
 enloc_variant	eQTL-sQTL	enloc/eQTL_sQTL.enloc.snp.out	-
-annotations	-	annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/checkpoints/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz
-protein_lod	-	reference/LOD_proportions_per_proteins.tsv	gs://fc-secure-b8771cfd-5455-4292-a720-8533eb501a93/LOD_proportions_per_proteins.tsv
+annotations	-	annotated/AoU.COMB.AC10.AN95.biallelic.v9.annotations.tsv.bgz	PRIVATE_GCS_URI
+protein_lod	-	reference/LOD_proportions_per_proteins.tsv	PRIVATE_GCS_URI
 median_tpm	-	reference/median_tpms.tsv.gz	-
 genebayes_shet	-	reference/41588_2024_1820_MOESM4_ESM.xlsx	-
 ```
@@ -2188,8 +2188,8 @@ rm -rf fig3/data && Rscript fig3/run_all.R
 Upload finished figures (the scripts no longer do this themselves):
 
 ```bash
-gsutil cp Figure3.pdf gs://fc-secure-.../PaperFigures/
-gsutil cp FigS_*.pdf  gs://fc-secure-.../PaperFigures/SupplementalFigures/CrossQTL/
+gsutil cp Figure3.pdf PRIVATE_GCS_URI
+gsutil cp FigS_*.pdf  PRIVATE_GCS_URI
 ```
 
 ### Tests

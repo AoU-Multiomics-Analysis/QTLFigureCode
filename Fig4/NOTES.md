@@ -159,10 +159,10 @@ The heme/immune gene set is defined by a regex of disease-name keywords
 (`HEME_IMMUNE_KW` in `00_setup.R`) matched against ClinGen `diseaseFromSource`.
 It is a curated list, not an ontology mapping.
 
-## Inputs still missing a `gs://` origin
+## Local input requirements
 
 `inputs.tsv` records these local-only. The two `high_level_coloc_outputs/`
-tables are extracted from `gs://fc-secure-…/high_level_coloc_outputs.tar.gz`
-(README documents the staging command); `R2_TWAS_combined.tsv`,
+tables are extracted from the private `high_level_coloc_outputs.tar.gz` archive
+(README documents extraction); `R2_TWAS_combined.tsv`,
 `ConditionalTWAS.cleaned.tsv.gz`, `reference/interactions.tsv` and the ClinGen
-parquet need URIs or pre-staging.
+parquet must be supplied at their listed local paths.
