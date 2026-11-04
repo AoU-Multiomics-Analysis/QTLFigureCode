@@ -1,0 +1,326 @@
+{
+  "S4": {
+    "title": "Figure S4: QTL discovery by population",
+    "overview": "Draw the 21 saved population and assay summaries, including EAS. Preserve the discovery proportions and the source reference sample counts.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_QTL_discovery_by_population/population_QTL_discovery_data.tsv"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_QTL_discovery_by_population/population_QTL_discovery_data.tsv"
+    ],
+    "limitations": [
+      "The source reuses common reference-cohort counts across assays. They are not assay-specific participant counts.",
+      "The field source_n_tested counts tested rows, not significant genes. No QTL analysis is repeated."
+    ]
+  },
+  "S11": {
+    "title": "Figure S11: Credible sets per molecular trait",
+    "overview": "Draw the complete 1–10 credible-set histogram from the current EAS aggregate table. Check that its totals reproduce the saved summary.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/histogram_counts.tsv"
+      },
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/population_credible_set_count_summary.tsv"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/histogram_counts.tsv",
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS/population_credible_set_count_summary.tsv"
+    ],
+    "limitations": [
+      "Traits with zero credible sets are absent from the source and are excluded.",
+      "Population analyses can include different detected traits. No fine-mapping fit is repeated."
+    ]
+  },
+  "S12": {
+    "title": "Figure S12: Credible-set sizes and differences from AFR",
+    "overview": "Restore the current EAS size boxplots and the saved mean contrasts against AFR. Preserve the UKBB pQTL reference marker.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/figure_display.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_sizes/v5_with_EAS/figure_display.rds"
+    ],
+    "limitations": [
+      "The source boxplots use log10-transformed sizes. The contrasts use arithmetic mean size in variant counts.",
+      "Contrast intervals are plus or minus one gene-cluster standard error, including covariance with AFR. They are descriptive, not paired credible-set tests.",
+      "No fine-mapping or standard-error calculation is repeated."
+    ]
+  },
+  "S13": {
+    "title": "Figure S13: Lead-variant PIP and causal resolution",
+    "overview": "Restore the current EAS density curves, mean lead PIP, and percentage above PIP 0.9 from saved plot data.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/figure_display.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_population_lead_PIP/v2_with_EAS/figure_display.rds"
+    ],
+    "limitations": [
+      "Density coordinates and their bandwidth choices remain those in the saved display. No density estimation or fine-mapping is repeated.",
+      "The high-PIP percentage uses a strict PIP > 0.9 cutoff. Population fits can contain different detected signals."
+    ]
+  },
+  "S14": {
+    "title": "Figure S14: eQTL discovery across studies",
+    "overview": "Restore the current nine-point EAS study comparison in the all-target and shared protein-coding panels. Preserve saved fitted curves and GTEx reference envelopes.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_A/plot.rds"
+      },
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_B/plot.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_A/plot.rds",
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure1_eQTL_discovery/v2_with_EAS/source_B/plot.rds"
+    ],
+    "limitations": [
+      "Panel B uses the saved set of 10,881 shared protein-coding genes. GTEx reference tissues are excluded from the nine-point descriptive fit.",
+      "No participant list is read, no fine-mapping is run, and no curve is fitted here. Saved study-level associations do not establish a causal sample-size effect."
+    ]
+  },
+  "S15": {
+    "title": "Figure S15: Fine-mapping annotation enrichment",
+    "overview": "Draw the saved logistic-model estimates from the Figure 1 enrichment plot as odds ratios on a log10 axis. Preserve the saved estimates, intervals, and adjusted P values.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig1/objects/H.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig1/objects/H.rds"
+    ],
+    "limitations": [
+      "Odds ratios compare PIP 1 with PIP 0 within assay. Bars are saved 95% Wald intervals.",
+      "The notebook redraws saved model results. It does not rerun variant annotation, fine-mapping, or logistic regression."
+    ]
+  },
+  "S16": {
+    "title": "Figure S16: Ancestry enrichment across allele frequencies",
+    "overview": "Restore the current saved REM ancestry-frequency display and export its aggregate frequency-bin counts.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure2_ancestry_enrichment_REM/Supplemental_Figure_S16_ancestry_enrichment_REM.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure2_ancestry_enrichment_REM/Supplemental_Figure_S16_ancestry_enrichment_REM.rds"
+    ],
+    "limitations": [
+      "REM is the display label for source OTH. It is not a new ancestry estimate.",
+      "The nonzero-frequency shared curve uses its saved rolling mean with the original LOESS display layer. The unconstrained LOESS curve can exceed 100% and is a display smoother. The display layer is rendered again; enrichment tests and rolling summaries are not rerun."
+    ]
+  },
+  "S20": {
+    "title": "Figure S20: Cross-QTL posterior distributions",
+    "overview": "Recalculate density displays and strict posterior-threshold counts from saved gene, credible-set, and variant colocalization results.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig3/data/coloc_gene_level.rds"
+      },
+      {
+        "root": "source",
+        "path": "Fig3/data/coloc_cs_level.rds"
+      },
+      {
+        "root": "source",
+        "path": "Fig3/data/coloc_variant_level.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig3/data/coloc_gene_level.rds",
+      "QTL_SOURCE_ROOT/Fig3/data/coloc_cs_level.rds",
+      "QTL_SOURCE_ROOT/Fig3/data/coloc_variant_level.rds"
+    ],
+    "limitations": [
+      "The unit differs between GLCP, RCP, and SCP: genes, credible-set pairings, and variants. Posterior probabilities are not P values.",
+      "Density estimation and threshold counting are repeated, but FastENLOC and fine-mapping are not rerun. Only aggregate counts are exported.",
+      "The saved source has 15 GLCP values above 1 (maximum 1.008) and 2 RCP values above 1 (maximum 1.002). The notebook retains them as the original code does and exports a bounds audit. Their cause requires upstream review."
+    ]
+  },
+  "S21": {
+    "title": "Figure S21: Gene-level colocalization rates",
+    "overview": "Calculate assay-pair proportions from the saved gene-level Bayesian FDR calls and draw the three aggregate bars.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig3/data/coloc_gene_level.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig3/data/coloc_gene_level.rds"
+    ],
+    "limitations": [
+      "The denominator includes all genes tested for each pair. It is not restricted to genes fine-mapped in all three assays.",
+      "A gene can have several credible sets. These rates are not the pairing-level rates in S22. No colocalization model is repeated."
+    ]
+  },
+  "S22": {
+    "title": "Figure S22: Credible-set pairing colocalization rates",
+    "overview": "Draw saved pair-level rates and a count-pooled Overall bar. Preserve saved Wilson intervals and calculate a pooled Wilson interval with the current original builder formula.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig3/data/coloc_cs_rate.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig3/data/coloc_cs_rate.rds"
+    ],
+    "limitations": [
+      "The unit is a tested credible-set pairing. The pooled rate is the summed numerator divided by the summed denominator.",
+      "The source registry describes exact binomial intervals, but the actual saved intervals match Wilson intervals exactly. This notebook follows the saved values and current plot builder.",
+      "The 95% intervals describe saved calls and do not include fine-mapping or colocalization-model uncertainty. No new colocalization fit is run."
+    ]
+  },
+  "S23": {
+    "title": "Figure S23: MAF and colocalization odds",
+    "overview": "Draw saved logistic-model odds ratios per tenfold decrease in MAF, with saved 95% intervals and P values.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig3/data/coloc_maf_rate.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig3/data/coloc_maf_rate.rds"
+    ],
+    "limitations": [
+      "The MAF model is unadjusted for fine-mapping quality and must be interpreted with that limit.",
+      "This estimates the odds of sharing, not effect-size concordance. No regression or colocalization fit is repeated."
+    ]
+  },
+  "S24": {
+    "title": "Figure S24: Colocalization across QTL classes",
+    "overview": "Rebuild a native UpSet layout from the seven saved exclusive intersection counts. Check the 1,617 multilayer gene–trait pairs.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig4/coloc_upset_intersection_counts.tsv"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig4/coloc_upset_intersection_counts.tsv"
+    ],
+    "limitations": [
+      "Counts use unique gene–trait pairs and exclude the internal union summary layer.",
+      "The layout is redrawn with ggplot and patchwork. It uses the same exclusive counts as the original UpSetR plot and does not reconstruct individual membership rows."
+    ]
+  },
+  "S25": {
+    "title": "Figure S25: CD40 colocalization locus",
+    "overview": "Draw the CD40 locus from saved display coordinates. Preserve the assay, credible-set, CLPP, and trait encodings.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig4/cd40_coloc_locus_plot_data.tsv"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig4/cd40_coloc_locus_plot_data.tsv"
+    ],
+    "limitations": [
+      "Positions are hg38 chromosome 20 coordinates. PIP, RCP, and CLPP are posterior-based statistics, not association P values.",
+      "Source variant records can repeat across GWAS loci. Only trait–assay aggregate audits are exported. Harmonization, fine-mapping, and colocalization are not repeated."
+    ]
+  },
+  "S28": {
+    "title": "Figure S28: Rare eQTL expression-reduction thresholds",
+    "overview": "Draw the saved distinct-variant threshold counts for the historical 574-variant ClinGen set. Preserve the 105/574 and 45/574 reference points.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_curve.tsv"
+      },
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_counts.tsv"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_curve.tsv",
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure5_rare_eQTL_aFC_thresholds/threshold_counts.tsv"
+    ],
+    "limitations": [
+      "The historical denominator uses the saved ClinVar-empty or uncertain-assertion selection and differs from current Figure 5A/B.",
+      "105/574 corresponds to log2(aFC) < -0.5, or approximately 29.3% reduction. A reduction greater than 50% gives 45/574.",
+      "Straight segments connect selected threshold points as a visual guide. No new aFC model, variant selection, or significance test is run."
+    ]
+  },
+  "S30": {
+    "title": "Figure S30: Trait prioritization for four genes",
+    "overview": "Draw four saved signed-effect percentile summaries for F10, ANGPTL3, SERPINF2, and IFT80.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "paper",
+        "path": "Supplemental Figures/01_Supplemental_drafts/Figure5_trait_prioritization/trait_prioritization_data.tsv"
+      }
+    ],
+    "inputs": [
+      "QTL_PAPER_ROOT/Supplemental Figures/01_Supplemental_drafts/Figure5_trait_prioritization/trait_prioritization_data.tsv"
+    ],
+    "limitations": [
+      "Upper-tail percentage is 100 minus percentile. Lower-tail percentage equals percentile. These ranks are not P values or individual disease-risk estimates.",
+      "VUS and unclassified labels retain the source classification. No association, clinical-classification, or ranking analysis is repeated."
+    ]
+  },
+  "S31": {
+    "title": "Figure S31: ACVRL1 fine-mapping and PromoterAI predictions",
+    "overview": "Restore the saved ACVRL1 locus and three PromoterAI windows as a two-panel figure.",
+    "status": "included",
+    "sources": [
+      {
+        "root": "source",
+        "path": "Fig5/objects/D.rds"
+      },
+      {
+        "root": "source",
+        "path": "Fig5/objects/E.rds"
+      }
+    ],
+    "inputs": [
+      "QTL_SOURCE_ROOT/Fig5/objects/D.rds",
+      "QTL_SOURCE_ROOT/Fig5/objects/E.rds"
+    ],
+    "limitations": [
+      "Saved hg38 locus annotations, focal variants, and the signed-square prediction axis are retained.",
+      "The saved locus scale windows omit point-layer rows outside their displayed ranges. R reports 5 rows and 1 row from the original layers; these can repeat variants and are not six distinct variant exclusions. The notebook retains the source windows and data.",
+      "The SP1 band is a saved manual annotation. No motif scan, fine-mapping, or sequence model is run.",
+      "Model predictions do not establish experimental regulatory activity or pathogenicity. Only per-window prediction summaries are exported."
+    ]
+  }
+}

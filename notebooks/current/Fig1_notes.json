@@ -1,0 +1,66 @@
+{
+  "title": "Figure 1: Multi-omic cis-QTL discovery and fine-mapping",
+  "overview": "Current Figure 1 from the November 2, 2026 Science submission. The notebook rebuilds plots from saved results. It does not repeat association testing, novelty annotation, or fine-mapping. The final cell shows the exact submitted image.",
+  "sections": [
+    {
+      "title": "Panel A: Cohort and workflow",
+      "notes": "Ancestry counts are before QC: 9,130 RNA and 10,056 proteome samples. The separate post-QC totals are 8,895 and 9,581. REM means remaining; the source retains the oth code. The R schematic shows the counts and the tensorQTL/SuSiE workflow. The submitted icon artwork is an archived vector composition."
+    },
+    {
+      "title": "Panel B: Reconciled novel cis-QTLs",
+      "notes": "The reconciled lead-variant table contains novel significant targets with combined-analysis q < 0.05: 10,148 eGenes, 2,450 sGenes, and 1,143 pGenes. Each point is one lead variant-trait pair. The pQTL comparison uses corrected UKBB ST9 protein target identity. The plot preserves source P-value strings and capped radial coordinates. Source P values of zero are censored. Label dots identify novel QTL types. The saved tables rebuild the circos layers; the exact reference also contains the final vector label spacing."
+    },
+    {
+      "title": "Panel C: Biotypes and seven categories",
+      "notes": "Novelty uses significant reference gene sets from GTEx whole blood v10, INTERVAL and TOPMed for eQTLs; GTEx whole blood v10 and INTERVAL for sQTLs; and UKBB-PPP for pQTLs. Coding counts are 1,207, 2,035 and 1,143, with 4,146 distinct genes across assays. The seven saved categories are cancer drivers, Mendelian disease genes, LoF-constrained genes, transcription/chromatin genes including histones, RNA-processing/splicing genes, plasma-membrane/signal-transduction genes, and drug targets. Count stable gene IDs once within each assay and category. Categories overlap. These are annotation counts, not enrichment estimates. Full source versions and definitions are in category_definitions.tsv and data_audit.json."
+    },
+    {
+      "title": "Panel D: Three-assay credible-set counts",
+      "notes": "Recount combined-analysis traits with at least k credible sets from the saved per-trait table. Denominators are 29,088 expression genes, 5,763 splicing traits and 2,529 protein targets. The final point is at least five sets. Compare all 15 rebuilt points with the saved current panel curves."
+    },
+    {
+      "title": "Panel E: Lead PIP",
+      "notes": "Read the maximum variant PIP per credible set from the saved combined-analysis display object. There are 143,512 eQTL, 17,674 sQTL and 11,922 pQTL sets. Rebuild density curves with bandwidth 0.04, reflection at 0 and 1, and 2,048 evaluation points. Check the rebuilt density against the saved plot. The inset uses unsmoothed counts and a strict PIP > 0.9 cutoff: 48.9%, 47.0% and 52.7%. Each credible set contributes once."
+    },
+    {
+      "title": "Exact submission reference",
+      "notes": "Display the exact seven-category post-QC REM image. Its SHA-256 matches the Figure1.png file in the November 2 submission package. This reference retains the submitted icon artwork and final vector spacing. The notebook reconstructions are separate plot outputs."
+    }
+  ],
+  "inputs": [
+    {"path": "output/figure1_flowchart_draft/science_print_size/cohort_counts_2026-10-26.tsv", "role": "Panel A pre-QC ancestry counts"},
+    {"path": "output/figure1_flowchart_draft/science_print_size/Figure1_Science_184mm_seven_categories_postQC_20261027_cohort_totals.tsv", "role": "Panel A pre-QC and post-QC totals"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/plotted_lead_variants.tsv.gz", "role": "Panel B reconciled lead variants and saved radial coordinates"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/paper_novelty_by_trait.tsv", "role": "Panels B and C current assay-specific novelty calls"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/label_anchors.tsv", "role": "Panel B saved gene-label anchors"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/gene_label_dot_types.tsv", "role": "Panel B assay dots by labelled gene"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/gene_connector_segments.tsv", "role": "Panel B label connector coordinates"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/axis_positions.tsv", "role": "Panel B radial axis coordinates"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/axis_ticks.tsv", "role": "Panel B radial axis tick coordinates"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/highlighted_gene_signals.tsv", "role": "Panel B selected signal markers"},
+    {"path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_counts_by_assay.tsv", "role": "Panel C seven category counts"},
+    {"path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_gene_lists.tsv", "role": "Panel C aggregate gene membership used to check counts"},
+    {"path": "output/figure1_novel_gene_categories/seven_categories_20261027/category_definitions.tsv", "role": "Panel C category rules and annotation versions"},
+    {"path": "output/figure1_novel_gene_categories/seven_categories_20261027/data_audit.json", "role": "Panel C archived source and annotation audit; method record"},
+    {"path": "output/figure1_population_credible_set_counts/credible_sets_per_molecular_trait.tsv.gz", "role": "Panel D saved credible-set count per trait"},
+    {"path": "output/figure1_flowchart_draft/science_print_size/three_assay_D/credible_set_count_curves.tsv", "role": "Panel D exact current curve values for comparison"},
+    {"path": "output/figure1_flowchart_draft/bottom_row_density_options/combined_PIP_percent_inset_display.rds", "role": "Panel E saved lead PIP values, density plot and inset"},
+    {"path": "output/figure1_flowchart_draft/science_print_size/Figure1_Science_184mm_seven_categories_postQC_20261027_B_label_spacing_REM.png", "role": "Exact submitted Figure 1 reference image"},
+    {"path": "output/figure1_flowchart_draft/science_print_size/Figure1_Science_184mm_seven_categories_postQC_20261027_B_label_spacing_REM.svg", "role": "Archived exact vector composition"},
+    {"path": "output/Science_submission_package_20261102/Figures/Figure1.png", "role": "Submission-package image used to confirm the exact reference"},
+    {"path": "scripts/prepare_data_s1.R", "role": "Submission source-data index that identifies the current panel inputs"},
+    {"path": "output/qtl_circos_simplified_options/N_main_figure_reconciled_20261027/build_circos.R", "role": "Archived source of the circos layer code"},
+    {"path": "scripts/build_figure1D_three_assays.R", "role": "Archived source of the current three-assay credible-set curve"},
+    {"path": "output/figure1_flowchart_draft/build_combined_pip_inset.R", "role": "Archived source of the bounded lead-PIP density"},
+    {"path": "scripts/compose_figure1_seven_categories.py", "role": "Archived seven-category vector composition method"},
+    {"path": "scripts/space_figure1B_gene_labels.py", "role": "Archived final gene-label spacing method"},
+    {"path": "scripts/rename_figure1A_remaining_group.py", "role": "Archived final REM label change"}
+  ],
+  "limitations": [
+    "The notebook replots saved results. It does not validate or rerun upstream association tests, novelty calls, annotation downloads, or SuSiE fits.",
+    "Panel A is an R schematic of the saved counts and workflow. The exact submitted icons and vector layout are in the reference image and archived SVG.",
+    "Panel B uses the reconciled current data and saved layer coordinates. Its R reconstruction precedes the final measured gene-label spacing in the archived composition.",
+    "The rebuilt panels expose plotting code and saved values. The exact reference is the authoritative submitted page layout.",
+    "Novel target-gene status does not establish a new independent signal or a disease mechanism. Annotation categories can overlap."
+  ]
+}

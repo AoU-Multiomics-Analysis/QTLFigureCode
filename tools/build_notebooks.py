@@ -533,6 +533,13 @@ def build(figkey):
 
 
 if __name__ == "__main__":
+    # Current submission notebooks use the current source index. Keep the
+    # original pipeline generator available for historical analyses.
+    if "--legacy" not in sys.argv:
+        from build_current_notebooks import main
+        main(sys.argv[1:])
+        sys.exit(0)
+    sys.argv.remove("--legacy")
     # No args -> build every figure's notebook. Pass figure keys (e.g. "Fig4")
     # to build only those -- the per-figure regeneration used during a cleanup.
     import sys

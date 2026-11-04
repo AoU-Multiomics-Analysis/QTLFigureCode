@@ -1,0 +1,30 @@
+{
+  "title": "Figure 5 — rare QTL variants at disease genes",
+  "overview": "Rebuild the five current Figure 5 panels from the accepted aggregate data. A shows rare-variant counts and ClinVar classes; B shows ClinVar coverage; C shows the selection funnel and pathogenic enrichment; D and E show posterior effects for nine genes with current REM labels. Build the stacked R layout, then display the exact November 2, 2026 submission image. The historical ACVRL1 and SPR main panels belong to the supplement and are not used here.",
+  "notes": [
+    "The panel map follows scripts/prepare_data_s1.R and the current Science print export. No controlled participant records are printed or copied.",
+    "The plot code follows output/figure5_combined_draft/build_science_panels.R and build_panel_A_v21.R. All output files go through the shared output helper.",
+    "Panel A assigns each variant to the population with its maximum allele frequency. AD totals 1,480 variants; AR totals 3,074 variants. Classes use the accepted precedence P/LP, then VUS, then B/LB, with missing classifications called unannotated.",
+    "Panel B gives EUR priority when EUR allele frequency is at least 75% of the maximum across the six populations. Its population denominators can differ from panel A. The notebook checks the saved pooled non-EUR versus EUR Fisher tests from aggregate counts.",
+    "Panel C uses the verified counts 2,928, 526, and 230, with 560, 375, and 186 AR genes. Enrichment is the stage P/LP proportion divided by the starting P/LP proportion. The final nine-gene endpoint permits either effect direction and requires distinct reference and candidate variants. It is not another decreasing-effect filter.",
+    "Panels D and E retain all 14 and 16 saved effects. Their source tables contain four REM labels, including ASJ [REM]. The values are posterior mean QTL effects, not log2 aFC. Some benign comparators are common. PMM2 includes different molecular assays.",
+    "The R composition follows the archived 184 x 225 mm panel positions and left-pointing links. The final show_reference(5) cell displays the exact submission image separately."
+  ],
+  "inputs": [
+    "output/figure5_combined_draft/science_print_size/data/A_counts.tsv",
+    "output/figure5_combined_draft/science_print_size/data/A_clinvar_proportions.tsv",
+    "output/figure5_combined_draft/science_print_size/data/B_coverage.tsv",
+    "output/figure5_combined_draft/panel_B_fisher_tests/pooled_non_EUR_vs_EUR.tsv",
+    "output/clingen_inheritance/ar_pathogenic_unclassified_funnel/stage_counts.tsv",
+    "output/figure5_combined_draft/stage_enrichment_tests/verified_stage_counts.tsv",
+    "output/figure5_combined_draft/stage_enrichment_tests/primary_enrichment_tests.tsv",
+    "output/figure5_combined_draft/science_print_size/stacked_left_arrows_REM/data/D_display.tsv",
+    "output/figure5_combined_draft/science_print_size/stacked_left_arrows_REM/data/E_display.tsv",
+    "output/Science_submission_package_20261102/Figures/Figure5.png"
+  ],
+  "limitations": [
+    "This notebook repeats plotting and checks the saved aggregate tests. It does not rerun fine mapping, ClinGen curation, ClinVar annotation, population assignment, or variant selection.",
+    "The R layout is a reconstruction. Font metrics, text positions, endpoint label alignment, and the funnel frame can differ from the archived SVG. Only the final submission-reference cell shows the exact accepted layout.",
+    "Effect signs alone do not establish pathogenicity. Effect magnitudes from different molecular assays are not directly comparable."
+  ]
+}

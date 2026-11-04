@@ -1,6 +1,11 @@
 # macOS
 .DS_Store
 
+# Current notebooks read local source data and write new plot exports here.
+/notebook_outputs/
+/Rplots.pdf
+__pycache__/
+
 # Controlled-access QTL inputs staged into the working dir (never commit).
 # Figure scripts gsutil-cache inputs under the cwd in these subdirs, or set
 # FIG*_INPUT to relocate them.

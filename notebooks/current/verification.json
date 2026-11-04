@@ -1,0 +1,189 @@
+{
+  "reference_date": "2026-11-02",
+  "main_notebooks": 5,
+  "supplement_notebooks": 16,
+  "code_cells": 110,
+  "images": 45,
+  "notebooks": {
+    "Fig1": {
+      "path": "Fig1/Fig1.ipynb",
+      "code_cells": 8,
+      "images": 6,
+      "input_files": 17,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "Fig2": {
+      "path": "Fig2/Fig2.ipynb",
+      "code_cells": 14,
+      "images": 7,
+      "input_files": 2,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "Fig3": {
+      "path": "Fig3/Fig3.ipynb",
+      "code_cells": 8,
+      "images": 7,
+      "input_files": 8,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "Fig4": {
+      "path": "Fig4/Fig4.ipynb",
+      "code_cells": 8,
+      "images": 2,
+      "input_files": 5,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "Fig5": {
+      "path": "Fig5/Fig5.ipynb",
+      "code_cells": 8,
+      "images": 7,
+      "input_files": 10,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S4": {
+      "path": "notebooks/supplements/S4.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S11": {
+      "path": "notebooks/supplements/S11.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 2,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S12": {
+      "path": "notebooks/supplements/S12.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S13": {
+      "path": "notebooks/supplements/S13.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S14": {
+      "path": "notebooks/supplements/S14.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 2,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S15": {
+      "path": "notebooks/supplements/S15.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S16": {
+      "path": "notebooks/supplements/S16.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S20": {
+      "path": "notebooks/supplements/S20.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 3,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S21": {
+      "path": "notebooks/supplements/S21.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S22": {
+      "path": "notebooks/supplements/S22.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S23": {
+      "path": "notebooks/supplements/S23.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S24": {
+      "path": "notebooks/supplements/S24.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S25": {
+      "path": "notebooks/supplements/S25.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S28": {
+      "path": "notebooks/supplements/S28.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 2,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S30": {
+      "path": "notebooks/supplements/S30.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 1,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    },
+    "S31": {
+      "path": "notebooks/supplements/S31.ipynb",
+      "code_cells": 4,
+      "images": 1,
+      "input_files": 2,
+      "source_inputs_unchanged": true,
+      "R": "4.3.1"
+    }
+  },
+  "checks": {
+    "all_notebooks_executed": true,
+    "all_main_reference_hashes_match": true,
+    "all_source_hashes_unchanged": true,
+    "generation_preserves_outputs_and_provenance": true,
+    "generator_unit_tests": 6,
+    "repository_R_suite": "passed",
+    "R_syntax": "passed",
+    "independent_review": "material_findings_fixed",
+    "controlled_data_not_committed": true
+  },
+  "scope": "Saved-result plot reconstruction. Upstream association, annotation and fine-mapping analyses were not repeated."
+}
