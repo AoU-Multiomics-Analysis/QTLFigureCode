@@ -18,9 +18,7 @@ input data lives.
 
 > [!IMPORTANT]
 > **The inputs are *All of Us* controlled-access genomic data and are not in
-> this repository.** Nothing derived from a participant — staged input files,
-> cached intermediates, or rendered figures — may be committed. Access is via
-> the *All of Us* Researcher Workbench under its Data Use Agreement. See
+> this repository.**  Access is via the *All of Us* Researcher Workbench under its Data Use Agreement. See
 > [Data & inputs](#data--inputs).
 
 ---
