@@ -5,16 +5,13 @@ The [current notebook guide](notebooks/current/README.md) describes the November
 local input paths, execution steps, and input coverage.
 The [data preparation guide](preparation/README.md) documents the filtering,
 identifier matching, counts, statistical summaries, and scripts that produce
-the plot inputs. Source data remain outside Git.
+the plot inputs. 
 
 R code that generates the figures for a multi-omic **molecular-QTL** manuscript:
 cis-QTL discovery, fine-mapping, and cross-assay colocalization of **expression
 (eQTL)**, **protein (pQTL)** and **splicing (sQTL)** QTLs across genetic-ancestry
 groups in the [*All of Us*](https://allofus.nih.gov/) cohort.
 
-Each manuscript figure has its own directory with a self-contained pipeline. The
-analyses run on the *All of Us* Researcher Workbench (Terra/Jupyter), where the
-input data lives.
 
 > [!IMPORTANT]
 > **The inputs are *All of Us* controlled-access genomic data and are not in
@@ -70,13 +67,6 @@ larger set of retained provenance and side analyses under
 └── README.md               # (this file)
 ```
 
-Staged inputs, per-panel object caches, and rendered figures all land in
-git-ignored locations (see [`.gitignore`](.gitignore) and each figure's own
-`.gitignore`); they are never committed. The one exception is
-`Fig5/reference/` — a handful of small **public** reference files (ClinGen gene
-validity, ENCODE cCRE regions, gene models) that are committed deliberately so
-Fig5's worked examples build without staging.
-
 ---
 
 ## Shared conventions
@@ -121,12 +111,6 @@ Use `--legacy` for the older modular-pipeline notebooks. The
 [current notebook guide](notebooks/current/README.md) gives input requirements
 and execution commands.
 
-**Rendering.** Text uses the **Inter** font, fetched from Google Fonts at runtime
-via [showtext](https://cran.r-project.org/package=showtext), with an automatic
-fallback to the default sans font when Google Fonts is unreachable. Every output
-DPI is matched to the `showtext` DPI so text scales correctly. (The value itself
-is per figure: 300 for Fig1, Fig2 and SuppFig1; 400 for Fig3–Fig5.)
-
 > [!NOTE]
 > **Run every script from the project root**, e.g. `Rscript fig3/run_all.R`.
 > Scripts refer to themselves with a lowercase `fig<N>/…` path even though the
@@ -160,25 +144,11 @@ See each figure's `README.md` for its exact panel set, inputs, outputs, and any
 figure-specific steps (Fig1's MetaSoft supplemental, Fig3–Fig5's derived-data
 caches, etc.).
 
-> [!TIP]
-> The memoized builders in Fig3–Fig5 do **not** cascade `refresh = TRUE` through
-> their dependencies. After changing an input or a builder, clear the whole
-> cache (`rm -rf fig<N>/data`) rather than refreshing a single builder.
 
-### Tests
-
-`tests/` holds unit and regression checks that need **no controlled-access
-data** — they run against mock projects built by `tests/fixtures.R`:
 
 ```bash
 Rscript tests/run_all.R
 ```
-
-The suite covers the shared manifest loader and the Fig3, Fig4, Fig5 and
-SuppFig1 pipelines — including regression tests for defects found in the
-original code and, for each of those figures, a test asserting the **rendered**
-panel-letter sequence of the assembled figure. The preparation and visible-notebook tests also cover all five main figures
-with synthetic result tables and plot inputs.
 
 ---
 
@@ -203,30 +173,9 @@ with synthetic result tables and plot inputs.
 
 ## Data & inputs
 
-Every input derives from *All of Us* controlled-access data staged from a secure
-Google Cloud Storage bucket on the Researcher Workbench. Each figure's
-`inputs.tsv` is the record of its inputs' origins — but **not every input has a
-`gs://` URI**. Those that don't must be pre-staged by hand; the pipeline cannot
-self-stage them. Fig2, Fig4 and Fig5 currently have no `gs://` origins at all,
-and Fig1, Fig3 and SuppFig1 have a mix. Each figure's `README.md` and `NOTES.md`
-flag which of its inputs still need one.
-
 Access to the underlying data is governed by the *All of Us* Data Use Agreement
 and is **not** provided through this repository. The pipelines here have been
 exercised against unit-test mock fixtures; the real end-to-end run happens on the
 Workbench, where the data resides.
 
----
 
-## Development notes
-
-Every figure was refactored from a single flat notebook export into the modular
-pipeline above. The workflow for doing another one is written up in
-[`docs/figure-cleanup-playbook.md`](docs/figure-cleanup-playbook.md), with the
-per-cleanup design specs and implementation plans under
-[`docs/superpowers/`](docs/superpowers/).
-
-Each cleaned figure's `NOTES.md` records deferred work and any deliberate
-difference from the original analysis — including several changes that affect
-figure output, so read the relevant one before comparing against a previously
-published version.
