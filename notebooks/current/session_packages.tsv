@@ -20,3 +20,6 @@ igraph	2.1.4
 MatchIt	4.7.2
 rcartocolor	2.1.1
 broom	1.0.5
+slider	0.3.2
+paletteer	1.6.0
+colorspace	2.1.0
