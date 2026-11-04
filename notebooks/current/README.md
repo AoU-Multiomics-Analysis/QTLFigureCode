@@ -35,7 +35,7 @@ and status messages are retained in notebook outputs.
 
 The notebooks use tidyverse and patchwork. Individual figures also use packages
 such as arrow, data.table, ggbeeswarm, ggdist, ggh4x, ggrepel, cowplot, rcartocolor,
-MatchIt, and jsonlite. The [package table](session_packages.tsv) records the local
+MatchIt, slider, and jsonlite. The [package table](session_packages.tsv) records the local
 R environment. The batch executor uses evaluate; the R kernel uses IRdisplay.
 
 ## Input versions
