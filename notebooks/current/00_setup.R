@@ -7,7 +7,9 @@ if (requireNamespace("showtext", quietly = TRUE)) showtext::showtext_auto(FALSE)
 
 paper_root <- Sys.getenv("QTL_PAPER_ROOT")
 source_root <- Sys.getenv("QTL_SOURCE_ROOT", getwd())
-prepared_root <- Sys.getenv("QTL_PREP_ROOT")
+input_root <- Sys.getenv("QTL_INPUT_ROOT", source_root)
+susie_root <- Sys.getenv("QTL_SUSIE_ROOT", input_root)
+repo_root <- getwd()
 notebook_output <- Sys.getenv("QTL_NOTEBOOK_OUTPUT", file.path(getwd(), "notebook_outputs"))
 input_records <- new.env(parent = emptyenv())
 
@@ -16,27 +18,28 @@ checked_input <- function(root, relative, variable) {
   if (grepl("^(gs|s3|https?)://", root)) {
     stop("Input localization error: ", variable, " must be a local directory.", call. = FALSE)
   }
-  path <- file.path(root, relative)
-  if (nzchar(prepared_root) && variable %in% c("QTL_PAPER_ROOT", "QTL_SOURCE_ROOT")) {
-    namespace <- if (variable == "QTL_PAPER_ROOT") "paper" else "source"
-    prepared_relative <- file.path(namespace, relative)
-    generated <- file.path(prepared_root, prepared_relative)
-    if (file.exists(generated)) {
-      path <- generated
-      variable <- "QTL_PREP_ROOT"
-      relative <- prepared_relative
-    }
+  if (grepl("[.]rds([.]gz)?$", relative, ignore.case = TRUE)) {
+    stop("Saved RDS inputs are not used by these notebooks: ", relative, call. = FALSE)
   }
-  if (!file.exists(path) || file.access(path, 4) != 0) {
+  path <- file.path(root, relative)
+  if (!file.exists(path) || dir.exists(path) || file.access(path, 4) != 0) {
     stop("Missing or unreadable input: ", relative, ". Check ", variable, ".", call. = FALSE)
   }
   path <- normalizePath(path, mustWork = TRUE)
-  input_records[[paste(variable, relative, sep = ":")]] <- list(
-    root = variable, path = relative, md5 = unname(tools::md5sum(path)))
+  key <- paste(variable, relative, sep = ":")
+  hash <- unname(tools::md5sum(path))
+  previous <- input_records[[key]]
+  if (!is.null(previous) && !identical(previous$md5, hash)) {
+    stop("Input changed during notebook execution: ", relative, call. = FALSE)
+  }
+  if (is.null(previous)) input_records[[key]] <- list(root = variable, path = relative, md5 = hash)
   path
 }
 paper_file <- function(relative) checked_input(paper_root, relative, "QTL_PAPER_ROOT")
 source_file <- function(relative) checked_input(source_root, relative, "QTL_SOURCE_ROOT")
+input_file <- function(relative) checked_input(input_root, relative, "QTL_INPUT_ROOT")
+susie_file <- function(relative) checked_input(susie_root, relative, "QTL_SUSIE_ROOT")
+repo_file <- function(relative) checked_input(repo_root, relative, "QTL_REPO_ROOT")
 output_file <- function(relative) {
   path <- file.path(notebook_output, relative)
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
@@ -70,3 +73,4 @@ theme_set(theme_classic(base_size = 9) +
                   legend.title = element_blank(), panel.grid = element_blank()))
 options(repr.plot.width = 10, repr.plot.height = 7, repr.plot.res = 150)
 message("Current figure setup loaded. Inputs are read in place; outputs use notebook_outputs/.")
+# @include notebooks/current/analysis_runtime.R

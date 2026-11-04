@@ -51,9 +51,9 @@
         "description": "Prepare current frequency bins, unique-variant ancestry tests, consequence-priority aFC data and regressions, cumulative aFC summaries, outlier statistics from contingency counts, protein-coding medians, and S16 ancestry bins."
       },
       {
-        "key": "fig2_notebook",
-        "script": "preparation/Fig2/connect_notebook.R",
-        "description": "Connect newly prepared A-F data, fitted regression annotations, cumulative percentages, and S16 bins/rolling curve to the exact plot-object files read by current notebooks."
+        "key": "Fig2_plot_code",
+        "script": "notebooks/current/plots/Fig2.R",
+        "description": "Construct the current panels from the source-derived tables."
       }
     ]
   },
@@ -75,9 +75,9 @@
         "description": "Reconstruct the symmetric two-layer credible-set background, clean coding annotations with canonical target-gene CDS/SpliceAI/cCRE criteria, collapse duplicate variants with geometric-mean PIP weights, and fit current MAF annotation models."
       },
       {
-        "key": "fig3_notebook",
-        "script": "preparation/Fig3/connect_notebook.R",
-        "description": "Connect newly derived A-E scientific tables to current notebook object contracts. Replace gene-sharing annotation, B wrapped component/rate data, C interaction fits, D transformed data/slopes, and E significant annotated model rows."
+        "key": "Fig3_plot_code",
+        "script": "notebooks/current/plots/Fig3.R",
+        "description": "Construct the current panels from the source-derived tables."
       }
     ]
   },
@@ -99,9 +99,9 @@
         "description": "Prepare heritability-normalized rare-variant R2 contrasts; remove conditional-TWAS artifacts; match control gene-trait pairs; derive QQ coordinates; join ClinGen/DGIdb sets; apply per-TWAS-path BH adjustment; collapse to genes and fit enrichment models."
       },
       {
-        "key": "fig4_notebook",
-        "script": "preparation/Fig4/connect_notebook.R",
-        "description": "Connect current B-D R2, matched QQ, and refitted enrichment data to notebook objects. A has an explicit conditional connector recipe, used only if its missing source-result preparation can run."
+        "key": "Fig4_plot_code",
+        "script": "notebooks/current/plots/Fig4.R",
+        "description": "Construct the current panels from the source-derived tables."
       }
     ]
   },
@@ -204,7 +204,7 @@
       },
       {
         "key": "s14_discovery",
-        "script": "preparation/S14/prepare_discovery.R",
+        "script": "notebooks/current/supplements/S14.R",
         "description": "Count source AoU, GTEx, INTERVAL and TOPMed credible sets; select the shared coding-gene intersection; count cohort samples; fit descriptive curves and prepare GTEx envelopes."
       }
     ]
@@ -217,7 +217,7 @@
     "preparation": [
       {
         "key": "s15_enrichment",
-        "script": "preparation/S15/prepare_enrichment.R",
+        "script": "notebooks/current/supplements/S15.R",
         "description": "Fit the original annotation-on-PIP logistic models, adjust P values across slopes, and prepare the enrichment plot input."
       }
     ]
@@ -232,11 +232,6 @@
         "key": "fig2_data",
         "script": "preparation/Fig2/build.R",
         "description": "Prepare current frequency bins, unique-variant ancestry tests, consequence-priority aFC data and regressions, cumulative aFC summaries, outlier statistics from contingency counts, protein-coding medians, and S16 ancestry bins."
-      },
-      {
-        "key": "fig2_notebook",
-        "script": "preparation/Fig2/connect_notebook.R",
-        "description": "Connect newly prepared A-F data, fitted regression annotations, cumulative percentages, and S16 bins/rolling curve to the exact plot-object files read by current notebooks."
       }
     ]
   },
@@ -352,8 +347,8 @@
     "preparation": [
       {
         "key": "fig5-s31",
-        "script": "preparation/Fig5/prepare_s31.R",
-        "description": "Prepare ACVRL1 source rows and prediction windows; rebuild E and update every D QTL plotting frame in the accepted locus renderer; save the D/E objects consumed by S31."
+        "script": "notebooks/current/supplements/S31.R",
+        "description": "Read ACVRL1 fine-mapping, GENCODE and cCRE inputs; join PromoterAI windows and construct both locus panels."
       }
     ]
   }

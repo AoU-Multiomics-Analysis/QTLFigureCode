@@ -11,6 +11,8 @@ on:
       - 'tools/prepare_figure_data.py'
       - 'preparation/**'
       - 'tests/test_preparation*'
+      - 'tests/test_inline*'
+      - 'tests/test_current_notebook_inputs.R'
       - 'tests/test_current_notebooks.py'
       - '.github/workflows/current-notebooks.yml'
   push:
@@ -24,6 +26,8 @@ on:
       - 'tools/prepare_figure_data.py'
       - 'preparation/**'
       - 'tests/test_preparation*'
+      - 'tests/test_inline*'
+      - 'tests/test_current_notebook_inputs.R'
       - 'tests/test_current_notebooks.py'
       - '.github/workflows/current-notebooks.yml'
 
@@ -59,7 +63,12 @@ jobs:
             any::data.table
             any::igraph
             any::patchwork
-          cache-version: preparation-1
+            any::ggh4x
+            any::ggbeeswarm
+            any::ggdist
+            any::rcartocolor
+            any::ggrepel
+          cache-version: visible-processing-1
       - name: Test preparation with synthetic inputs
         run: |
           Rscript tests/test_preparation_paths.R
@@ -67,3 +76,7 @@ jobs:
           Rscript tests/test_preparation_fig234.R
           Rscript tests/test_preparation_fig5.R
           Rscript tests/test_preparation_s14.R
+      - name: Test visible notebook processing and plots
+        run: |
+          Rscript tests/test_current_notebook_inputs.R
+          for file in tests/test_inline*.R; do Rscript "$file"; done

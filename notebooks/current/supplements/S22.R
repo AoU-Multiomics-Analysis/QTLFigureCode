@@ -1,11 +1,15 @@
-# %% Read the saved credible-set pairing counts
-#| Rebuild S22 from saved pair-level counts. A record is a tested credible-set pairing, not a unique gene or a single-assay credible set. The source calls use Bayesian FDR 5%. No new colocalization analysis is run.
-rates <- readRDS(source_file("Fig3/data/coloc_cs_rate.rds"))
+# %% Read and label the original credible-set pairings
+#| Read the original FastENLOC signal tables and apply Bayesian FDR 5% to RCP separately for each assay pair. Count the tested and selected credible-set pairings. A record is a pairing, not a unique gene or a single-assay credible set. No FastENLOC job is run.
+# @include preparation/Fig3/methods.R
+prep_result_runtime("Fig3")
+cs <- coloc_cs_level()
+rates <- coloc_cs_rate_fit(cs)
 stopifnot(all(rates$n_tested >= rates$n_coloc), all(rates$n_tested > 0),
           all(abs(rates$rate - rates$n_coloc / rates$n_tested) < 1e-12))
+message("Credible-set pairing counts and Wilson intervals calculated from source tables.")
 
 # %% Calculate the pooled rate
-#| Pool counts across assay pairs. Do not average their rates. Retain the saved pair intervals and calculate the pooled 95% Wilson interval with the formula used by the current original plot builder. The saved pair intervals also match that formula.
+#| Pool counts across assay pairs. Do not average their rates. Calculate the pair intervals and the pooled 95% Wilson interval with the formula used by the current original plot builder. Check the pair intervals against the same formula.
 overall <- rates %>% summarise(pair = "Overall", n_tested = sum(n_tested), n_coloc = sum(n_coloc)) %>%
   mutate(rate = n_coloc / n_tested)
 z <- qnorm(0.975)
@@ -24,7 +28,7 @@ summary <- bind_rows(arrange(rates, desc(rate)), overall) %>%
          label = paste0(scales::percent(rate, accuracy = 0.1), "\n", scales::comma(n_coloc), " / ", scales::comma(n_tested)))
 
 # %% Draw and save the rates
-#| Error bars show 95% Wilson intervals. The gray Overall bar uses the summed numerator and denominator. These intervals describe saved binary pairing calls and do not include uncertainty from fine-mapping or the colocalization model.
+#| Error bars show 95% Wilson intervals. The gray Overall bar uses the summed numerator and denominator. These intervals describe the binary pairing calls and do not include uncertainty from fine-mapping or the colocalization model.
 fills <- setNames(c("#0072B2", "#009E73", "#D55E00", "#A6A6A6"), levels(summary$pair))
 figure <- ggplot(summary, aes(pair, rate, fill = pair)) +
   geom_col(width = 0.7) +
@@ -37,3 +41,5 @@ figure <- ggplot(summary, aes(pair, rate, fill = pair)) +
 print(figure)
 save_plot(figure, "supplements/S22", 160, 110)
 readr::write_tsv(summary %>% select(-label), output_file("supplements/S22_pairing_summary.tsv"))
+
+message("S22 rebuilt from original result tables.")

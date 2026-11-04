@@ -9,7 +9,7 @@ import re
 import shutil
 import tempfile
 
-from build_current_notebooks import ROOT, build, read_index
+from build_current_notebooks import ROOT, build, read_index, source_files
 
 
 def check(require_executed=False):
@@ -26,7 +26,7 @@ def check(require_executed=False):
             assert all(isinstance(c["metadata"], dict) for c in nb["cells"])
             with tempfile.TemporaryDirectory() as directory:
                 temp = Path(directory)
-                for name in ["notebooks/current/00_setup.R", entry["script"]]:
+                for name in source_files(entry):
                     target = temp / name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(ROOT / name, target)
@@ -35,6 +35,10 @@ def check(require_executed=False):
                 actual_code = [c["source"] for c in nb["cells"] if c["cell_type"] == "code"]
                 expected_code = [c["source"] for c in expected["cells"] if c["cell_type"] == "code"]
                 assert actual_code == expected_code, "Notebook code differs from its source script"
+                assert not re.search(r"\b(readRDS|read_rds|prepared_rds)\s*\(",
+                                     "\n".join("".join(code) for code in actual_code)), "Notebook reads saved RDS objects"
+                assert not re.search(r"\b(source|sys[.]source)\s*\(",
+                                     "\n".join("".join(code) for code in actual_code)), "Notebook hides R code behind source()"
             images = []
             for c in nb["cells"]:
                 source = "".join(c["source"])
@@ -59,6 +63,9 @@ def check(require_executed=False):
             if require_executed:
                 execution = nb["metadata"]["qtl_execution"]
                 assert execution["source_inputs_unchanged"] is True
+                assert all(not record["path"].lower().endswith((".rds", ".rds.gz"))
+                           and record["root"] != "QTL_PREP_ROOT"
+                           for record in execution["input_records"]), "Execution used saved objects or a prepared overlay"
                 assert images, "No rendered plot"
                 if entry.get("reference_sha256"):
                     assert hashlib.sha256(images[-1]).hexdigest() == entry["reference_sha256"], "Submission reference image differs"

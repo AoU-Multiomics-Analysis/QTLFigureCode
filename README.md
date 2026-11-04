@@ -1,8 +1,8 @@
 # QTLFigureCode
 
 The [current notebook guide](notebooks/current/README.md) describes the November 2,
-2026 main figures and the 16 supplement notebooks. It lists local input paths,
-execution steps, source-data coverage, and the limits of each reconstruction.
+2026 main figures and the 16 supplement notebooks. The cells show source-result processing and plot construction. The guide lists
+local input paths, execution steps, and input coverage.
 The [data preparation guide](preparation/README.md) documents the filtering,
 identifier matching, counts, statistical summaries, and scripts that produce
 the plot inputs. Source data remain outside Git.
@@ -115,13 +115,14 @@ pre-staged inputs skip the copy. Panels reach inputs through `input_path(key)`,
 `load_input(key)` and `input_files(key)`, and each panel declares only what it
 needs. To add or re-point an input you edit `inputs.tsv` — no script changes.
 
-**Notebooks.** `tools/build_notebooks.py` generates one Jupyter notebook per
-figure by pulling the code cells straight from the pipeline scripts, so the
-notebooks cannot drift from the code. Regenerate them all with `python3
-tools/build_notebooks.py`, or one with `python3 tools/build_notebooks.py Fig4`.
-The tracked notebooks must round-trip through the generator — regenerating
-should produce no diff. They are meant to run on the Workbench, where the inputs
-live; the generator never executes them.
+**Notebooks.** `tools/build_notebooks.py` generates the current notebooks from
+`notebooks/current/` and expands their R helper includes into visible cells.
+They show source-result processing and plot construction. Regenerate all with
+`python3 tools/build_notebooks.py`, or one with
+`python3 tools/build_notebooks.py Fig4`. Run them again after a code change.
+Use `--legacy` for the older modular-pipeline notebooks. The
+[current notebook guide](notebooks/current/README.md) gives input requirements
+and execution commands.
 
 **Rendering.** Text uses the **Inter** font, fetched from Google Fonts at runtime
 via [showtext](https://cran.r-project.org/package=showtext), with an automatic
@@ -179,8 +180,8 @@ Rscript tests/run_all.R
 The suite covers the shared manifest loader and the Fig3, Fig4, Fig5 and
 SuppFig1 pipelines — including regression tests for defects found in the
 original code and, for each of those figures, a test asserting the **rendered**
-panel-letter sequence of the assembled figure. Fig1 and Fig2 have no coverage
-yet; their prep steps are not factored into separately testable seams.
+panel-letter sequence of the assembled figure. The preparation and visible-notebook tests also cover all five main figures
+with synthetic result tables and plot inputs.
 
 ---
 
@@ -196,7 +197,7 @@ yet; their prep steps are not factored into separately testable seams.
   its own dependencies and an install snippet.
 - **`gsutil`** (Google Cloud SDK) for on-demand input staging from the secure
   bucket — present by default on the *All of Us* Workbench.
-- **Python 3** for `tools/build_notebooks.py` (standard library only).
+- **Python 3.9 or later** for `tools/build_notebooks.py` (standard library only).
 - External tools where noted: **MetaSoft** (Java) for Fig1's supplemental;
   **FastENLOC** produces Fig3's inputs upstream (Fig3 treats them as inputs, not
   as something it runs).

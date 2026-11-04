@@ -1,14 +1,40 @@
-# %% Read the saved population summaries
-#| Plot QTL discovery by ancestry group and assay. This notebook does not rerun QTL discovery. The sample sizes are common reference-cohort counts that the original source reused across assays.
-s4 <- readr::read_tsv(paper_file("Supplemental Figures/01_Supplemental_drafts/Figure1_QTL_discovery_by_population/population_QTL_discovery_data.tsv"), show_col_types = FALSE)
-stopifnot(nrow(s4) == 21L, all(dplyr::between(s4$proportion_significant, 0, 1)),
-          !anyDuplicated(s4[c("assay", "population")]))
-s4 <- s4 %>%
-  mutate(assay = factor(assay, c("eQTL", "sQTL", "pQTL")),
-         population = factor(population, c("Combined", "AFR", "AMR", "EAS", "EUR", "SAS", "MID")))
+# %% Count reference samples and test discovery in each source table
+#| The historical panel uses BH FDR within each permutation-result file. Main Figure 1 novelty uses source qval.
+#| The sample sizes are common RNA reference-cohort counts reused across assays.
+assays <- c("eQTL", "sQTL", "pQTL")
+groups <- c("COMB", "AFR", "AMR", "EAS", "EUR", "SAS", "MID")
+samples <- read_tsv(prep_input("input", "reference/COMB_eQTL_9k_sample_list.tsv"),
+  col_types = cols_only(research_id = col_character()), progress = FALSE)
+ancestry <- read_tsv(prep_input("input", "echo_v4_r2.ancestry_preds.tsv"),
+  col_types = cols_only(research_id = col_character(), ancestry_pred_other = col_character()), progress = FALSE) %>%
+  semi_join(samples, by = "research_id")
+stopifnot(nrow(samples) == 8895L, !anyDuplicated(samples$research_id),
+          nrow(ancestry) == nrow(samples), !anyDuplicated(ancestry$research_id), !anyNA(ancestry))
+reference_n <- ancestry %>% mutate(population = str_to_upper(ancestry_pred_other)) %>% count(population) %>%
+  bind_rows(tibble(population = "COMB", n = nrow(samples)))
+fills <- c(COMB = "#CF597E", AFR = "#C8D892", AMR = "#7FC385", EAS = "#ECA676",
+           EUR = "#30AC86", SAS = "#EBCE8D", MID = "#E47D72")
+s4 <- crossing(assay = assays, population = groups) %>% pmap_dfr(function(assay, population) {
+  relative <- if (assay == "pQTL") paste0("Fig1Data/pQTL/AoU_10750_", population, "_pQTL.cis_qtl.txt.gz") else
+    paste0("Fig1Data/", assay, "/", population, ".cis_qtl.txt.gz")
+  message("S4: Calculate BH FDR within ", assay, " / ", population)
+  d <- read_tsv(prep_input("input", relative),
+    col_types = cols_only(pval_beta = col_character()), progress = FALSE)
+  fdr <- p.adjust(as.double(d$pval_beta), method = "BH")
+  stopifnot(!anyNA(fdr), all(between(fdr, 0, 1)))
+  tibble(assay, population, proportion_significant = mean(fdr < .05), source_n_tested = nrow(d),
+         significant_count_from_saved_summary = sum(fdr < .05))
+}) %>% left_join(reference_n, by = "population", relationship = "many-to-one") %>%
+  transmute(assay = factor(assay, levels = assays),
+    population = factor(recode(population, COMB = "Combined"), levels = c("Combined", groups[-1])),
+    proportion_significant, source_n_tested, significant_count_from_saved_summary,
+    source_reference_sample_n = n, colour = unname(fills[as.character(recode(population, Combined = "COMB"))]),
+    marker = if_else(population == "Combined", 23L, 21L)) %>% arrange(assay, population)
 
-# %% Draw the saved discovery proportions
-#| Each point is a population and assay summary. The x axis uses the saved reference sample count. It is not an assay-specific participant count. No confidence interval or fitted curve is added.
+message("Calculated discovery proportions and counts from 21 source result tables.")
+
+# %% Draw the calculated discovery proportions
+#| Each point is a population and assay summary. The x axis uses the counted reference sample count. It is not an assay-specific participant count. No confidence interval or fitted curve is added.
 suppressPackageStartupMessages(library(ggrepel))
 fills <- s4 %>% distinct(population, colour) %>% deframe()
 shapes <- s4 %>% distinct(population, marker) %>% deframe()
@@ -29,7 +55,7 @@ figure <- ggplot(s4, aes(source_reference_sample_n, proportion_significant)) +
 print(figure)
 
 # %% Save aggregate outputs
-#| Save the figure and the 21 study summaries. No participant records are read or written. The source field source_n_tested counts tested rows, not significant genes.
+#| Save the figure and the 21 study summaries. No participant records are exported. The source field source_n_tested counts tested rows, not significant genes.
 save_plot(figure, "supplements/S4", 184, 85)
 readr::write_tsv(s4 %>% select(assay, population, proportion_significant, source_n_tested,
                               significant_count_from_saved_summary, source_reference_sample_n),

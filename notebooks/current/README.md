@@ -1,94 +1,101 @@
-# November 2 figure notebooks
+# Figure notebooks
 
-The [data preparation guide](../../preparation/README.md) lists the scripts that
-filter source results, join annotations, calculate counts and tests, and write
-the plot inputs. Each notebook links to its own producing scripts. Set
-`QTL_PREP_ROOT` to read a generated output tree while retaining the original
-input and layout directories.
+The five main notebooks and 16 supplement notebooks read local result tables,
+show the data processing, and build their plots in R. Their cells include the
+filters, identifier matching, joins, counts, statistical models, and plotting
+functions. Intermediate objects remain in the current R session. The notebooks
+do not read saved data or plot RDS files.
 
-The five main notebooks use the November 2, 2026 figures as their reference.
-They read prepared inputs or the original result files. A separate cell shows
-the complete reference figure.
-
-Figure 1 now uses the post-QC schematic, circos plot, seven gene categories,
-three-assay credible-set curves, and combined lead-PIP plot. Figure 2 uses the
-compact A-F layout, four frequency bins, and REM labels. Figure 3 includes the
-current annotation panel E. Figure 4 uses the Science layout with 68 trait labels.
-Figure 5 uses the current five panels. ACVRL1 is now in S31; SPR is in S32.
+The scientific reference is the November 2, 2026 figure set. The main notebooks
+also display the complete reference PNG after their rebuilt panels.
 
 ## Run
 
-Use the R kernel. Start in the repository root. Set these variables before you
-run a notebook. Each value is a local directory path:
+Use the R kernel. Start in the repository root. Set the local input directories:
 
 ```r
 Sys.setenv(
-  QTL_PAPER_ROOT = "/path/to/local/paper",
+  QTL_INPUT_ROOT = "/path/to/source/result/tables",
+  QTL_SUSIE_ROOT = "/path/to/separate/fine-mapping/tables",
+  QTL_PAPER_ROOT = "/path/to/paper/references",
   QTL_SOURCE_ROOT = "/path/to/figure/checkout"
 )
 ```
 
-`QTL_PAPER_ROOT` contains the local `output/` and `Supplemental Figures/` folders.
-`QTL_SOURCE_ROOT` contains staged figure data and saved `FigN/objects/` and
-`FigN/data/` caches. It can be the current checkout. Input files are not copied
-into Git. The R code checks that each requested file exists and is readable.
-New exports use the ignored `notebook_outputs/` folder. Set `QTL_NOTEBOOK_OUTPUT`
-to use a different output folder.
+`QTL_INPUT_ROOT` contains the staged result-table paths in each figure's
+`inputs.tsv`. `QTL_SUSIE_ROOT` contains the three combined-assay fine-mapping
+exports. `QTL_PAPER_ROOT` contains the frozen annotations, external study results,
+aggregate source counts, and reference images. `QTL_SOURCE_ROOT` supplies public
+reference tracks and source metadata. These roots are read in place.
 
-Run the cells from top to bottom. The notebooks use tidyverse and patchwork.
-Some plots also use ggbeeswarm, ggdist, ggh4x, ggrepel, cowplot, showtext, or svglite.
-The R batch executor uses jsonlite and evaluate. The R kernel uses IRdisplay.
-The recorded `qtl_execution` metadata lists input file hashes and the R version.
-It confirms that the input files were unchanged during the recorded execution.
-The [package version table](session_packages.tsv) records the local R environment.
+Run the cells from top to bottom. The notebook checks each input file and records
+its hash. New exports use the ignored `notebook_outputs/` directory. Set
+`QTL_NOTEBOOK_OUTPUT` to use a different export directory. Only aggregate plots
+and status messages are retained in notebook outputs.
 
-To regenerate notebook code, run:
+The notebooks use tidyverse and patchwork. Individual figures also use packages
+such as arrow, data.table, ggbeeswarm, ggdist, ggh4x, ggrepel, cowplot, rcartocolor,
+MatchIt, and jsonlite. The [package table](session_packages.tsv) records the local
+R environment. The batch executor uses evaluate; the R kernel uses IRdisplay.
+
+## Input versions
+
+The [preparation guide](../../preparation/README.md) and
+[manifest](../../preparation/manifest.json) list source paths and file overrides.
+For S11-S14, `QTL_FIG1_EAS_EQTL_FILE` must identify the current EAS eQTL result.
+The older similarly named file is a different analysis. Its current download is
+gzip CSV despite its `.tsv` suffix; the reader checks the file signature.
+
+Use `QTL_TOPMED_CS_FILE` for the TOPMed credible-set result. Use
+`QTL_FIG1_PROTEIN_BED_FILE` and `QTL_FIG1_PROTEIN_COVARIATES_FILE` for the protein
+sample headers. S24/S25 use `QTL_FIG4_MEMBERSHIP` and `QTL_FIG4_SIGNAL` when the
+staged input directory has an older colocalization export.
+
+The notebooks calculate their own intermediate values. `QTL_PREP_ROOT` is used
+only by the separate preparation runner; it cannot replace notebook inputs.
+
+## Code and generation
+
+Authored R files are in this directory. A `# @include repository/path.R` line
+inserts that file's actual R code into the notebook. Helpers are visible in the
+cells. An included-code change invalidates saved outputs from that point onward.
+No runtime `source()` call hides a processing step.
 
 ```sh
 python3 tools/build_notebooks.py
 python3 tools/build_notebooks.py Fig1 S11
-```
-
-Generation retains saved outputs only while every preceding code cell is
-unchanged. A changed setup or code cell clears its outputs and all later outputs.
-Execute the notebook again after any code change. To clear all outputs, add
-`--clear-outputs`.
-
-To execute with the local R environment without a Python Jupyter installation:
-
-```sh
 Rscript tools/execute_current_notebooks.R
 python3 tools/check_current_notebooks.py --require-executed
 ```
 
-The original pipeline generator remains available with `--legacy`. The existing
-`SuppFig1` notebook remains available for its Workbench inputs. It was not
-re-executed because those inputs were not found in this local source collection.
+Generation retains outputs only while all preceding code cells are unchanged.
+Execute again after a code change. Add `--clear-outputs` to remove every output.
+The old modular-pipeline generator remains available with `--legacy`.
 
-## Supplements
+## Supplements and input gaps
 
-The new notebooks are in `notebooks/supplements/`. They cover S4, S11-S16,
-S20-S25, S28, S30, and S31. The [coverage table](coverage.tsv) lists all 32 sections.
-It distinguishes complete source data, missing inputs, partial inputs, and the
-S27 control-set review. The section number follows the November 2 manuscript;
-earlier working drafts used different numbers.
+The supplement notebooks cover S4, S11-S16, S20-S25, S28, S30, and S31. The
+[coverage table](coverage.tsv) lists all 32 manuscript sections.
 
-S11-S14 use the current EAS versions. Their population order is Combined, AFR,
-AMR, EUR, SAS, EAS, MID. The S14 preparation script rebuilds the shared-gene
-set, study counts, descriptive curves, and GTEx tissue envelopes.
+Figure 1 pre-QC availability uses supplied aggregate counts because the
+participant-availability export is unavailable. Post-QC counts are recalculated
+from sample lists and protein headers.
 
-S19 has saved event counts but lacks complete model results. S32 has the
-fine-mapping panel but lacks the complete Borzoi inputs. S27 has a recorded
-difference between the control set in the plot and the caption comparisons.
-These three sections do not have new notebooks in this update.
+Figure 4A shows its source-processing and plotting code. If the full harmonized
+gene-level table is absent, it reports a skip and leaves A empty. B-D still run.
+It does not substitute a saved plot.
+
+S30 shows the recovered aggregate count-to-percentile calculation. The original
+genome-wide ranking inputs and procedure are unavailable. The supplied formulas
+remain its input boundary.
+
+S19 lacks complete model results. S32 lacks complete Borzoi inputs. S27 has a
+recorded control-set difference. No new notebooks were added for these sections.
+The existing `SuppFig1` notebook remains available for its Workbench inputs.
 
 ## Checks
 
-The preparation guide and manifest record the source inputs, comparisons, and
-remaining input gaps. The Figure 1 reference retains its final artwork and
-vector label positions. The R plots can have different spacing or font metrics.
-
-The local check executes each supported notebook, checks source file hashes,
-and allows aggregate images and status messages in outputs. The GitHub Actions
-smoke test checks the generated code, saved images, R syntax, and synthetic
-filter/count tests. It runs without controlled inputs.
+Local verification compares fresh counts, data frames, model results, and plot
+layers with the accepted outputs. Input hashes are checked after execution.
+GitHub Actions checks generation, visible code, saved aggregate images, R
+syntax, and synthetic processing/plot tests without controlled inputs.

@@ -1,14 +1,26 @@
-# %% Read the exclusive intersections
-#| Rebuild the S24 UpSet display from the saved exclusive intersection counts. The unit is a unique gene–trait pair. The internal union layer is excluded. No GWAS or colocalization analysis is run.
-intersections <- readr::read_tsv(source_file("Fig4/coloc_upset_intersection_counts.tsv"), show_col_types = FALSE) %>%
-  arrange(desc(gene_trait_pairs)) %>% mutate(index = row_number(), sets = strsplit(qtl_combination, "+", fixed = TRUE),
-                                            n_sets = lengths(sets), multilayer = n_sets >= 2)
-stopifnot(nrow(intersections) == 7L,
+# %% Colocalization membership transformations
+#| Read source memberships, remove duplicate gene–trait–assay rows, and exclude the internal union layer.
+# @include preparation/Fig4/methods.R
+# @include preparation/Fig4/current_methods.R
+
+# %% Read source gene–trait memberships
+#| QTL_FIG4_MEMBERSHIP can select the current membership result. The source table contains gene–trait records, not participant records.
+membership_input <- prep_input_file("QTL_FIG4_MEMBERSHIP", "input", c(
+  "high_level_coloc_outputs/final_summaries/colocalizing_genes_long.tsv",
+  "Fig4Data/high_level_coloc_outputs/final_summaries/colocalizing_genes_long.tsv"))
+coloc_membership <- read_any(membership_input)
+upset <- fig4_upset_counts(coloc_membership)
+intersections <- upset$intersections %>%
+  arrange(desc(gene_trait_pairs)) %>%
+  mutate(index = row_number(), sets = strsplit(qtl_combination, "+", fixed = TRUE),
+         n_sets = lengths(sets), multilayer = n_sets >= 2)
+stopifnot(nrow(intersections) == 7L, upset$multilayer_n == 1617L,
           sum(intersections$gene_trait_pairs[intersections$multilayer]) == 1617L)
 qtl_sets <- c("eQTL", "pQTL", "sQTL")
+message("Calculated seven exclusive QTL membership intersections.")
 
 # %% Reconstruct the aggregate UpSet matrix
-#| One column is one exclusive QTL combination. Filled dots identify its component assays. The top bars give the saved exclusive counts. The side bars sum all combinations that contain an assay. No membership rows are fabricated or expanded.
+#| One column is one exclusive QTL combination. Filled dots identify its component assays. The top bars give the calculated exclusive counts. The side bars sum all combinations that contain an assay.
 matrix <- tidyr::crossing(index = intersections$index, assay = qtl_sets) %>%
   left_join(intersections %>% select(index, sets), by = "index") %>%
   mutate(active = purrr::map2_lgl(assay, sets, ~.x %in% .y),
@@ -41,7 +53,7 @@ totals <- ggplot(set_sizes, aes(gene_trait_pairs, y, fill = assay)) +
   theme(axis.line.y = element_blank(), axis.ticks.y = element_blank())
 
 # %% Display and save the aggregate intersections
-#| Pink bars identify combinations with at least two QTL classes. This native ggplot layout uses the same exclusive intersections as the original UpSetR display. It does not require the upstream gene–trait membership file.
+#| Pink bars identify combinations with at least two QTL classes. The counts come from distinct source gene–trait memberships. Each pair contributes to one exclusive combination.
 figure <- patchwork::plot_spacer() + bars + totals + dots +
   patchwork::plot_layout(ncol = 2, widths = c(1, 3.2), heights = c(3, 1.2))
 print(figure)

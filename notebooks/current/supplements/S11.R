@@ -1,17 +1,22 @@
-# %% Read the current EAS histogram
-#| Rebuild S11 from the saved integer frequency table. It includes EAS and the combined analysis. No fine-mapping model is run. Traits with no credible set are absent from the source.
-base <- "Supplemental Figures/01_Supplemental_drafts/Figure1_population_credible_set_counts/v2_with_EAS"
-histogram <- readr::read_tsv(paper_file(file.path(base, "histogram_counts.tsv")), show_col_types = FALSE)
-summary <- readr::read_tsv(paper_file(file.path(base, "population_credible_set_count_summary.tsv")), show_col_types = FALSE)
-assays <- c("eQTL", "sQTL", "pQTL")
-groups <- c("COMB", "AFR", "AMR", "EUR", "SAS", "EAS", "MID")
-stopifnot(nrow(histogram) == 210L, nrow(summary) == 21L,
-          all(histogram$number_traits >= 0), "EAS" %in% histogram$population)
-check <- histogram %>% group_by(assay, population) %>%
-  summarise(traits_from_bins = sum(number_traits), sets_from_bins = sum(number_traits * number_credible_sets), .groups = "drop") %>%
-  left_join(summary, by = c("assay", "population"))
-stopifnot(all(check$traits_from_bins == check$number_traits),
-          all(check$sets_from_bins == check$total_credible_sets))
+# %% Source fine-mapping inputs
+#| Count credible sets from variant rows for all three assays and seven analysis groups.
+# @include notebooks/current/analysis/Fig1_helpers.R
+fig1_groups <- c("COMB", "AFR", "AMR", "EUR", "SAS", "EAS", "MID")
+# @include notebooks/current/analysis/Fig1_finemapping.R
+
+# %% Count credible sets per molecular trait
+histogram <- traits %>% count(assay, population, number_credible_sets, name = "number_traits") %>%
+  complete(assay = factor(assays, levels = assays), population = factor(groups, levels = groups),
+           number_credible_sets = 1:10, fill = list(number_traits = 0L)) %>%
+  group_by(assay, population) %>% mutate(total_traits = sum(number_traits),
+    percent_traits = 100 * number_traits / total_traits) %>% ungroup()
+summary <- traits %>% group_by(assay, population) %>%
+  summarise(number_traits = n(), total_credible_sets = sum(number_credible_sets),
+    mean_credible_sets = mean(number_credible_sets), median_credible_sets = median(number_credible_sets),
+    minimum = min(number_credible_sets), maximum = max(number_credible_sets),
+    percent_one_set = 100 * mean(number_credible_sets == 1L), .groups = "drop")
+stopifnot(nrow(histogram) == 210L, nrow(summary) == 21L, max(traits$number_credible_sets) == 10L)
+message("Counted all source credible sets per trait and 210 histogram bins.")
 
 # %% Draw the complete histogram range
 #| Each bar counts molecular traits with the stated number of credible sets. The 1–10 range contains all observed counts. The y scale is fixed within each assay and can differ between assays.

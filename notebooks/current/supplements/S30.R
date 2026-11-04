@@ -1,7 +1,25 @@
-# %% Read the saved trait ranks
-#| Rebuild S30 from four saved signed-effect percentile ranks. No association analysis, clinical classification, or ranking is repeated. The input contains four gene–trait summaries and no participant records.
-panels <- readr::read_tsv(paper_file("Supplemental Figures/01_Supplemental_drafts/Figure5_trait_prioritization/trait_prioritization_data.tsv"), show_col_types = FALSE) %>%
-  mutate(gene = factor(gene, c("F10", "ANGPTL3", "SERPINF2", "IFT80")))
+# %% Recover the recorded aggregate count-to-percentile formulas
+#| The supplied local script contains aggregate counts for three ranks and the fixed IFT80 percentile. Its original genome-wide ranking inputs are unavailable. Read only the recorded table/formula expression.
+path <- prep_input("paper", "plot_compact_percentiles_four_genes.R")
+expressions <- parse(path)
+is_panels <- vapply(expressions, function(expr) {
+  is.call(expr) && identical(expr[[1]], as.name("<-")) &&
+    identical(expr[[2]], as.name("panels"))
+}, logical(1))
+stopifnot(sum(is_panels) == 1L)
+expression <- expressions[[which(is_panels)]]
+# Evaluate only the recorded tibble/rank expression, without the plot/export code.
+allowed <- c("<-", "tibble", "factor", "c", "*", "/", "+", "(", "mutate",
+  "if_else", "==", "-", "sprintf", "|>")
+calls <- function(expr) {
+  if (!is.call(expr)) return(character())
+  c(as.character(expr[[1]]), unlist(lapply(as.list(expr)[-1], calls), use.names = FALSE))
+}
+stopifnot(all(calls(expression) %in% allowed))
+environment <- new.env(parent = globalenv())
+eval(expression, envir = environment)
+panels <- environment$panels
+panels <- panels %>% mutate(gene = factor(gene, c("F10", "ANGPTL3", "SERPINF2", "IFT80")))
 stopifnot(nrow(panels) == 4L, !anyNA(panels), all(dplyr::between(panels$percentile, 0, 100)),
           all(abs(panels$x - if_else(panels$tail == "Lower tail", panels$percentile / 5, (panels$percentile - 95) / 5)) < 1e-12))
 ticks <- tidyr::crossing(gene = panels$gene, x = seq(0, 1, 0.2)) %>%

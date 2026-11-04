@@ -13,3 +13,10 @@ svglite	2.1.1
 jsonlite	2.0.0
 evaluate	1.0.5
 IRdisplay	1.1
+data.table	1.14.8
+arrow	18.1.0.1
+readxl	1.4.3
+igraph	2.1.4
+MatchIt	4.7.2
+rcartocolor	2.1.1
+broom	1.0.5

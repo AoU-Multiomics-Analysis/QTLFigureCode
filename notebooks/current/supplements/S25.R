@@ -1,16 +1,50 @@
-# %% Read the saved CD40 locus data
-#| Rebuild S25 from the saved CD40 display data. The source already links QTL credible sets to GWAS trait and locus records. No harmonization, fine-mapping, or colocalization is repeated. PIP, RCP, and CLPP are posterior-based statistics, not association P values.
-cd40 <- readr::read_tsv(source_file("Fig4/cd40_coloc_locus_plot_data.tsv"), show_col_types = FALSE)
+# %% CD40 colocalization and credible-set transformations
+#| Start with harmonized signal results and the three SuSiE variant tables. Join only credible sets that participate in the CD40 colocalization signals.
+# @include preparation/Fig4/methods.R
+# @include preparation/Fig4/current_methods.R
+
+# %% Read the harmonized CD40 signals
+#| QTL_FIG4_SIGNAL can select the current signal result. Retain the CD40 gene, eQTL/pQTL/sQTL layers, and nonmissing CLPP. PIP, RCP and CLPP are posterior-based statistics.
+signal_path <- prep_input_file("QTL_FIG4_SIGNAL", "input", c(
+  "high_level_coloc_outputs/harmonized/harmonized_coloc.signal.tsv.gz",
+  "Fig4Data/high_level_coloc_outputs/harmonized/harmonized_coloc.signal.tsv.gz"))
+signal_source <- read_any(signal_path)
+gene_id <- "ENSG00000101017"
+cd40_signals <- signal_source %>%
+  filter(gene == gene_id, layer %in% c("eQTL", "pQTL", "sQTL"), !is.na(CLPP))
+message("Selected the CD40 signal results.")
+
+# %% Read CD40 fine-mapping variants
+#| Read the six required columns. Match expression and protein gene IDs exactly. Splicing IDs can contain the gene ID within the molecular-trait name. Keep credible-set and variant rows from the original results.
+qtl_files <- c(eQTL = "COMB.expression_SusieMerged.annotated.ancestry_skew.tsv.gz",
+               pQTL = "COMB.proteomics_SusieMerged.annotated.ancestry_skew.tsv.gz",
+               sQTL = "COMB.splicing_SusieMerged..annotated.ancestry_skew.tsv.gz")
+cd40_variants <- imap_dfr(qtl_files, function(relative, assay) {
+  alternatives <- unique(c(relative, sub("SusieMerged[.][.]annotated", "SusieMerged.annotated", relative)))
+  path <- prep_input_any("susie", alternatives)
+  variants <- read_any(path, select = c("position", "variant", "cs_id", "pip", "rsid", "gene_id"))
+  variants <- if (assay == "sQTL") {
+    filter(variants, str_detect(.data$gene_id, fixed(.env$gene_id)))
+  } else {
+    filter(variants, .data$gene_id == .env$gene_id)
+  }
+  variants %>% mutate(layer = assay, qtl_cs = cs_id)
+})
+message("Read the CD40 SuSiE credible-set variants.")
+
+# %% Join credible sets to trait and GWAS-locus records
+#| Preserve the intended many-to-many expansion across trait/locus records. Calculate symmetric locus offsets within each trait and convert hg38 positions to megabases.
+cd40 <- fig4_cd40_data(cd40_signals, cd40_variants, gene_id)
 trait_order <- c("systemic lupus erythematosus", "multiple sclerosis", "rheumatoid arthritis",
                  "inflammatory bowel disease", "crohn's disease", "ldl cholesterol", "monocyte")
 trait_order <- trait_order[trait_order %in% cd40$trait]
 cd40 <- cd40 %>% mutate(assay = factor(assay, c("eQTL", "pQTL", "sQTL")),
                         credible_set = factor(credible_set, unique(credible_set)))
-stopifnot(nrow(cd40) > 0, all(cd40$gene == "ENSG00000101017"),
+stopifnot(nrow(cd40) == 84L, all(cd40$gene == "ENSG00000101017"),
           all(dplyr::between(cd40$CLPP, 0, 1)), length(levels(cd40$credible_set)) <= 8L)
 
 # %% Draw the locus display
-#| The x axis gives hg38 chromosome 20 position. Color denotes assay, shape denotes the QTL credible set, and point size denotes signal-level CLPP. Saved offsets separate multiple GWAS loci within one trait row. The dashed line marks the CD40 transcription start site.
+#| The x axis gives hg38 chromosome 20 position. Color denotes assay, shape denotes the QTL credible set, and point size denotes signal-level CLPP. Calculated offsets separate multiple GWAS loci within one trait row. The dashed line marks the CD40 transcription start site.
 shapes <- setNames(c(16, 15, 18, 17, 8, 16, 15, 18)[seq_along(levels(cd40$credible_set))], levels(cd40$credible_set))
 x_limits <- range(cd40$position_mb, finite = TRUE)
 x_limits <- x_limits + c(-1, 1) * max(0.003, diff(x_limits) * 0.06)

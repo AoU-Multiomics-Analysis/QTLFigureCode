@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +12,35 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def read_index(root=ROOT):
     return json.loads((root / "notebooks/current/index.json").read_text())
+
+
+def expand_source(name, root=ROOT, stack=()):
+    """Expand explicit repository-local R includes before splitting cells."""
+    root = Path(root).resolve()
+    path = (root / name).resolve()
+    if not path.is_relative_to(root):
+        raise ValueError("Notebook include is outside the repository: " + str(name))
+    relative = path.relative_to(root).as_posix()
+    if relative in stack:
+        raise ValueError("Notebook include cycle: " + " -> ".join((*stack, relative)))
+    lines, dependencies = [], [relative]
+    for line in path.read_text().splitlines():
+        match = re.fullmatch(r"# @include (.+?)\s*", line)
+        if match:
+            included, files = expand_source(match[1], root, (*stack, relative))
+            lines.append(included)
+            dependencies.extend(files)
+        else:
+            lines.append(line)
+    return "\n".join(lines) + "\n", list(dict.fromkeys(dependencies))
+
+
+def source_files(entry, root=ROOT):
+    files = []
+    for name in ["notebooks/current/00_setup.R", entry["script"]]:
+        _, dependencies = expand_source(name, root)
+        files.extend(dependencies)
+    return list(dict.fromkeys(files))
 
 
 def cell(kind, text, label):
@@ -40,18 +70,20 @@ def script_sections(text):
 
 def build(key, entry, root=ROOT, clear_outputs=False):
     root = Path(root)
-    script = (root / entry["script"]).read_text()
-    setup = (root / "notebooks/current/00_setup.R").read_text()
+    script, script_files = expand_source(entry["script"], root)
+    setup, setup_files = expand_source("notebooks/current/00_setup.R", root)
     cells = [cell("markdown", f"# {entry['title']}\n\n{entry['overview']}", "intro")]
     cells.append(cell("markdown", """## Run the notebook
 
-Use the R kernel. Start in the repository root. Set `QTL_PAPER_ROOT` to the local
-paper directory and `QTL_SOURCE_ROOT` to the figure checkout with staged inputs
-and saved objects. For example, set these variables in the R session before
-you run the cells. Paths can contain spaces.
+Use the R kernel. Start in the repository root. Set `QTL_INPUT_ROOT` to the
+source result tables and `QTL_SUSIE_ROOT` to the separate fine-mapping tables.
+Set `QTL_PAPER_ROOT` to the local reference directory and `QTL_SOURCE_ROOT`
+to the figure checkout. Set these variables in R before running the cells.
+Paths can contain spaces.
 
-Run the cells from top to bottom. The preparation links show the filters, joins,
-and counts used to produce the plot inputs. New PDFs and PNGs go to
+Run the cells from top to bottom. The cells show input reads, filters, joins,
+counts, models, and plot construction. Intermediate objects stay in this R
+session. New PDFs and PNGs go to
 `notebook_outputs/`. The plotting scripts are in `notebooks/current/`.
 """, "run"))
     if entry.get("preparation"):
@@ -61,17 +93,12 @@ and counts used to produce the plot inputs. New PDFs and PNGs go to
             target = os.path.relpath(root / step["script"], notebook_dir)
             links.append(f"- [{step['key']}]({target}): {step['description']}")
         instructions = (
-            "## Prepare the plotted data\n\n"
-            "The scripts below prepare filters, joins, counts, and summaries from source result tables. "
-            "Their inputs and execution order are listed in `preparation/manifest.json`. "
+            "## Source scripts\n\n"
+            "The processing steps below follow these preparation scripts. "
             "The source data are not included in Git.\n\n"
             + "\n".join(links) + "\n\n"
-            "Run `python3 tools/prepare_figure_data.py --list` from the repository root. "
-            "Use the named root options described in `preparation/README.md`. "
-            "Set `QTL_PREP_ROOT` to that run's output directory before running this notebook. "
-            "The notebook then reads generated files from its `paper/` and `source/` folders. "
-            "Other inputs and reference images still come from the original roots. "
-            "A script with an unavailable source input is identified in the preparation manifest."
+            "The notebook runs the processing in its own cells. "
+            "The preparation guide lists the original input requirements and missing inputs."
         )
         cells.append(cell("markdown", instructions, "preparation"))
     cells += [cell("markdown", "## Setup\n\nValidate the local input paths and load the plot libraries.", "setup-note"),
@@ -102,7 +129,8 @@ and counts used to produce the plot inputs. New PDFs and PNGs go to
         "kernelspec": {"name": "ir", "display_name": "R", "language": "R"},
         "language_info": {"name": "R", "file_extension": ".r", "mimetype": "text/x-r-source"},
         "qtl_reference_date": "2026-11-02", "qtl_figure": key,
-        "qtl_source_script": entry["script"]}, "nbformat": 4, "nbformat_minor": 5}
+        "qtl_source_script": entry["script"],
+        "qtl_source_files": list(dict.fromkeys(setup_files + script_files))}, "nbformat": 4, "nbformat_minor": 5}
     if execution is not None:
         nb["metadata"]["qtl_execution"] = execution
     out.parent.mkdir(parents=True, exist_ok=True)
