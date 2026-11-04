@@ -68,6 +68,7 @@ jobs:
             any::ggdist
             any::rcartocolor
             any::ggrepel
+            any::slider
           cache-version: visible-processing-1
       - name: Test preparation with synthetic inputs
         run: |
